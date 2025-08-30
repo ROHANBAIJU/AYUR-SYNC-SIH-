@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./ayursync-project files/Backend/ayur-sync-api/src"
+    ]
+}
