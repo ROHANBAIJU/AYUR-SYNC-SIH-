@@ -99,3 +99,12 @@ flowchart TD
     D --> F[Push Notifications: Firebase Cloud Messaging]
     C --> G[Analytics & Reporting Dashboard - Python]
     G --> A
+
+    %% Node colors
+    style A fill:#61DAFB,stroke:#000,stroke-width:2px,color:#000
+    style B fill:#00C896,stroke:#000,stroke-width:2px,color:#fff
+    style C fill:#FFCA28,stroke:#000,stroke-width:2px,color:#000
+    style D fill:#4285F4,stroke:#000,stroke-width:2px,color:#fff
+    style E fill:#FFA500,stroke:#000,stroke-width:2px,color:#000
+    style F fill:#8E44AD,stroke:#000,stroke-width:2px,color:#fff
+    style G fill:#3776AB,stroke:#000,stroke-width:2px,color:#fff
