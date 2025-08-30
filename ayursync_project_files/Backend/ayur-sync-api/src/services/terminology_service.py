@@ -2,15 +2,15 @@
 
 import csv
 from pathlib import Path
-import sys
 from typing import List
 
-# Add src to path to import our Pydantic models
+# Correct, absolute import from the 'src' package.
+from src.models.terminology import Terminology
+
+# The project root is correctly identified for finding the data file.
 project_root = Path(__file__).resolve().parents[2]
-sys.path.append(str(project_root / "src"))
 DATA_FILE_PATH = project_root / "data" / "NAMASTE.csv"
 
-from models.terminology import Terminology
 
 class TerminologyService:
     """
@@ -63,3 +63,4 @@ class TerminologyService:
 # Create a single, shared instance of the service.
 # Any part of our app can import and use this one instance.
 terminology_service = TerminologyService()
+

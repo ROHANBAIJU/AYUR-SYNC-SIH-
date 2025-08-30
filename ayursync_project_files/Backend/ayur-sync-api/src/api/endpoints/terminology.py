@@ -3,9 +3,9 @@
 from fastapi import APIRouter, Query
 from typing import List
 
-# Import our service and Pydantic model
-from services.terminology_service import terminology_service
-from models.terminology import Terminology
+# CORRECTED IMPORTS
+from src.services.terminology_service import terminology_service
+from src.models.terminology import Terminology
 
 # APIRouter helps organize endpoints into separate files.
 router = APIRouter()
@@ -28,3 +28,4 @@ def search_terminology(
     # The endpoint's job is simple: call the service and return the result.
     # FastAPI will automatically convert the result to JSON.
     return terminology_service.search_terms(query=filter)
+

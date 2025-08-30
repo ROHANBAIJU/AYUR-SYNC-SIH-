@@ -1,7 +1,7 @@
 # src/main.py
 
 from fastapi import FastAPI
-from .api.router import api_router # CORRECTED: Added a dot for relative import
+from src.api.router import api_router # CORRECTED IMPORT
 
 # Create an instance of the FastAPI class
 app = FastAPI(
@@ -21,3 +21,4 @@ def read_root():
     Provides a simple welcome message and status check.
     """
     return {"status": "ok", "message": "Welcome to the AYUR-SYNC API"}
+
