@@ -55,12 +55,12 @@ We propose **Ayur Sync**, a **lightweight FHIR microservice** that:
 
 - **Team Name:** 🚀 *[Your Team Name Here]*  
 - **Team Members:**  
-  - Member 1 – Role  
-  - Member 2 – Role  
-  - Member 3 – Role  
-  - Member 4 – Role  
-  - Member 5 – Role  
-  - Member 6 – Role  
+  - Rohan Baiju
+  - Dhiya K   
+  - Srijan Srivasta
+  - Joel Jo 
+  - Ananya Y
+  - Sruthi Subhash 
 
 ---
 
