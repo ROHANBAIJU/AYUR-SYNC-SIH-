@@ -1,63 +1,74 @@
 # scripts/ingest_namaste.py
 
 import csv
-from pathlib import Path
+import os
 import sys
 
-# We need to add the 'src' directory to Python's path to import our model.
-# This is a common pattern for utility scripts in a project.
-# It allows the script to see and use modules from the main application source.
-project_root = Path(__file__).resolve().parents[1]
-sys.path.append(str(project_root / "src"))
+# Add the project root to the Python path to allow for absolute imports
+# This is necessary because we are running this script directly.
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(project_root)
 
-from models.terminology import Terminology
-
-# Define the path to our data file relative to this script's location.
-DATA_FILE_PATH = project_root / "data" / "NAMASTE.csv"
+# Now we can use absolute imports from our 'src' folder
+from src.db.session import SessionLocal, engine
+from src.db.models import Terminology, Base
 
 def ingest_data():
     """
-    Reads terminology data from the CSV file, validates it using the
-    Pydantic model, and prints the validated objects.
-    
-    In a real application, this function would connect to a database and
-    insert the validated data instead of printing it.
+    Reads terminology data from the NAMASTE.csv file and inserts it into the database.
+    This script is designed to be run once to set up the initial data.
     """
-    print("Starting data ingestion...")
+    print("Starting data ingestion into the database...")
+
+    # Create a new database session
+    db = SessionLocal()
+
+    # Path to the CSV file
+    csv_file_path = os.path.join(project_root, 'data', 'NAMASTE.csv')
     
-    validated_terms = []
-    
+    # Create the table in the database if it doesn't exist
+    # Base.metadata.create_all() checks for the existence of tables first
+    # and only creates those that are missing.
+    print("Creating database tables if they don't exist...")
+    Base.metadata.create_all(bind=engine)
+    print("Tables created.")
+
     try:
-        with open(DATA_FILE_PATH, mode='r', encoding='utf-8') as csvfile:
-            # DictReader reads each row of the CSV as a dictionary,
-            # which is perfect for creating Pydantic model instances.
+        with open(csv_file_path, mode='r', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)
             
+            terms_added = 0
             for row in reader:
-                try:
-                    # This is the core validation step.
-                    # We attempt to create a Terminology instance from the row.
-                    # Pydantic will automatically check if 'code' and 'term' exist
-                    # and if they are strings.
-                    term = Terminology(**row)
-                    validated_terms.append(term)
-                except Exception as e:
-                    # If Pydantic validation fails, we print an error and skip the row.
-                    print(f"Validation Error for row {row}: {e}")
+                # For each row, check if the code already exists in the database
+                # to prevent duplicates on re-running the script.
+                existing_term = db.query(Terminology).filter(Terminology.code == row['code']).first()
+                
+                if not existing_term:
+                    # If the term does not exist, create a new Terminology object
+                    new_term = Terminology(
+                        code=row['code'].strip(),
+                        term=row['term'].strip()
+                    )
+                    # Add the new object to the session (staging area)
+                    db.add(new_term)
+                    terms_added += 1
+            
+            # Commit all the staged changes to the database at once
+            if terms_added > 0:
+                db.commit()
+                print(f"Successfully added {terms_added} new terms to the database.")
+            else:
+                print("No new terms to add. Database is already up-to-date.")
 
     except FileNotFoundError:
-        print(f"Error: Data file not found at {DATA_FILE_PATH}")
-        return
-
-    print(f"\nSuccessfully validated {len(validated_terms)} terms.")
-    
-    # Print the validated data to confirm it's working.
-    for term in validated_terms:
-        print(f"  - Code: {term.code}, Term: {term.term}")
-        
-    print("\nData ingestion process finished.")
-
+        print(f"Error: The file was not found at {csv_file_path}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        db.rollback() # Roll back the transaction in case of an error
+    finally:
+        db.close() # Always close the session
 
 if __name__ == "__main__":
-    # This makes the script runnable from the command line.
     ingest_data()
+    print("Data ingestion process finished.")
+

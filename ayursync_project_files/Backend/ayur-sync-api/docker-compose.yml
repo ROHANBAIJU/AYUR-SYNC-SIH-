@@ -1,0 +1,29 @@
+# This file defines our multi-container application setup.
+# It allows us to run our API and a PostgreSQL database together with a single command.
+
+version: '3.8' # Specifies the version of the Docker Compose file format.
+
+services:
+  # This is the service for our PostgreSQL database.
+  db:
+    image: postgres:15-alpine # Use the official PostgreSQL version 15 image. 'alpine' is a lightweight version.
+    container_name: ayur_sync_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/ # This creates a persistent volume to store database data.
+    environment:
+      # These are environment variables to configure the database on startup.
+      # IMPORTANT: In a real production environment, these secrets should be managed securely, not hardcoded.
+      - POSTGRES_USER=ayursync_user
+      - POSTGRES_PASSWORD=ayursync_secret_password
+      - POSTGRES_DB=ayursync_db
+    ports:
+      - "5432:5432" # Maps port 5432 on your local machine to port 5432 in the container.
+    restart: unless-stopped # Ensures the database restarts automatically if it crashes.
+
+  # This is the service for our FastAPI application. We will build this out later.
+  # For now, this file just sets up the database.
+
+volumes:
+  # This defines the named volume that our 'db' service uses.
+  # Docker manages this volume, ensuring our data persists even if the container is removed.
+  postgres_data:

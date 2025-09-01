@@ -1,66 +1,39 @@
 # src/services/terminology_service.py
 
-import csv
-from pathlib import Path
-from typing import List
+from sqlalchemy.orm import Session
+from src.db.models import Terminology as TerminologyModel
 
-# Correct, absolute import from the 'src' package.
-from src.models.terminology import Terminology
-
-# The project root is correctly identified for finding the data file.
-project_root = Path(__file__).resolve().parents[2]
-DATA_FILE_PATH = project_root / "data" / "NAMASTE.csv"
-
-
-class TerminologyService:
+def lookup_terms(db: Session, filter_str: str) -> list[TerminologyModel]:
     """
-    Handles the business logic for terminology operations.
-    
-    For this prototype, it loads data from the CSV into memory on startup.
-    In a production system, this service would interact with a database.
+    Searches for terminology terms in the database.
+
+    Args:
+        db: The SQLAlchemy database session.
+        filter_str: The string to filter terms by (case-insensitive).
+
+    Returns:
+        A list of matching Terminology objects from the database.
     """
-    _terms: List[Terminology] = []
-
-    def __init__(self):
-        """
-        Initializes the service and loads data if it's not already loaded.
-        """
-        self._load_data()
-
-    def _load_data(self):
-        """
-        Private method to load data from the CSV into a class variable.
-        This ensures the data is loaded only once.
-        """
-        if not TerminologyService._terms:
-            print("Loading terminology data into memory...")
-            try:
-                with open(DATA_FILE_PATH, mode='r', encoding='utf-8') as csvfile:
-                    reader = csv.DictReader(csvfile)
-                    for row in reader:
-                        # Use our Pydantic model for validation
-                        TerminologyService._terms.append(Terminology(**row))
-                print(f"Successfully loaded {len(TerminologyService._terms)} terms.")
-            except FileNotFoundError:
-                print(f"ERROR: Data file not found at {DATA_FILE_PATH}")
+    if not filter_str:
+        return []
     
-    def search_terms(self, query: str) -> List[Terminology]:
-        """
-        Performs a simple, case-insensitive search for terms.
-        """
-        if not query:
-            return []
-        
-        search_query = query.lower()
-        # This is a list comprehension, a concise way to build lists.
-        # It iterates through all terms and includes only those that match.
-        results = [
-            term for term in self._terms 
-            if search_query in term.term.lower()
-        ]
-        return results
+    # Perform a case-insensitive search on the 'term' column.
+    # The '%' are a wildcard, so it matches any term containing the filter string.
+    # .limit(10) prevents returning too many results for broad searches.
+    return db.query(TerminologyModel).filter(
+        TerminologyModel.term.ilike(f"%{filter_str}%")
+    ).limit(10).all()
 
-# Create a single, shared instance of the service.
-# Any part of our app can import and use this one instance.
-terminology_service = TerminologyService()
+def get_term_by_code(db: Session, code: str) -> TerminologyModel | None:
+    """
+    Retrieves a single terminology term from the database by its exact code.
+
+    Args:
+        db: The SQLAlchemy database session.
+        code: The exact code of the term to find.
+
+    Returns:
+        The Terminology object if found, otherwise None.
+    """
+    return db.query(TerminologyModel).filter(TerminologyModel.code == code).first()
 

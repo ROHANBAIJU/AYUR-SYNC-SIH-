@@ -1,24 +1,32 @@
 # src/models/terminology.py
 
 from pydantic import BaseModel, Field
+from typing import List, Optional
 
 class Terminology(BaseModel):
     """
-    A Pydantic model to represent a single terminology entry.
-    
-    This acts as a data structure with automatic validation. It ensures that
-    any terminology data we work with in our application has a 'code' and a 'term',
-    and that they are both strings.
+    Represents a single terminology entry from the NAMASTE CSV.
     """
+    code: str = Field(..., example="ASU25.14", description="The unique code for the term.")
+    term: str = Field(..., example="Gridhrasi", description="The display name of the term.")
     
-    # The Field class allows us to add more information, like an example.
-    # This will show up in the auto-generated API documentation.
-    code: str = Field(..., example="ASU25.14", description="The unique code for the terminology term.")
-    term: str = Field(..., example="Gridhrasi", description="The display name or term for the code.")
-
-    # This is an optional configuration class that allows us to define
-    # how Pydantic models should behave. In this case, we're telling it
-    # to be able to create an instance from an object's attributes,
-    # which is useful when working with database models later.
     class Config:
-        orm_mode = True
+        from_attributes = True # Renamed from orm_mode for Pydantic v2
+
+class ConceptMapping(BaseModel):
+    """
+    Represents a single mapping from a source code to a target code.
+    """
+    source_code: str = Field(..., example="ASU25.14", description="The source code (e.g., NAMASTE).")
+    target_code: str = Field(..., example="ICD11-M54.3", description="The target code (e.g., ICD-11).")
+    target_term: str = Field(..., example="Sciatica", description="The display name of the target term.")
+
+class TranslationResult(BaseModel):
+    """
+    Represents the result of a successful translation operation.
+    This is the data structure that our /translate endpoint will return.
+    """
+    found: bool = Field(True, description="Indicates if a mapping was found.")
+    source_term: Terminology
+    target_term: Optional[Terminology] = None # Optional in case no mapping exists
+

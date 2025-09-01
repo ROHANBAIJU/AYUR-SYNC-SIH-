@@ -1,31 +1,70 @@
 # src/api/endpoints/terminology.py
 
-from fastapi import APIRouter, Query
-from typing import List
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
 
-# CORRECTED IMPORTS
-from src.services.terminology_service import terminology_service
-from src.models.terminology import Terminology
+# Import the dependency to get a DB session
+from src.api.dependencies import get_db
 
-# APIRouter helps organize endpoints into separate files.
+# Import the Pydantic models for response validation
+from src.models.terminology import Terminology, TranslationResult
+
+# Import the service functions that contain the business logic
+from src.services import terminology_service, concept_map_service
+
+# Create an API router
 router = APIRouter()
 
-@router.get("/lookup", response_model=List[Terminology])
-def search_terminology(
+@router.get(
+    "/lookup",
+    response_model=list[Terminology],
+    summary="Search for Terminology Codes",
+    description="Performs a case-insensitive search for terminology terms. "
+                "Returns a list of matching terms from the database."
+)
+def lookup_terminology(
     filter: str = Query(
-        ..., 
-        min_length=2,
-        description="The search filter string to apply to terminology terms.",
-        example="Kasa"
-    )
+        ...,  # ... means this parameter is required
+        min_length=3,
+        description="The search string to filter terminology by (e.g., 'kasa')."
+    ),
+    db: Session = Depends(get_db)  # Inject the database session
 ):
     """
-    Performs a lookup for terminology terms based on a filter string.
+    Endpoint to search for medical terms.
+
+    - **filter**: The text to search for. Must be at least 3 characters.
+    - **db**: The database session, provided automatically by FastAPI's dependency injection.
     
-    This endpoint provides a simple text search against the 'term' field
-    of the loaded terminologies. It implements the core auto-complete functionality.
+    Returns a list of `Terminology` objects that match the filter.
     """
-    # The endpoint's job is simple: call the service and return the result.
-    # FastAPI will automatically convert the result to JSON.
-    return terminology_service.search_terms(query=filter)
+    # Call the service function, passing the db session and the filter string
+    terms = terminology_service.lookup_terms(db=db, filter_str=filter)
+    return terms
+
+@router.get(
+    "/translate",
+    response_model=TranslationResult,
+    summary="Translate a NAMASTE Code to ICD-11",
+    description="Finds the corresponding ICD-11 code for a given NAMASTE code."
+)
+def translate_terminology(
+    code: str = Query(
+        ..., # Required parameter
+        description="The source NAMASTE code to translate (e.g., 'ASU25.14').",
+        example="ASU25.14"
+    ),
+    db: Session = Depends(get_db) # Inject the database session
+):
+    """
+    Endpoint to translate a code from one system to another.
+
+    - **code**: The source code to translate.
+    - **db**: The database session.
+
+    Returns a `TranslationResult` object containing the source and target terms if found.
+    """
+    # Call the concept map service to perform the translation logic
+    result = concept_map_service.translate_code(db=db, code=code)
+    return result
 
