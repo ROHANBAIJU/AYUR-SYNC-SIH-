@@ -1,39 +1,44 @@
 # src/services/terminology_service.py
 
 from sqlalchemy.orm import Session
+from sqlalchemy import select
+
 from src.db.models import Terminology as TerminologyModel
+from src.models.terminology import Terminology as TerminologySchema
 
-def lookup_terms(db: Session, filter_str: str) -> list[TerminologyModel]:
+# This service contains the business logic for interacting with terminology data in the database.
+
+def find_terms_by_filter(db: Session, filter_str: str) -> list[TerminologySchema]:
     """
-    Searches for terminology terms in the database.
+    Finds terminology terms in the database using a case-insensitive filter.
 
     Args:
-        db: The SQLAlchemy database session.
-        filter_str: The string to filter terms by (case-insensitive).
+        db (Session): The database session.
+        filter_str (str): The string to filter terms by.
 
     Returns:
-        A list of matching Terminology objects from the database.
+        list[TerminologySchema]: A list of matching terminology objects.
     """
-    if not filter_str:
-        return []
+    # Create a query to select terms where the 'term' column contains the filter string (case-insensitive)
+    stmt = select(TerminologyModel).where(TerminologyModel.term.ilike(f"%{filter_str}%"))
     
-    # Perform a case-insensitive search on the 'term' column.
-    # The '%' are a wildcard, so it matches any term containing the filter string.
-    # .limit(10) prevents returning too many results for broad searches.
-    return db.query(TerminologyModel).filter(
-        TerminologyModel.term.ilike(f"%{filter_str}%")
-    ).limit(10).all()
+    # Execute the query and get all results
+    results = db.scalars(stmt).all()
+    
+    return results
 
-def get_term_by_code(db: Session, code: str) -> TerminologyModel | None:
+def find_term_by_code(db: Session, code: str) -> TerminologySchema | None:
     """
-    Retrieves a single terminology term from the database by its exact code.
+    Finds a single terminology term by its exact code.
 
     Args:
-        db: The SQLAlchemy database session.
-        code: The exact code of the term to find.
+        db (Session): The database session.
+        code (str): The exact code to find.
 
     Returns:
-        The Terminology object if found, otherwise None.
+        TerminologySchema | None: The matching terminology object or None if not found.
     """
-    return db.query(TerminologyModel).filter(TerminologyModel.code == code).first()
+    stmt = select(TerminologyModel).where(TerminologyModel.code == code)
+    result = db.scalars(stmt).first()
+    return result
 

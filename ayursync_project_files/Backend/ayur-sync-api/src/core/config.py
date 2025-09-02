@@ -1,37 +1,39 @@
 # src/core/config.py
 
-import os
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    """
-    Manages application settings using Pydantic.
-    It automatically reads environment variables for configuration.
-    """
-    
-    # --- Database Configuration ---
-    # This constructs the database URL from environment variables or defaults.
-    # Format: postgresql+psycopg2://user:password@host:port/dbname
-    DATABASE_USER: str = "ayursync_user"
-    DATABASE_PASSWORD: str = "ayursync_secret_password"
-    DATABASE_HOST: str = "localhost"
-    DATABASE_PORT: str = "5432"
-    DATABASE_NAME: str = "ayursync_db"
+    # --- Database Settings ---
+    # These values are read from the environment variables defined in docker-compose.yml
+    POSTGRES_USER: str = "ayursync_user"
+    POSTGRES_PASSWORD: str = "ayursync_secret_password"
+    POSTGRES_SERVER: str = "localhost"
+    POSTGRES_DB: str = "ayursync_db"
+    POSTGRES_PORT: int = 5432
 
-    # SQLAlchemy requires the database URL in a specific format.
-    # We build it here from the individual components.
     @property
     def DATABASE_URL(self) -> str:
-        """Constructs the full database connection URL."""
+        """Constructs the full database connection string."""
         return (
-            f"postgresql+psycopg2://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}@"
-            f"{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}"
+            f"postgresql+psycopg2://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@"
+            f"{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 
-    class Config:
-        # Specifies a file to load environment variables from, useful for development.
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    # --- JWT Security Settings ---
+    # A secret key used to sign the JWTs.
+    # In a real production environment, this MUST be a long, complex, random string
+    # and should be loaded from a secure vault or environment variable, not hardcoded.
+    SECRET_KEY: str = "a_very_secret_key_for_sih_hackathon_demo"
+    
+    # The algorithm used to sign the JWT. HS256 is a common choice.
+    ALGORITHM: str = "HS256"
+    
+    # The default lifespan of an access token, in minutes.
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-# Create a single, importable instance of the settings.
+    class Config:
+        case_sensitive = True
+
+# Create a single, reusable instance of the Settings class
 settings = Settings()
+

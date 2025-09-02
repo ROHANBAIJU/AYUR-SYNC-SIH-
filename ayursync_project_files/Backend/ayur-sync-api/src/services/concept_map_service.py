@@ -32,7 +32,7 @@ def translate_code(db: Session, code: str) -> TranslationResult:
         A TranslationResult object with the source and target terms if found.
     """
     # 1. Find the source term object from the database using its code
-    source_db_term = terminology_service.get_term_by_code(db, code)
+    source_db_term = terminology_service.find_term_by_code(db, code)
 
     if not source_db_term:
         return TranslationResult(found=False)
