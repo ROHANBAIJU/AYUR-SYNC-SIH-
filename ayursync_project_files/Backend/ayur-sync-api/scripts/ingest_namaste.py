@@ -1,74 +1,123 @@
-# scripts/ingest_namaste.py
+
+#scripts/ingest_namaste.py
 
 import csv
 import os
 import sys
 
 # Add the project root to the Python path to allow for absolute imports
-# This is necessary because we are running this script directly.
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(project_root)
 
-# Now we can use absolute imports from our 'src' folder
+from sqlalchemy.orm import Session
 from src.db.session import SessionLocal, engine
-from src.db.models import Terminology, Base
+from src.db.models import Base, Terminology, ConceptMap
 
-def ingest_data():
-    """
-    Reads terminology data from the NAMASTE.csv file and inserts it into the database.
-    This script is designed to be run once to set up the initial data.
-    """
-    print("Starting data ingestion into the database...")
-
-    # Create a new database session
-    db = SessionLocal()
-
-    # Path to the CSV file
-    csv_file_path = os.path.join(project_root, 'data', 'NAMASTE.csv')
+def ingest_terminologies(db: Session, file_path: str):
+    """Reads the terminology CSV and populates the 'terminologies' table."""
+    print("Ingesting terminologies...")
     
-    # Create the table in the database if it doesn't exist
-    # Base.metadata.create_all() checks for the existence of tables first
-    # and only creates those that are missing.
-    print("Creating database tables if they don't exist...")
-    Base.metadata.create_all(bind=engine)
-    print("Tables created.")
-
-    try:
-        with open(csv_file_path, mode='r', encoding='utf-8') as csvfile:
-            reader = csv.DictReader(csvfile)
+    with open(file_path, mode='r', encoding='utf-8') as csv_file:
+        csv_reader = csv.DictReader(csv_file)
+        
+        # Keep track of codes to avoid duplicates
+        existing_codes = {term.code for term in db.query(Terminology.code).all()}
+        
+        terms_to_add = []
+        for row in csv_reader:
+            code = row.get("code")
+            term = row.get("term")
             
-            terms_added = 0
-            for row in reader:
-                # For each row, check if the code already exists in the database
-                # to prevent duplicates on re-running the script.
-                existing_term = db.query(Terminology).filter(Terminology.code == row['code']).first()
+            # Basic validation
+            if not code or not term:
+                print(f"Skipping invalid row: {row}")
+                continue
                 
-                if not existing_term:
-                    # If the term does not exist, create a new Terminology object
-                    new_term = Terminology(
-                        code=row['code'].strip(),
-                        term=row['term'].strip()
-                    )
-                    # Add the new object to the session (staging area)
-                    db.add(new_term)
-                    terms_added += 1
-            
-            # Commit all the staged changes to the database at once
-            if terms_added > 0:
-                db.commit()
-                print(f"Successfully added {terms_added} new terms to the database.")
-            else:
-                print("No new terms to add. Database is already up-to-date.")
+            if code not in existing_codes:
+                # Prepare the object to be added, including optional fields
+                new_term = Terminology(
+                    code=code,
+                    term=term,
+                    definition=row.get("definition"), # Safely get optional field
+                    symptoms=row.get("symptoms")      # Safely get optional field
+                )
+                terms_to_add.append(new_term)
+                existing_codes.add(code)
 
-    except FileNotFoundError:
-        print(f"Error: The file was not found at {csv_file_path}")
+        if terms_to_add:
+            db.bulk_save_objects(terms_to_add)
+            db.commit()
+            print(f"  -> Added {len(terms_to_add)} new terminologies to the database.")
+        else:
+            print("  -> Terminology data is already up-to-date.")
+
+def ingest_concept_maps(db: Session, file_path: str):
+    """Reads the concept map CSV and populates the 'concept_maps' table."""
+    print("Ingesting concept maps...")
+    
+    with open(file_path, mode='r', encoding='utf-8') as csv_file:
+        csv_reader = csv.DictReader(csv_file)
+        
+        maps_to_add = []
+        for row in csv_reader:
+            source_code = row.get("source_code")
+            target_code = row.get("target_code")
+            
+            # Basic validation
+            if not source_code or not target_code:
+                print(f"Skipping invalid map row: {row}")
+                continue
+            
+            # Note: A real system would have more robust checks here
+            new_map = ConceptMap(
+                source_code=source_code,
+                target_code=target_code,
+                relationship=row.get("relationship", "exact-match")
+            )
+            maps_to_add.append(new_map)
+            
+        if maps_to_add:
+            db.bulk_save_objects(maps_to_add)
+            db.commit()
+            print(f"  -> Added {len(maps_to_add)} new concept maps to the database.")
+        else:
+            print("  -> Concept map data is already up-to-date.")
+
+
+def main():
+    """Main function to run the ingestion process."""
+    print("Starting data ingestion into the database...")
+    db = SessionLocal()
+    
+    try:
+        # Get the absolute paths to the data files
+        base_data_path = os.path.join(project_root, "data")
+        terminology_file = os.path.join(base_data_path, "NAMASTE.csv")
+        concept_map_file = os.path.join(base_data_path, "concept_map.csv")
+
+        print("Creating database tables if they don't exist...")
+        # This will create both 'terminologies' and 'concept_maps' tables
+        Base.metadata.create_all(bind=engine)
+        print("Tables created or already exist.")
+
+        # Clear existing data to ensure a clean slate, respecting foreign key constraints
+        print("Clearing old data...")
+        db.query(ConceptMap).delete()
+        db.query(Terminology).delete()
+        db.commit()
+        
+        # Ingest the data
+        ingest_terminologies(db, terminology_file)
+        ingest_concept_maps(db, concept_map_file)
+        
+        print("\nData ingestion process finished successfully.")
+    
     except Exception as e:
-        print(f"An error occurred: {e}")
-        db.rollback() # Roll back the transaction in case of an error
+        print(f"\nAn error occurred: {e}")
+        db.rollback()
     finally:
-        db.close() # Always close the session
+        db.close()
 
 if __name__ == "__main__":
-    ingest_data()
-    print("Data ingestion process finished.")
+    main()
 

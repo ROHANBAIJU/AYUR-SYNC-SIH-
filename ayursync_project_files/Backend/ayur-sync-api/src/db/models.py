@@ -1,30 +1,45 @@
 # src/db/models.py
 
-from sqlalchemy import Column, Integer, String, Index
+from sqlalchemy import Column, Integer, String, ForeignKey, Text
+from sqlalchemy.orm import declarative_base
 
-from src.db.session import Base
-
-# This is our SQLAlchemy model for the terminology data.
-# It defines the structure of the 'terminologies' table in our database.
+# declarative_base() is the standard starting point for SQLAlchemy models.
+Base = declarative_base()
 
 class Terminology(Base):
     """
-    Represents a single terminology entry in the database.
-    SQLAlchemy's ORM will map this class to the 'terminologies' table.
+    SQLAlchemy model for the 'terminologies' table.
+    This table acts as our main dictionary for all codes and their terms.
     """
     __tablename__ = "terminologies"
 
-    # Define the columns for the table.
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, index=True, nullable=False)
+    term = Column(String, nullable=False)
+    
+    # NEW: Add columns for the rich clinical data.
+    # We use Text instead of String for potentially long descriptions.
+    definition = Column(Text, nullable=True)
+    symptoms = Column(Text, nullable=True)
+
+
+class ConceptMap(Base):
+    """
+    SQLAlchemy model for the 'concept_maps' table.
+    This table stores the explicit relationships between different terminology codes.
+    It's our dedicated "translator's dictionary".
+    """
+    __tablename__ = "concept_maps"
+
     id = Column(Integer, primary_key=True, index=True)
     
-    # The unique code for the terminology (e.g., 'ASU01.1').
-    # We add an index for faster lookups based on the code.
-    # unique=True ensures we don't have duplicate codes.
-    code = Column(String, unique=True, index=True, nullable=False)
+    # The code we are translating FROM (e.g., 'ASU25.14')
+    source_code = Column(String, ForeignKey("terminologies.code"), nullable=False)
     
-    # The display term for the terminology (e.g., 'Vataja Kasa').
-    # We add an index for faster text-based searches.
-    term = Column(String, index=True, nullable=False)
+    # The code we are translating TO (e.g., 'ICD11-M54.3')
+    target_code = Column(String, ForeignKey("terminologies.code"), nullable=False)
 
-# It can be useful to create a single index on both columns if you often query them together
-Index('ix_terminologies_code_term', Terminology.code, Terminology.term)
+    # A field to describe the relationship, e.g., 'exact-match', 'broader', 'narrower'.
+    # This makes our map much smarter for the future.
+    relationship = Column(String, default="exact-match", nullable=False)
+

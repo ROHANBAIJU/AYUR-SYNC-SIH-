@@ -1,0 +1,70 @@
+# src/services/concept_map_service.py
+
+from sqlalchemy.orm import Session
+from src.db.models import Terminology as TerminologyModel
+from src.models.terminology import TranslationResult, Terminology as TerminologySchema
+from src.services import terminology_service
+
+# A simple, hardcoded map to define the relationships for our prototype.
+# In a real system, this would come from a dedicated 'concept_maps' table in the DB.
+INFERRED_CONCEPT_MAP = {
+    "Gridhrasi": "Sciatica",
+    "Amavata": "Rheumatoid arthritis",
+    "Vataja Kasa": "Cough",
+    "Pittaja Kasa": "Cough",
+    "Kaphaja Kasa": "Cough"
+}
+
+def translate_code(db: Session, code: str) -> TranslationResult:
+    """
+    Translates a given terminology code by finding its mapped equivalent in the database.
+
+    The mapping logic is as follows:
+    1. Finds the term for the given source code (e.g., 'Gridhrasi' for 'ASU25.14').
+    2. Looks up this term in our hardcoded map to find the target term name (e.g., 'Sciatica').
+    3. Searches the database for the ICD-11 code associated with that target term name.
+
+    Args:
+        db: The SQLAlchemy database session.
+        code: The source code to translate (e.g., "ASU25.14").
+
+    Returns:
+        A TranslationResult object with the source and target terms if found.
+    """
+    # 1. Find the source term object from the database using its code
+    source_db_term = terminology_service.find_term_by_code(db, code)
+
+    if not source_db_term:
+        return TranslationResult(found=False)
+
+    # Convert the SQLAlchemy model to a Pydantic schema for the response
+    source_schema_term = TerminologySchema.from_orm(source_db_term)
+
+    # 2. Use our map to find the name of the target term
+    target_term_name = INFERRED_CONCEPT_MAP.get(source_db_term.term)
+    
+    if not target_term_name:
+        # If the source term isn't in our map, we can't translate it.
+        return TranslationResult(found=False, source_term=source_schema_term)
+
+    # 3. Find the target term in the database by its name, ensuring it's an ICD-11 code
+    target_db_term = db.query(TerminologyModel).filter(
+        TerminologyModel.term == target_term_name,
+        TerminologyModel.code.startswith('ICD11-') 
+    ).first()
+
+    if not target_db_term:
+        return TranslationResult(found=False, source_term=source_schema_term)
+
+    # Convert the target SQLAlchemy model to a Pydantic schema
+    target_schema_term = TerminologySchema.from_orm(target_db_term)
+
+    return TranslationResult(
+        found=True,
+        source_term=source_schema_term,
+        target_term=target_schema_term
+    )
+
+
+
+***** CONCEPT_MAP _SERVICE INSIDE SERVICES 
