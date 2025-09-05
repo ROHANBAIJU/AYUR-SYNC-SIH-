@@ -92,19 +92,20 @@ We propose **Ayur Sync**, a **lightweight FHIR microservice** that:
 
 ```mermaid
 flowchart TD
-    A[Frontend: React.js + Next.js Web App] -->|User Input| B[Backend: FastAPI + REST APIs]
-    B --> C[Database: Firebase Firestore]
-    B --> D[Authentication: Firebase Auth]
-    B --> E[Storage: Firebase Cloud Storage]
-    D --> F[Push Notifications: Firebase Cloud Messaging]
-    C --> G[Analytics & Reporting Dashboard - Python]
+    A[Frontend: React.js + Next.js Web App] -->|User Input| B[Backend: FastAPI + REST APIs - Dockerized]
+    B --> C[Database: PostgreSQL]
+    B --> D[Authentication: Custom JWT + OAuth 2.0]
+    B --> E[Containerization: Docker]
+    D --> F[Secure API Access Tokens]
+    C --> G[Analytics & Reporting - Python Services]
     G --> A
 
     %% Node colors
     style A fill:#61DAFB,stroke:#000,stroke-width:2px,color:#000
     style B fill:#00C896,stroke:#000,stroke-width:2px,color:#fff
-    style C fill:#FFCA28,stroke:#000,stroke-width:2px,color:#000
-    style D fill:#4285F4,stroke:#000,stroke-width:2px,color:#fff
-    style E fill:#FFA500,stroke:#000,stroke-width:2px,color:#000
+    style C fill:#F4A261,stroke:#000,stroke-width:2px,color:#000
+    style D fill:#2E86AB,stroke:#000,stroke-width:2px,color:#fff
+    style E fill:#2496ED,stroke:#000,stroke-width:2px,color:#fff
     style F fill:#8E44AD,stroke:#000,stroke-width:2px,color:#fff
     style G fill:#3776AB,stroke:#000,stroke-width:2px,color:#fff
+
