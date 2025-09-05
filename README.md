@@ -53,7 +53,7 @@ We propose **Ayur Sync**, a **lightweight FHIR microservice** that:
 
 ## 👨‍👩‍👦 Team  
 
-- **Team Name:** 🚀 *[Your Team Name Here]*  
+- **Team Name:** 🚀 *AYUR NEXUS*  
 - **Team Members:**  
   - Rohan Baiju
   - Dhiya K   
