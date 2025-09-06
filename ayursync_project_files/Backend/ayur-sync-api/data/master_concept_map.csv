@@ -1,0 +1,11 @@
+concept_name,ayurveda_code,siddha_code,unani_code,icd11_code
+Rheumatoid Arthritis,ASU22.1,SID.IM.01,A-12,
+Sciatica,ASU25.14,SID.ND.05,A-10,
+Migraine,ASU.DI.01,SID.ND.02,A-2,
+Asthma,ASU.RS.02,SID.RS.03,D-15,
+Eczema,ASU.SK.11,SID.SK.01,B-35,
+Diabetes Mellitus,ASU.EN.01,SID.EN.01,C-112,
+Irritable Bowel Syndrome,ASU.GI.05,SID.GI.03,F-113,
+Angina Pectoris,ASU.CV.01,SID.CV.01,C-13,
+Parkinson's Disease,ASU.ND.03,SID.ND.04,A-25,
+GERD,ASU.GI.08,SID.GI.06,F-12,

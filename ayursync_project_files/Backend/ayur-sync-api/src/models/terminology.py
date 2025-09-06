@@ -1,43 +1,45 @@
 # src/models/terminology.py
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 
-class Terminology(BaseModel):
+class TerminologyRepresentation(BaseModel):
     """
-    Represents a single terminology entry from the database.
+    Represents a single clinical term from one medical system.
+    This is a sub-model for our final unified response.
     """
-    code: str = Field(..., example="ASU25.14", description="The unique code for the term.")
-    term: str = Field(..., example="Gridhrasi", description="The display name of the term.")
-    definition: Optional[str] = Field(None, example="A Vata disorder affecting the lower back...", description="The clinical definition of the term.")
-    symptoms: Optional[str] = Field(None, example="Shooting pain, stiffness", description="Common symptoms associated with the term.")
+    system: str = Field(..., example="Ayurveda", description="The medical system this term belongs to.")
+    code: str = Field(..., example="ASU.DI.01", description="The unique code for the term within its system.")
+    term: str = Field(..., example="Ardhavabhedaka", description="The display name of the term.")
+    description: Optional[str] = Field(None, example="A severe, unilateral...", description="The clinical definition of the term.")
+    symptoms: Optional[str] = Field(None, example="Unilateral headache...", description="Common symptoms associated with the term.")
 
     class Config:
         from_attributes = True
 
-class ConceptMapping(BaseModel):
+class UnifiedConceptResponse(BaseModel):
     """
-    Represents a single mapping from a source code to a target code.
+    The main response model for our intelligent API.
+    It provides a complete, 360-degree view of a single clinical concept.
     """
-    source_code: str
-    source_term: str
-    target_code: str
-    target_term: str
+    concept_name: str = Field(..., example="Migraine", description="The unified, common name for the clinical concept.")
+    representations: List[TerminologyRepresentation] = Field(..., description="A list of how this concept is represented across different medical systems.")
 
-class TranslationResult(BaseModel):
-    """
-    The structured response for a translation request.
-    """
-    found: bool
-    source_term: Optional[Terminology] = None
-    target_term: Optional[Terminology] = None
 
-# --- NEW MODEL FOR FHIR BUNDLE ---
+# --- LEGACY AND UTILITY MODELS ---
+class Terminology(BaseModel):
+    """
+    A simple model for basic terminology lookups.
+    """
+    code: str
+    term: str
+
+    class Config:
+        from_attributes = True
+
 class FHIRBundle(BaseModel):
     """
     Represents the basic structure of a FHIR Bundle.
-    We accept a generic dictionary and do not validate the deep internal FHIR structure,
-    as that will be the job of a dedicated FHIR server.
     """
     resourceType: str = Field(..., example="Bundle")
     type: str = Field(..., example="transaction")
