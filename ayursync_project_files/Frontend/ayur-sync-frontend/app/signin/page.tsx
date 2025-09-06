@@ -5,18 +5,43 @@ import { useState } from "react";
 import Link from "next/link";
 
 const SignInPage = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false); // Tracks which panel is active
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
 
-  const handleSignInSubmit = (e: React.FormEvent) => {
+  const handleSignInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Sign In - Email:", email, "Password:", password);
+    
+    // TODO: Replace with actual backend API call
+    try {
+      // const response = await fetch('/api/auth/signin', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify({ email, password }),
+      // });
+      // 
+      // if (response.ok) {
+      //   const data = await response.json();
+      //   // Handle successful sign in (e.g., store token, redirect)
+      //   console.log('Sign in successful:', data);
+      // } else {
+      //   // Handle sign in error
+      //   console.error('Sign in failed');
+      // }
+      
+      // Placeholder: Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      alert('Sign In functionality will be connected to backend API');
+    } catch (error) {
+      console.error('Sign in error:', error);
+    }
   };
 
-  const handleSignUpSubmit = (e: React.FormEvent) => {
+  const handleSignUpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log(
       "Sign Up - Name:",
@@ -26,6 +51,32 @@ const SignInPage = () => {
       "Password:",
       password
     );
+    
+    // TODO: Replace with actual backend API call
+    try {
+      // const response = await fetch('/api/auth/signup', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify({ name, email, password }),
+      // });
+      // 
+      // if (response.ok) {
+      //   const data = await response.json();
+      //   // Handle successful sign up (e.g., redirect to sign in)
+      //   console.log('Sign up successful:', data);
+      // } else {
+      //   // Handle sign up error
+      //   console.error('Sign up failed');
+      // }
+      
+      // Placeholder: Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      alert('Sign Up functionality will be connected to backend API');
+    } catch (error) {
+      console.error('Sign up error:', error);
+    }
   };
 
   return (
@@ -33,9 +84,28 @@ const SignInPage = () => {
       className="min-h-screen flex items-center justify-center p-4"
       style={{ backgroundColor: "#FAF3E0" }}
     >
-      {/* Navigation Bar (no changes here) */}
-      <nav className="flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-sm border-b border-amber-200 transition-all duration-500 ease-in-out animate-slideDown fixed top-0 left-0 right-0 z-50">
-        {/* Nav content... */}
+      {/* Navigation Bar */}
+      <nav className="flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-sm border-b border-amber-200 transition-all duration-500 ease-in-out animate-slideDown fixed top-0 left-0 right-0 z-[9999]">
+        <div className="flex items-center space-x-2 animate-slideInLeft">
+          <div className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center hover:bg-teal-700 transition-all duration-300 ease-in-out hover:scale-110 hover:rotate-12">
+            <span className="text-white font-bold text-xs">AS</span>
+          </div>
+          <span className="font-semibold text-gray-800">
+            AYUR-SYNC UI Client
+          </span>
+        </div>
+
+        <div className="flex items-center space-x-4">
+          {/* Home button */}
+          <Link href="/">
+            <button
+              type="button"
+              className="bg-gradient-to-r from-teal-100/30 via-green-100/30 to-teal-100/30 backdrop-blur-sm border-2 border-green-600 text-green-600 px-4 py-2 rounded-full hover:bg-green-50 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95"
+            >
+              Home
+            </button>
+          </Link>
+        </div>
       </nav>
 
       {/* Big White Card (Frame) - The Magic Sliding Window */}
@@ -178,6 +248,7 @@ const SignInPage = () => {
           position: absolute;
           top: 0;
           height: 100%;
+          width: 50%;
           transition: all 0.6s ease-in-out;
         }
         .sign-in-container {

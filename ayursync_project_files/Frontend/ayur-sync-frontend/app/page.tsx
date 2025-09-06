@@ -3,18 +3,15 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link"; // Import the Link component
+import Image from "next/image"; // Import the Image component
 
 const HomePage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
-  const cardRefs = useRef([]);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const heroRef = useRef(null);
   const statsRef = useRef(null);
 
   useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
-    window.addEventListener("scroll", handleScroll);
-
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -46,7 +43,6 @@ const HomePage = () => {
     }
 
     return () => {
-      window.removeEventListener("scroll", handleScroll);
       observer.disconnect();
       statsObserver.disconnect();
     };
@@ -55,7 +51,9 @@ const HomePage = () => {
   const animateCounters = () => {
     const counters = document.querySelectorAll(".counter");
     counters.forEach((counter) => {
-      const target = parseInt(counter.getAttribute("data-target"));
+      const targetAttr = counter.getAttribute("data-target");
+      if (!targetAttr) return;
+      const target = parseInt(targetAttr);
       const duration = 2000;
       const increment = target / (duration / 16);
       let current = 0;
@@ -98,12 +96,12 @@ const HomePage = () => {
           <Link href="/signin">
             <button
               type="button"
-              className="bg-teal-600 text-white px-4 py-2 rounded-full hover:bg-teal-700 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95"
+              className="bg-teal-600 text-white px-3 py-1.5 border-2 border-transparent rounded-full hover:bg-teal-700 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95"
             >
               Sign In
             </button>
           </Link>
-          <button className="bg-gradient-to-r from-teal-100/30 via-green-100/30 to-teal-100/30 backdrop-blur-sm border-2 border-green-600 text-green-600 px-4 py-2 rounded-full hover:bg-green-50 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95 animate-fluid">
+          <button className="bg-gradient-to-r from-teal-100/30 via-green-100/30 to-teal-100/30 backdrop-blur-sm border-2 border-green-600 text-green-600 px-3 py-1.5 rounded-full hover:bg-green-50 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95 animate-fluid">
             Learn More
           </button>
           <div className="w-8 h-8 bg-gray-300 rounded-full hover:bg-gray-400 transition-all duration-300 ease-in-out transform hover:scale-110"></div>
@@ -181,10 +179,11 @@ const HomePage = () => {
             className="absolute inset-0 flex items-center justify-center opacity-45 pointer-events-none"
             style={{ top: "-90px" }}
           >
-            <img
-              src="doc_sym.png"
+            <Image
+              src="/doc_sym.png"
               alt="Watermark"
-              style={{ width: "460px", height: "460px" }}
+              width={460}
+              height={460}
             />
           </div>
 
@@ -197,10 +196,12 @@ const HomePage = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-16 animate-slideInUp animation-delay-400">
-              <button className="bg-teal-600 text-white font-medium px-8 py-3 rounded-full hover:bg-teal-700 transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg hover:shadow-xl active:scale-95 pulse-on-hover">
-                Get Started
-              </button>
-              <button className="bg-gradient-to-r from-teal-100/30 via-green-100/30 to-teal-100/30 backdrop-blur-sm border-2 border-green-600 text-green-600 font-medium px-8 py-3 rounded-full hover:bg-green-50 transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg hover:shadow-xl backdrop-blur-sm active:scale-95 animate-fluid">
+              <Link href="/signin">
+                <button className="bg-teal-600 text-white font-medium px-8 py-3 rounded-full hover:bg-teal-700 transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg hover:shadow-xl active:scale-95 pulse-on-hover">
+                  Get Started
+                </button>
+              </Link>
+              <button className="bg-gradient-to-r from-teal-100/30 via-green-100/30 to-teal-100/30 backdrop-blur-sm border-2 border-green-600 text-green-600 font-medium px-8 py-3 rounded-full hover:bg-green-50 transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg hover:shadow-xl active:scale-95 animate-fluid">
                 Learn More
               </button>
             </div>
@@ -278,10 +279,10 @@ const HomePage = () => {
 
             <div className="relative z-10">
               <p className="text-lg md:text-xl text-gray-700 leading-relaxed mb-6 italic animate-fadeInUp animation-delay-200 hover:text-gray-800 transition-all duration-300 ease-in-out">
-                "Doctors in India struggle to record diagnoses and treatment
+                &quot;Doctors in India struggle to record diagnoses and treatment
                 information due to complex ICD-11, TMN, etc. The standards exist
                 but remain hard to access in daily practice. This gap leads to
-                inefficient data use and poor compliance with EHR standards."
+                inefficient data use and poor compliance with EHR standards.&quot;
               </p>
 
               <button className="text-teal-600 font-medium hover:text-teal-700 transition-all duration-300 ease-in-out inline-flex items-center space-x-2 transform hover:scale-105 active:scale-95 group">
@@ -334,7 +335,7 @@ const HomePage = () => {
             {/* Card - One API for all Ayurveda */}
             <div className="animate-slideInUp animation-delay-200">
               <div
-                ref={(el) => (cardRefs.current[0] = el)}
+                ref={(el) => { cardRefs.current[0] = el; }}
                 className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-amber-200 hover:shadow-2xl hover:scale-105 transition-all duration-300 ease-in-out transform hover:-translate-y-2 group cursor-pointer"
               >
                 <div className="w-16 h-16 bg-gradient-to-br from-teal-100 to-teal-200 rounded-xl flex items-center justify-center mb-4 mx-auto group-hover:from-teal-200 group-hover:to-teal-300 transition-all duration-300 ease-in-out transform group-hover:rotate-6 group-hover:scale-110">
@@ -365,7 +366,7 @@ const HomePage = () => {
             {/* Card - Patient records, simplified */}
             <div className="animate-slideInUp animation-delay-300">
               <div
-                ref={(el) => (cardRefs.current[1] = el)}
+                ref={(el) => { cardRefs.current[1] = el; }}
                 className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-amber-200 hover:shadow-2xl hover:scale-105 transition-all duration-300 ease-in-out transform hover:-translate-y-2 group cursor-pointer"
               >
                 <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mb-4 mx-auto group-hover:from-blue-200 group-hover:to-blue-300 transition-all duration-300 ease-in-out transform group-hover:rotate-6 group-hover:scale-110">
@@ -396,7 +397,7 @@ const HomePage = () => {
             {/* Card - Smart Analytics */}
             <div className="animate-slideInUp animation-delay-400">
               <div
-                ref={(el) => (cardRefs.current[2] = el)}
+                ref={(el) => { cardRefs.current[2] = el; }}
                 className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-amber-200 hover:shadow-2xl hover:scale-105 transition-all duration-300 ease-in-out transform hover:-translate-y-2 group cursor-pointer"
               >
                 <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center mb-4 mx-auto group-hover:from-green-200 group-hover:to-green-300 transition-all duration-300 ease-in-out transform group-hover:rotate-6 group-hover:scale-110">
