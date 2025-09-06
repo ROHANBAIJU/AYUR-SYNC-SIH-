@@ -495,9 +495,11 @@ const HomePage = () => {
           </div>
           <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-12 text-center md:text-left animate-slideInRight">
             <div className="animate-slideInUp animation-delay-100">
-              <h4 className="font-semibold mb-2 hover:text-teal-600 transition-all duration-300 ease-in-out">
-                Dashboard
-              </h4>
+              <Link href="/dashboard">
+                <h4 className="font-semibold mb-2 hover:text-teal-600 transition-all duration-300 ease-in-out cursor-pointer">
+                  Dashboard
+                </h4>
+              </Link>
               <a
                 href="#"
                 className="block hover:text-teal-600 transition-all duration-300 ease-in-out transform hover:translate-x-2"
