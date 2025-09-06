@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cream: #F5F1E8;
+  --teal-600: #0F766E;
+  --teal-700: #0D4F4D;
+  --sage: #A3B18A;
+  --brown-600: #92400E;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  background-color: var(--cream);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.hero-wings {
+  position: absolute;
+  top: -2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 60px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(163,177,138,0.2) 100%);
+  border-radius: 50px;
+  opacity: 0.6;
+}
+
+.hero-wings::before,
+.hero-wings::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 40px;
+  height: 30px;
+  background: rgba(255,255,255,0.4);
+  border-radius: 50px;
+  transform: translateY(-50%);
+}
+
+.hero-wings::before {
+  left: 10px;
+  transform: translateY(-50%) rotate(-15deg);
+}
+
+.hero-wings::after {
+  right: 10px;
+  transform: translateY(-50%) rotate(15deg);
+}
