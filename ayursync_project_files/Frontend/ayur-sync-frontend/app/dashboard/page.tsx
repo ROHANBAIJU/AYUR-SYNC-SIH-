@@ -1,44 +1,31 @@
 // app/dashboard/page.tsx
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 
 const Dashboard = () => {
-  const [selectedDate, setSelectedDate] = useState(15);
-  const currentMonth = "May 2024";
-
   // Sample data for the dashboard
-  const patients = [
-    { name: "Tyler Williamson", time: "09:00 AM", status: "confirmed", avatar: "TW" },
-    { name: "Samantha Williams", time: "10:15 AM", status: "pending", avatar: "SW" },
-    { name: "Amy White", time: "11:30 AM", status: "confirmed", avatar: "AW" },
-    { name: "Tyler Young", time: "02:00 PM", status: "completed", avatar: "TY" },
+  const todaysPatients = [
+    { name: "Tyler Williamson", time: "09:00 AM", status: "confirmed", avatar: "TW", condition: "Skin consultation", type: "New Patient" },
+    { name: "Samantha Williams", time: "10:15 AM", status: "pending", avatar: "SW", condition: "Panchakarma therapy", type: "Follow-up" },
+    { name: "Amy White", time: "11:30 AM", status: "confirmed", avatar: "AW", condition: "Digestive issues", type: "New Patient" },
+    { name: "Tyler Young", time: "02:00 PM", status: "completed", avatar: "TY", condition: "Stress management", type: "Follow-up" },
+  ];
+
+  const allPatients = [
+    { name: "Dr. Rajesh Kumar", time: "Tomorrow 9:00 AM", status: "scheduled", avatar: "RK", condition: "Joint pain treatment" },
+    { name: "Priya Sharma", time: "Tomorrow 2:30 PM", status: "scheduled", avatar: "PS", condition: "Migraine therapy" },
+    { name: "Michael Chen", time: "Dec 8, 10:00 AM", status: "scheduled", avatar: "MC", condition: "Anxiety treatment" },
+    { name: "Sarah Johnson", time: "Dec 8, 3:15 PM", status: "scheduled", avatar: "SJ", condition: "Back pain therapy" },
+    { name: "David Wilson", time: "Dec 9, 11:00 AM", status: "scheduled", avatar: "DW", condition: "Sleep disorders" },
+    { name: "Lisa Anderson", time: "Dec 9, 4:00 PM", status: "scheduled", avatar: "LA", condition: "Detox program" },
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-teal-50">
-      {/* Navigation Bar */}
-      <nav className="flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-sm border-b border-amber-200 fixed top-0 left-0 right-0 z-[9999]">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center">
-            <span className="text-white font-bold text-xs">AS</span>
-          </div>
-          <span className="font-semibold text-gray-800">AYUR-SYNC Dashboard</span>
-        </div>
-        
-        <div className="flex items-center space-x-4">
-          <Link href="/">
-            <button className="bg-gradient-to-r from-teal-100/30 via-green-100/30 to-teal-100/30 backdrop-blur-sm border-2 border-green-600 text-green-600 px-4 py-2 rounded-full hover:bg-green-50 transition-all duration-300 ease-in-out transform hover:scale-105">
-              Home
-            </button>
-          </Link>
-        </div>
-      </nav>
-
-      <div className="flex pt-20">
+      <div className="flex">
         {/* Sidebar */}
-        <div className="w-64 bg-gray-900 text-white min-h-screen p-4 fixed left-0 top-20">
+        <div className="w-64 bg-gray-900 text-white min-h-screen p-4 fixed left-0 top-0">
           <div className="mb-8">
             <div className="flex items-center space-x-3 mb-6">
               <div className="w-8 h-8 bg-teal-500 rounded-full flex items-center justify-center">
@@ -51,29 +38,29 @@ const Dashboard = () => {
           <nav className="space-y-2">
             <div className="text-gray-400 text-xs uppercase tracking-wider mb-4">General</div>
             
-            <a href="#" className="flex items-center space-x-3 p-3 rounded-lg bg-teal-600 text-white">
+            <Link href="/dashboard" className="flex items-center space-x-3 p-3 rounded-lg bg-teal-600 text-white">
               <div className="w-5 h-5 bg-teal-400 rounded"></div>
               <span>Dashboard</span>
-            </a>
+            </Link>
             
-            <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+            <Link href="/dashboard/schedule" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
               <div className="w-5 h-5 bg-gray-600 rounded"></div>
               <span>Schedule</span>
-            </a>
+            </Link>
             
-            <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+            <Link href="/dashboard/patients" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
               <div className="w-5 h-5 bg-gray-600 rounded"></div>
               <span>Patients</span>
-            </a>
+            </Link>
+            
+            <Link href="/dashboard/india-map" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+              <div className="w-5 h-5 bg-gray-600 rounded"></div>
+              <span>India Map</span>
+            </Link>
             
             <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
               <div className="w-5 h-5 bg-gray-600 rounded"></div>
-              <span>Messages & reports</span>
-            </a>
-            
-            <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 bg-gray-600 rounded"></div>
-              <span>Education</span>
+              <span>Chatbot</span>
             </a>
             
             <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
@@ -82,21 +69,6 @@ const Dashboard = () => {
             </a>
 
             <div className="border-t border-gray-700 my-4"></div>
-            
-            <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 bg-gray-600 rounded"></div>
-              <span>Charts & data</span>
-            </a>
-            
-            <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 bg-gray-600 rounded"></div>
-              <span>Billing</span>
-            </a>
-            
-            <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 bg-gray-600 rounded"></div>
-              <span>Documentation base</span>
-            </a>
             
             <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
               <div className="w-5 h-5 bg-gray-600 rounded"></div>
@@ -203,42 +175,120 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Bottom Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Patient List */}
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-2xl shadow-lg p-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-xl font-bold text-gray-800">Patient&apos;s list</h3>
-                  <button className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-800 transition-colors">
-                    See all
-                  </button>
-                </div>
-                
-                <div className="space-y-4">
-                  {patients.map((patient, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-teal-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                          {patient.avatar}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-gray-800">{patient.name}</div>
-                          <div className="text-sm text-gray-600">{patient.time}</div>
-                        </div>
-                      </div>
-                      <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+          {/* Today's Patients Section */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Today&apos;s Patients</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {todaysPatients.map((patient, index) => (
+                <div key={index} className="bg-white rounded-2xl shadow-lg p-6 border border-amber-200 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                  <div className="flex items-center space-x-4 mb-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg">
+                      {patient.avatar}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-800 text-lg">{patient.name}</h3>
+                      <p className="text-sm text-gray-600">{patient.time}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-amber-50 to-teal-50 rounded-lg p-3">
+                      <p className="text-sm font-medium text-gray-700 mb-1">Condition</p>
+                      <p className="text-sm text-gray-600">{patient.condition}</p>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full font-medium">
+                        {patient.type}
+                      </span>
+                      <span className={`text-xs px-3 py-1 rounded-full font-medium ${
                         patient.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                         patient.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
+                        patient.status === 'completed' ? 'bg-gray-100 text-gray-800' :
+                        'bg-purple-100 text-purple-800'
                       }`}>
-                        {patient.status}
-                      </div>
+                        {patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}
+                      </span>
                     </div>
-                  ))}
+                  </div>
                 </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Patient List Section */}
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">Patient List</h2>
+              <button className="bg-teal-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-teal-700 transition-colors shadow-lg">
+                View All Patients
+              </button>
+            </div>
+            
+            <div className="bg-white rounded-2xl shadow-lg border border-amber-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gradient-to-r from-teal-50 to-amber-50 border-b border-amber-200">
+                    <tr>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-700">Patient</th>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-700">Appointment</th>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-700">Condition</th>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-700">Status</th>
+                      <th className="text-left py-4 px-6 font-semibold text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allPatients.map((patient, index) => (
+                      <tr key={index} className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-amber-25 hover:to-teal-25 transition-all duration-200">
+                        <td className="py-4 px-6">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-teal-500 to-teal-600 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-md">
+                              {patient.avatar}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-gray-800">{patient.name}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="text-sm text-gray-600">{patient.time}</div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="text-sm text-gray-700">{patient.condition}</div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            patient.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {patient.status.charAt(0).toUpperCase() + patient.status.slice(1)}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex space-x-2">
+                            <button className="p-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </button>
+                            <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
+          </div>
+
+          {/* Bottom Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             {/* Visit Details */}
             <div className="lg:col-span-1">
@@ -262,82 +312,83 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Calendar */}
+            {/* Quick Analytics */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-2xl shadow-lg p-6">
+              <div className="bg-white rounded-2xl shadow-lg border border-amber-200 p-6">
                 <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-xl font-bold text-gray-800">{currentMonth}</h3>
-                  <div className="flex space-x-2">
-                    <button className="p-1 hover:bg-gray-100 rounded">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                      </svg>
+                  <h3 className="text-xl font-bold text-gray-800">Quick Analytics</h3>
+                  <Link 
+                    href="/dashboard/schedule"
+                    className="text-teal-600 hover:text-teal-700 text-sm font-medium cursor-pointer"
+                  >
+                    View Schedule →
+                  </Link>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="bg-gradient-to-r from-teal-50 to-amber-50 rounded-lg p-4 border border-teal-200">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-700">Today&apos;s Performance</span>
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Good</span>
+                    </div>
+                    <div className="text-2xl font-bold text-teal-600 mb-1">85%</div>
+                    <div className="text-xs text-gray-600">Appointment completion rate</div>
+                  </div>
+                  
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-700">Patient Satisfaction</span>
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">Excellent</span>
+                    </div>
+                    <div className="text-2xl font-bold text-purple-600 mb-1">4.8/5</div>
+                    <div className="text-xs text-gray-600">Average rating this week</div>
+                  </div>
+                  
+                  <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-4 border border-amber-200">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-700">Treatment Success</span>
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">High</span>
+                    </div>
+                    <div className="text-2xl font-bold text-orange-600 mb-1">92%</div>
+                    <div className="text-xs text-gray-600">Positive outcomes this month</div>
+                  </div>
+                </div>
+                
+                <div className="mt-6 space-y-3">
+                  <h4 className="font-semibold text-gray-800">Quick Actions</h4>
+                  <div className="space-y-2">
+                    <button className="w-full bg-teal-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-teal-700 transition-colors">
+                      Add New Patient
                     </button>
-                    <button className="p-1 hover:bg-gray-100 rounded">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
+                    <Link href="/dashboard/schedule">
+                      <button className="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
+                        Schedule Appointment
+                      </button>
+                    </Link>
+                    <button className="w-full bg-amber-100 text-amber-800 py-2 px-4 rounded-lg text-sm font-medium hover:bg-amber-200 transition-colors">
+                      Generate Report
                     </button>
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-7 gap-1 mb-4">
-                  {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
-                    <div key={day} className="text-center text-sm font-medium text-gray-500 p-2">
-                      {day}
+                <div className="mt-6 p-4 bg-gradient-to-r from-teal-100 to-amber-100 rounded-lg border border-teal-200">
+                  <h4 className="font-semibold text-gray-800 mb-2">Today&apos;s Summary</h4>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className="text-gray-600">Completed:</span>
+                      <span className="font-medium text-gray-800 ml-1">3/4</span>
                     </div>
-                  ))}
-                </div>
-                
-                <div className="grid grid-cols-7 gap-1">
-                  {Array.from({length: 35}, (_, i) => {
-                    const day = i - 6; // Start from previous month
-                    const isCurrentMonth = day > 0 && day <= 31;
-                    const isSelected = day === selectedDate;
-                    const hasEvent = [8, 15, 22].includes(day);
-                    
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => isCurrentMonth && setSelectedDate(day)}
-                        className={`p-2 text-sm rounded-lg transition-colors ${
-                          !isCurrentMonth ? 'text-gray-300' :
-                          isSelected ? 'bg-teal-500 text-white' :
-                          hasEvent ? 'bg-orange-100 text-orange-800' :
-                          'hover:bg-gray-100'
-                        }`}
-                      >
-                        {isCurrentMonth ? day : day <= 0 ? 30 + day : day - 31}
-                      </button>
-                    );
-                  })}
-                </div>
-                
-                <div className="mt-6">
-                  <button className="w-full bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition-colors">
-                    Add event
-                  </button>
-                  
-                  <div className="mt-4 space-y-2">
-                    <div className="text-sm font-semibold text-gray-800">May 15</div>
-                    <div className="text-xs text-gray-600">Today&apos;s timeline</div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2 text-xs">
-                        <div className="w-2 h-2 bg-orange-400 rounded-full"></div>
-                        <span>Consultation call</span>
-                        <span className="text-gray-500">9:00 AM</span>
-                      </div>
-                      <div className="flex items-center space-x-2 text-xs">
-                        <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                        <span>Diagnostic test</span>
-                        <span className="text-gray-500">11:30 AM</span>
-                      </div>
-                      <div className="flex items-center space-x-2 text-xs">
-                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                        <span>Team daily planning session - 2 hours</span>
-                        <span className="text-gray-500">2:00 PM</span>
-                      </div>
+                    <div>
+                      <span className="text-gray-600">Remaining:</span>
+                      <span className="font-medium text-gray-800 ml-1">1</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">New Patients:</span>
+                      <span className="font-medium text-gray-800 ml-1">2</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Follow-ups:</span>
+                      <span className="font-medium text-gray-800 ml-1">2</span>
                     </div>
                   </div>
                 </div>
