@@ -83,7 +83,7 @@ const HomePage = () => {
     >
       <nav className="flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-sm border-b border-amber-200 transition-all duration-500 ease-in-out animate-slideDown fixed top-0 left-0 right-0 z-50">
         <div className="flex items-center space-x-2 animate-slideInLeft">
-          <div className="w-8 h-8 bg-teal-600 rounded-full flex items-center justify-center hover:bg-teal-700 transition-all duration-300 ease-in-out hover:scale-110 hover:rotate-12">
+          <div className="w-8 h-8 bg-[#1A5A5A] rounded-full flex items-center justify-center hover:bg-[#134444] transition-all duration-300 ease-in-out hover:scale-110 hover:rotate-12">
             <span className="text-white font-bold text-xs">AS</span>
           </div>
           <span className="font-semibold text-gray-800">
@@ -96,12 +96,20 @@ const HomePage = () => {
           <Link href="/signin">
             <button
               type="button"
-              className="bg-teal-600 text-white px-3 py-1.5 border-2 border-transparent rounded-full hover:bg-teal-700 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95"
+              className="bg-[#1A5A5A] text-white px-3 py-1.5 border-2 border-transparent rounded-full hover:bg-[#134444] transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95"
             >
               Sign In
             </button>
           </Link>
-          <button className="bg-gradient-to-r from-teal-100/30 via-green-100/30 to-teal-100/30 backdrop-blur-sm border-2 border-green-600 text-green-600 px-3 py-1.5 rounded-full hover:bg-green-50 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95 animate-fluid">
+          <Link href="/dashboard">
+            <button
+              type="button"
+              className="bg-teal-600 text-white px-3 py-1.5 border-2 border-transparent rounded-full hover:bg-teal-700 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95"
+            >
+              View Dashboard
+            </button>
+          </Link>
+          <button className="bg-gradient-to-r from-teal-100/30 via-green-100/30 to-teal-100/30 backdrop-blur-sm border-2 border-[#1A5A5A] text-[#1A5A5A] px-3 py-1.5 rounded-full hover:bg-green-50 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95 animate-fluid">
             Learn More
           </button>
           <div className="w-8 h-8 bg-gray-300 rounded-full hover:bg-gray-400 transition-all duration-300 ease-in-out transform hover:scale-110"></div>
@@ -142,9 +150,17 @@ const HomePage = () => {
             <Link href="/signin">
               <button
                 type="button"
-                className="block w-full text-left px-4 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200 ease-in-out"
+                className="block w-full text-center bg-[#1A5A5A] text-white px-4 py-2 rounded-lg hover:bg-[#134444] transition-all duration-200 ease-in-out"
               >
                 Sign In
+              </button>
+            </Link>
+            <Link href="/dashboard">
+              <button
+                type="button"
+                className="block w-full text-center bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition-all duration-200 ease-in-out"
+              >
+                View Dashboard
               </button>
             </Link>
             <button className="block w-full text-left px-4 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200 ease-in-out">
@@ -155,110 +171,115 @@ const HomePage = () => {
       </nav>
 
       {/* Hero Section with Parallax */}
-      <div style={{ position: "relative", zIndex: 5, marginTop: "80px" }}>
-        <section
-          ref={heroRef}
-          className="relative px-6 py-16 text-center overflow-hidden animate-fadeInUp"
-          style={{
-            position: "sticky",
-            top: "80px",
-            zIndex: 10,
-            backgroundColor: "#FAF3E0",
-          }}
+      <section
+        ref={heroRef}
+        className="relative px-6 py-16 text-center overflow-hidden"
+        style={{
+          position: "sticky",
+          top: "80px",
+          zIndex: 10,
+          backgroundColor: "#FAF3E0",
+          marginTop: "80px",
+        }}
+      >
+        {/* Floating Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="floating-element absolute top-20 left-10 w-4 h-4 bg-teal-200 rounded-full opacity-60"></div>
+          <div className="floating-element-delayed absolute top-40 right-20 w-6 h-6 bg-amber-300 rounded-full opacity-40"></div>
+          <div className="floating-element absolute bottom-32 left-1/4 w-3 h-3 bg-green-300 rounded-full opacity-50"></div>
+          <div className="floating-element-delayed absolute bottom-20 right-1/3 w-5 h-5 bg-blue-200 rounded-full opacity-30"></div>
+        </div>
+
+        {/* Watermark Image */}
+        <div
+          className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none"
+          style={{ top: "-90px" }}
         >
-          {/* Floating Background Elements */}
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="floating-element absolute top-20 left-10 w-4 h-4 bg-teal-200 rounded-full opacity-60"></div>
-            <div className="floating-element-delayed absolute top-40 right-20 w-6 h-6 bg-amber-300 rounded-full opacity-40"></div>
-            <div className="floating-element absolute bottom-32 left-1/4 w-3 h-3 bg-green-300 rounded-full opacity-50"></div>
-            <div className="floating-element-delayed absolute bottom-20 right-1/3 w-5 h-5 bg-blue-200 rounded-full opacity-30"></div>
-          </div>
+          <Image
+            src="/doc_sym.png"
+            alt="Watermark"
+            width={460}
+            height={460}
+          />
+        </div>
 
-          {/* Watermark Image */}
-          <div
-            className="absolute inset-0 flex items-center justify-center opacity-45 pointer-events-none"
-            style={{ top: "-90px" }}
-          >
-            <Image
-              src="/doc_sym.png"
-              alt="Watermark"
-              width={460}
-              height={460}
-            />
-          </div>
+        <div className="relative z-10 max-w-4xl mx-auto">
+          <h1 className="text-5xl md:text-7xl font-bold text-teal-700 mb-4 tracking-tight animate-slideInUp hover:text-teal-600 transition-all duration-500 ease-in-out cursor-default">
+            AYUR-SYNC
+          </h1>
+          <p className="text-xl md:text-2xl text-gray-600 mb-8 font-light animate-slideInUp animation-delay-200 hover:text-gray-700 transition-all duration-300 ease-in-out">
+            Unifying Ayurveda and Modern Medicine for You
+          </p>
 
-          <div className="relative z-10 max-w-4xl mx-auto">
-            <h1 className="text-5xl md:text-7xl font-bold text-teal-700 mb-4 tracking-tight animate-slideInUp hover:text-teal-600 transition-all duration-500 ease-in-out cursor-default">
-              AYUR-SYNC
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-600 mb-8 font-light animate-slideInUp animation-delay-200 hover:text-gray-700 transition-all duration-300 ease-in-out">
-              Unifying Ayurveda and Modern Medicine for You
-            </p>
-
-            <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-16 animate-slideInUp animation-delay-400">
-              <Link href="/signin">
-                <button className="bg-teal-600 text-white font-medium px-8 py-3 rounded-full hover:bg-teal-700 transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg hover:shadow-xl active:scale-95 pulse-on-hover">
-                  Get Started
-                </button>
-              </Link>
-              <button className="bg-gradient-to-r from-teal-100/30 via-green-100/30 to-teal-100/30 backdrop-blur-sm border-2 border-green-600 text-green-600 font-medium px-8 py-3 rounded-full hover:bg-green-50 transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg hover:shadow-xl active:scale-95 animate-fluid">
-                Learn More
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-16 animate-slideInUp animation-delay-400">
+            <Link href="/signin">
+              <button className="bg-[#1A5A5A] text-white font-medium px-8 py-3 rounded-full hover:bg-[#134444] transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg hover:shadow-xl active:scale-95 pulse-on-hover">
+                Get Started
               </button>
-            </div>
+            </Link>
+            <button className="bg-gradient-to-r from-teal-100/30 via-green-100/30 to-teal-100/30 backdrop-blur-sm border-2 border-[#1A5A5A] text-[#1A5A5A] font-medium px-8 py-3 rounded-full hover:bg-green-50 transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg hover:shadow-xl active:scale-95 animate-fluid">
+              Learn More
+            </button>
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
 
-      {/* Masterpiece Showcase Section with Enhanced Animations */}
-      <div style={{ position: "relative", zIndex: 15 }}>
-        <section className="relative px-6 mb-20 animate-stackIn">
-          <div className="max-w-7xl mx-auto">
-            <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 md:p-12 border border-amber-200 hover:shadow-3xl transition-all duration-500 ease-in-out transform hover:scale-[1.02]">
-              <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-10 flex items-center justify-center border border-white/20 backdrop-blur-sm shadow-inner transition-all duration-500 ease-in-out hover:from-gray-100 hover:to-gray-200">
-                <div className="text-center space-y-8 w-full">
-                  <div className="w-28 h-28 bg-gradient-to-br from-teal-500 to-teal-600 rounded-3xl mx-auto flex items-center justify-center shadow-lg transform rotate-3 transition-all duration-500 ease-in-out hover:rotate-6 hover:scale-110 hover:shadow-2xl">
-                    <svg
-                      className="w-14 h-14 text-white transition-all duration-300 ease-in-out hover:scale-110"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-4xl md:text-5xl font-semibold text-gray-800 mb-6 transition-all duration-500 ease-in-out hover:text-teal-700 cursor-default">
-                      A place to display your masterpieces
-                    </h3>
-                    <p className="text-xl md:text-2xl text-gray-600 transition-all duration-500 ease-in-out hover:text-gray-700">
-                      Showcase your medical innovations and Ayurvedic solutions
-                    </p>
-                  </div>
-                  <div className="w-full">
-                    <video
-                      controls
-                      className="w-full h-auto rounded-lg transition-all duration-500 ease-in-out hover:shadow-2xl transform hover:scale-[1.02]"
-                    >
-                      <source src="path/to/your/video.mp4" type="video/mp4" />
-                      Your browser does not support the video tag.
-                    </video>
-                  </div>
+      {/* Masterpiece Showcase Section with STICKY effect */}
+      <section
+        className="relative px-6 py-16"
+        style={{
+          position: "sticky",
+          top: "80px",
+          zIndex: 10,
+          backgroundColor: "#FAF3E0",
+        }}
+      >
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 md:p-12 border border-amber-200 hover:shadow-3xl transition-all duration-500 ease-in-out transform hover:scale-[1.02]">
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-10 flex items-center justify-center border border-white/20 backdrop-blur-sm shadow-inner transition-all duration-500 ease-in-out hover:from-gray-100 hover:to-gray-200">
+              <div className="text-center space-y-8 w-full">
+                <div className="w-28 h-28 bg-gradient-to-br from-teal-500 to-teal-600 rounded-3xl mx-auto flex items-center justify-center shadow-lg transform rotate-3 transition-all duration-500 ease-in-out hover:rotate-6 hover:scale-110 hover:shadow-2xl">
+                  <svg
+                    className="w-14 h-14 text-white transition-all duration-300 ease-in-out hover:scale-110"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-4xl md:text-5xl font-semibold text-gray-800 mb-6 transition-all duration-500 ease-in-out hover:text-teal-700 cursor-default">
+                    A place to display your masterpieces
+                  </h3>
+                  <p className="text-xl md:text-2xl text-gray-600 transition-all duration-500 ease-in-out hover:text-gray-700">
+                    Showcase your medical innovations and Ayurvedic solutions
+                  </p>
+                </div>
+                <div className="w-full">
+                  <video
+                    controls
+                    className="w-full h-auto rounded-lg transition-all duration-500 ease-in-out hover:shadow-2xl transform hover:scale-[1.02]"
+                  >
+                    <source src="path/to/your/video.mp4" type="video/mp4" />
+                    Your browser does not support the video tag.
+                  </video>
                 </div>
               </div>
             </div>
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
 
-      {/* The Problem Section with Typewriter Effect */}
+      {/* The Problem Section that scrolls OVER the masterpiece section */}
       <section
-        className="px-6 py-16 bg-white/50 backdrop-blur-sm animate-fadeInUp"
-        style={{ position: "relative", zIndex: 5 }}
+        className="px-6 py-16 bg-white/50 backdrop-blur-sm"
+        style={{ position: "relative", zIndex: 20 }}
       >
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-12 animate-slideInUp hover:text-gray-900 transition-all duration-300 ease-in-out cursor-default">
@@ -335,7 +356,9 @@ const HomePage = () => {
             {/* Card - One API for all Ayurveda */}
             <div className="animate-slideInUp animation-delay-200">
               <div
-                ref={(el) => { cardRefs.current[0] = el; }}
+                ref={(el) => {
+                  cardRefs.current[0] = el;
+                }}
                 className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-amber-200 hover:shadow-2xl hover:scale-105 transition-all duration-300 ease-in-out transform hover:-translate-y-2 group cursor-pointer"
               >
                 <div className="w-16 h-16 bg-gradient-to-br from-teal-100 to-teal-200 rounded-xl flex items-center justify-center mb-4 mx-auto group-hover:from-teal-200 group-hover:to-teal-300 transition-all duration-300 ease-in-out transform group-hover:rotate-6 group-hover:scale-110">
@@ -366,7 +389,9 @@ const HomePage = () => {
             {/* Card - Patient records, simplified */}
             <div className="animate-slideInUp animation-delay-300">
               <div
-                ref={(el) => { cardRefs.current[1] = el; }}
+                ref={(el) => {
+                  cardRefs.current[1] = el;
+                }}
                 className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-amber-200 hover:shadow-2xl hover:scale-105 transition-all duration-300 ease-in-out transform hover:-translate-y-2 group cursor-pointer"
               >
                 <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mb-4 mx-auto group-hover:from-blue-200 group-hover:to-blue-300 transition-all duration-300 ease-in-out transform group-hover:rotate-6 group-hover:scale-110">
@@ -397,7 +422,9 @@ const HomePage = () => {
             {/* Card - Smart Analytics */}
             <div className="animate-slideInUp animation-delay-400">
               <div
-                ref={(el) => { cardRefs.current[2] = el; }}
+                ref={(el) => {
+                  cardRefs.current[2] = el;
+                }}
                 className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-amber-200 hover:shadow-2xl hover:scale-105 transition-all duration-300 ease-in-out transform hover:-translate-y-2 group cursor-pointer"
               >
                 <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center mb-4 mx-auto group-hover:from-green-200 group-hover:to-green-300 transition-all duration-300 ease-in-out transform group-hover:rotate-6 group-hover:scale-110">
@@ -431,7 +458,7 @@ const HomePage = () => {
       {/* Statistics Section with Counter Animation */}
       <section
         ref={statsRef}
-        className="bg-gradient-to-r from-teal-600 to-teal-700 py-20 text-white text-center relative overflow-hidden animate-fadeInUp"
+        className="bg-[#1A5A5A] py-20 text-white text-center relative overflow-hidden animate-fadeInUp"
         style={{ position: "relative", zIndex: 5 }}
       >
         <div className="absolute inset-0 opacity-10">
@@ -495,11 +522,9 @@ const HomePage = () => {
           </div>
           <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-12 text-center md:text-left animate-slideInRight">
             <div className="animate-slideInUp animation-delay-100">
-              <Link href="/dashboard">
-                <h4 className="font-semibold mb-2 hover:text-teal-600 transition-all duration-300 ease-in-out cursor-pointer">
-                  Dashboard
-                </h4>
-              </Link>
+              <h4 className="font-semibold mb-2 hover:text-teal-600 transition-all duration-300 ease-in-out">
+                Dashboard
+              </h4>
               <a
                 href="#"
                 className="block hover:text-teal-600 transition-all duration-300 ease-in-out transform hover:translate-x-2"
@@ -776,7 +801,7 @@ const HomePage = () => {
           background-size: 200% 100%;
           animation: fluid-flow 4s ease infinite;
         }
-        .hover\:shadow-3xl:hover {
+        .hover\\:shadow-3xl:hover {
           box-shadow: 0 35px 60px -12px rgba(0, 0, 0, 0.25);
         }
         html {
