@@ -86,9 +86,12 @@ const HomePage = () => {
           <div className="w-8 h-8 bg-[#1A5A5A] rounded-full flex items-center justify-center hover:bg-[#134444] transition-all duration-300 ease-in-out hover:scale-110 hover:rotate-12">
             <span className="text-white font-bold text-xs">AS</span>
           </div>
-          <span className="font-semibold text-gray-800">
-            AYUR-SYNC UI Client
-          </span>
+          <div className="flex flex-col">
+            <span className="font-semibold text-gray-800">
+              AYUR-SYNC v1 beta
+            </span>
+            <span className="text-xs text-gray-500">AI Powered</span>
+          </div>
         </div>
 
         <div className="hidden md:flex items-center space-x-6 animate-slideInRight">
@@ -204,9 +207,12 @@ const HomePage = () => {
         </div>
 
         <div className="relative z-10 max-w-4xl mx-auto">
-          <h1 className="text-5xl md:text-7xl font-bold text-teal-700 mb-4 tracking-tight animate-slideInUp hover:text-teal-600 transition-all duration-500 ease-in-out cursor-default">
-            AYUR-SYNC
-          </h1>
+          <div className="flex flex-col items-center">
+            <h1 className="text-5xl md:text-7xl font-bold text-teal-700 mb-2 tracking-tight animate-slideInUp hover:text-teal-600 transition-all duration-500 ease-in-out cursor-default">
+              AYUR-SYNC v1 beta
+            </h1>
+            <span className="text-lg md:text-xl text-gray-500 mb-4 font-light animate-slideInUp animation-delay-100">AI Powered</span>
+          </div>
           <p className="text-xl md:text-2xl text-gray-600 mb-8 font-light animate-slideInUp animation-delay-200 hover:text-gray-700 transition-all duration-300 ease-in-out">
             Unifying Ayurveda and Modern Medicine for You
           </p>
@@ -347,9 +353,12 @@ const HomePage = () => {
             <h2 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4 animate-slideInUp hover:text-gray-900 transition-all duration-300 ease-in-out cursor-default">
               Our Solution
             </h2>
-            <h3 className="text-3xl md:text-4xl font-bold text-transparent bg-gradient-to-r from-teal-600 to-teal-500 bg-clip-text animate-slideInUp animation-delay-100 hover:from-teal-500 hover:to-teal-400 transition-all duration-500 ease-in-out cursor-default">
-              AYUR-SYNC
-            </h3>
+            <div className="flex flex-col items-center">
+              <h3 className="text-3xl md:text-4xl font-bold text-transparent bg-gradient-to-r from-teal-600 to-teal-500 bg-clip-text animate-slideInUp animation-delay-100 hover:from-teal-500 hover:to-teal-400 transition-all duration-500 ease-in-out cursor-default">
+                AYUR-SYNC v1 beta
+              </h3>
+              <span className="text-sm text-gray-500 mt-1 animate-slideInUp animation-delay-150">AI Powered</span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
@@ -562,9 +571,12 @@ const HomePage = () => {
               </a>
             </div>
             <div className="animate-slideInUp animation-delay-300">
-              <h4 className="font-semibold mb-2 hover:text-teal-600 transition-all duration-300 ease-in-out">
-                Ayur-SYNC
-              </h4>
+              <div className="flex flex-col">
+                <h4 className="font-semibold mb-1 hover:text-teal-600 transition-all duration-300 ease-in-out">
+                  Ayur-SYNC v1 beta
+                </h4>
+                <span className="text-xs text-gray-500 mb-2">AI Powered</span>
+              </div>
               <a
                 href="#"
                 className="block hover:text-teal-600 transition-all duration-300 ease-in-out transform hover:translate-x-2"
