@@ -4,31 +4,35 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
+import dynamic from "next/dynamic";
+import React from "react";
+import type { StateInfo, LeafletMapProps } from './LeafletMap';
 
-// Define state type
-type StateInfo = {
-  name: string;
-  patients: number;
-  ayurvedaCenters: number;
-  practitioners: number;
-};
+// Dynamically import the map component to avoid SSR issues
+const LeafletMap = dynamic(() => import('./LeafletMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-96">
+      <div className="text-gray-500">Loading map...</div>
+    </div>
+  )
+}) as React.ComponentType<LeafletMapProps>;
 
 const IndiaMap = () => {
   const [selectedState, setSelectedState] = useState<StateInfo | null>(null);
-  const [hoveredState, setHoveredState] = useState<string | null>(null);
 
   // Sample data for different states
   const stateData: { [key: string]: StateInfo } = {
-    "Maharashtra": { name: "Maharashtra", patients: 1250, ayurvedaCenters: 45, practitioners: 180 },
-    "Karnataka": { name: "Karnataka", patients: 980, ayurvedaCenters: 38, practitioners: 142 },
-    "Kerala": { name: "Kerala", patients: 1580, ayurvedaCenters: 62, practitioners: 220 },
-    "Tamil Nadu": { name: "Tamil Nadu", patients: 1120, ayurvedaCenters: 52, practitioners: 195 },
-    "Gujarat": { name: "Gujarat", patients: 890, ayurvedaCenters: 34, practitioners: 125 },
-    "Rajasthan": { name: "Rajasthan", patients: 750, ayurvedaCenters: 28, practitioners: 98 },
-    "Uttar Pradesh": { name: "Uttar Pradesh", patients: 2100, ayurvedaCenters: 78, practitioners: 285 },
-    "West Bengal": { name: "West Bengal", patients: 920, ayurvedaCenters: 35, practitioners: 130 },
-    "Madhya Pradesh": { name: "Madhya Pradesh", patients: 680, ayurvedaCenters: 25, practitioners: 89 },
-    "Odisha": { name: "Odisha", patients: 540, ayurvedaCenters: 22, practitioners: 75 },
+    "Maharashtra": { name: "Maharashtra", patients: 1250, ayurvedaCenters: 45, practitioners: 180, coordinates: [19.7515, 75.7139] },
+    "Karnataka": { name: "Karnataka", patients: 980, ayurvedaCenters: 38, practitioners: 142, coordinates: [15.3173, 75.7139] },
+    "Kerala": { name: "Kerala", patients: 1580, ayurvedaCenters: 62, practitioners: 220, coordinates: [10.8505, 76.2711] },
+    "Tamil Nadu": { name: "Tamil Nadu", patients: 1120, ayurvedaCenters: 52, practitioners: 195, coordinates: [11.1271, 78.6569] },
+    "Gujarat": { name: "Gujarat", patients: 890, ayurvedaCenters: 34, practitioners: 125, coordinates: [23.0225, 72.5714] },
+    "Rajasthan": { name: "Rajasthan", patients: 750, ayurvedaCenters: 28, practitioners: 98, coordinates: [27.0238, 74.2179] },
+    "Uttar Pradesh": { name: "Uttar Pradesh", patients: 2100, ayurvedaCenters: 78, practitioners: 285, coordinates: [26.8467, 80.9462] },
+    "West Bengal": { name: "West Bengal", patients: 920, ayurvedaCenters: 35, practitioners: 130, coordinates: [22.9868, 87.8550] },
+    "Madhya Pradesh": { name: "Madhya Pradesh", patients: 680, ayurvedaCenters: 25, practitioners: 89, coordinates: [22.9734, 78.6569] },
+    "Odisha": { name: "Odisha", patients: 540, ayurvedaCenters: 22, practitioners: 75, coordinates: [20.9517, 85.0985] },
   };
 
   const handleStateClick = (stateName: string) => {
@@ -46,7 +50,9 @@ const IndiaMap = () => {
             <div className="flex items-center space-x-3 mb-6">
               <div className="flex flex-col">
                 <span className="text-lg font-semibold">AYUR-SYNC v1 beta</span>
-                <span className="text-xs text-gray-400">AI Powered</span>
+                <div className="mt-1">
+                  <span className="text-xs text-gray-300 bg-gray-800 px-2 py-1 rounded-full border border-gray-700">AI Powered</span>
+                </div>
               </div>
             </div>
           </div>
@@ -55,52 +61,52 @@ const IndiaMap = () => {
             <div className="text-gray-400 text-xs uppercase tracking-wider mb-4">General</div>
             
             <Link href="/dashboard" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 flex items-center justify-center">
-                <Image src="/dashboard.png" alt="Dashboard" width={20} height={20} className="rounded" />
+              <div className="w-7 h-7 flex items-center justify-center">
+                <Image src="/dashboard.png" alt="Dashboard" width={32} height={32} className="rounded" />
               </div>
               <span>Dashboard</span>
             </Link>
             
             <Link href="/dashboard/schedule" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 flex items-center justify-center">
-                <Image src="/schedule.png" alt="Schedule" width={20} height={20} className="rounded" />
+              <div className="w-7 h-7 flex items-center justify-center">
+                <Image src="/schedule.png" alt="Schedule" width={32} height={32} className="rounded" />
               </div>
               <span>Schedule</span>
             </Link>
             
             <Link href="/dashboard/patients" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 flex items-center justify-center">
-                <Image src="/patients.png" alt="Patients" width={20} height={20} className="rounded" />
+              <div className="w-7 h-7 flex items-center justify-center">
+                <Image src="/patients.png" alt="Patients" width={32} height={32} className="rounded" />
               </div>
               <span>Patients</span>
             </Link>
             
             <Link href="/dashboard/india-map" className="flex items-center space-x-3 p-3 rounded-lg bg-teal-600 text-white">
-              <div className="w-5 h-5 flex items-center justify-center">
-                <Image src="/india map.png" alt="India Map" width={20} height={20} className="rounded" />
+              <div className="w-7 h-7 flex items-center justify-center">
+                <Image src="/india map.png" alt="India Map" width={32} height={32} className="rounded" />
               </div>
               <span>India Map</span>
             </Link>
             
-            <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 flex items-center justify-center">
-                <Image src="/chatbot.png" alt="Chatbot" width={20} height={20} className="rounded" />
+            <Link href="/dashboard/chatbot" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+              <div className="w-7 h-7 flex items-center justify-center">
+                <Image src="/chatbot.png" alt="Chatbot" width={32} height={32} className="rounded" />
               </div>
               <span>Chatbot</span>
-            </a>
+            </Link>
             
-            <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 flex items-center justify-center">
-                <Image src="/my profile.png" alt="My Profile" width={20} height={20} className="rounded" />
+            <Link href="/dashboard/profile" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+              <div className="w-7 h-7 flex items-center justify-center">
+                <Image src="/my profile.png" alt="My Profile" width={32} height={32} className="rounded" />
               </div>
               <span>My profile</span>
-            </a>
+            </Link>
 
             <div className="border-t border-gray-700 my-4"></div>
             
             <Link href="/" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 bg-gray-600 rounded flex items-center justify-center">
-                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <div className="w-7 h-7 bg-gray-600 rounded flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
                 </svg>
               </div>
@@ -110,8 +116,8 @@ const IndiaMap = () => {
             <div className="border-t border-gray-700 my-4"></div>
             
             <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 flex items-center justify-center">
-                <Image src="/settings.png" alt="Settings" width={20} height={20} className="rounded" />
+              <div className="w-7 h-7 flex items-center justify-center">
+                <Image src="/settings.png" alt="Settings" width={32} height={32} className="rounded" />
               </div>
               <span>Settings</span>
             </a>
@@ -142,176 +148,12 @@ const IndiaMap = () => {
             {/* Map Section */}
             <div className="lg:col-span-2">
               <div className="bg-white rounded-2xl shadow-lg border border-amber-200 overflow-hidden">
-                <div className="flex justify-center p-4">
-                  <svg
-                    width="500"
-                    height="600"
-                    viewBox="0 0 500 600"
-                    className="w-full h-auto"
-                  >
-                    {/* Background */}
-                    <rect width="500" height="600" fill="#ffffff" />
-                    
-                    {/* Maharashtra */}
-                    <path
-                      d="M 120 280 L 180 270 L 190 300 L 170 330 L 140 340 L 120 320 Z"
-                      fill={hoveredState === "Maharashtra" ? "#10b981" : "#e5e7eb"}
-                      stroke="#d1d5db"
-                      strokeWidth="0.5"
-                      className="cursor-pointer transition-colors hover:fill-emerald-500"
-                      onMouseEnter={() => setHoveredState("Maharashtra")}
-                      onMouseLeave={() => setHoveredState(null)}
-                      onClick={() => handleStateClick("Maharashtra")}
-                    />
-                    <text x="150" y="310" fill="#1f2937" fontSize="10" textAnchor="middle" className="pointer-events-none">
-                      Maharashtra
-                    </text>
-
-                    {/* Karnataka */}
-                    <path
-                      d="M 140 340 L 170 330 L 180 360 L 160 380 L 130 375 Z"
-                      fill={hoveredState === "Karnataka" ? "#14b8a6" : "#06b6d4"}
-                      stroke="#0891b2"
-                      strokeWidth="1"
-                      className="cursor-pointer transition-colors hover:fill-teal-500"
-                      onMouseEnter={() => setHoveredState("Karnataka")}
-                      onMouseLeave={() => setHoveredState(null)}
-                      onClick={() => handleStateClick("Karnataka")}
-                    />
-                    <text x="155" y="355" fill="#1f2937" fontSize="10" textAnchor="middle" className="pointer-events-none">
-                      Karnataka
-                    </text>
-
-                    {/* Kerala */}
-                    <path
-                      d="M 130 375 L 160 380 L 155 420 L 125 415 Z"
-                      fill={hoveredState === "Kerala" ? "#14b8a6" : "#059669"}
-                      stroke="#047857"
-                      strokeWidth="1"
-                      className="cursor-pointer transition-colors hover:fill-green-500"
-                      onMouseEnter={() => setHoveredState("Kerala")}
-                      onMouseLeave={() => setHoveredState(null)}
-                      onClick={() => handleStateClick("Kerala")}
-                    />
-                    <text x="142" y="400" fill="#1f2937" fontSize="10" textAnchor="middle" className="pointer-events-none">
-                      Kerala
-                    </text>
-
-                    {/* Tamil Nadu */}
-                    <path
-                      d="M 160 380 L 200 375 L 210 410 L 180 420 L 155 420 Z"
-                      fill={hoveredState === "Tamil Nadu" ? "#14b8a6" : "#06b6d4"}
-                      stroke="#0891b2"
-                      strokeWidth="1"
-                      className="cursor-pointer transition-colors hover:fill-teal-500"
-                      onMouseEnter={() => setHoveredState("Tamil Nadu")}
-                      onMouseLeave={() => setHoveredState(null)}
-                      onClick={() => handleStateClick("Tamil Nadu")}
-                    />
-                    <text x="182" y="395" fill="#1f2937" fontSize="10" textAnchor="middle" className="pointer-events-none">
-                      Tamil Nadu
-                    </text>
-
-                    {/* Gujarat */}
-                    <path
-                      d="M 80 240 L 120 230 L 130 270 L 90 280 Z"
-                      fill={hoveredState === "Gujarat" ? "#14b8a6" : "#06b6d4"}
-                      stroke="#0891b2"
-                      strokeWidth="1"
-                      className="cursor-pointer transition-colors hover:fill-teal-500"
-                      onMouseEnter={() => setHoveredState("Gujarat")}
-                      onMouseLeave={() => setHoveredState(null)}
-                      onClick={() => handleStateClick("Gujarat")}
-                    />
-                    <text x="105" y="255" fill="#1f2937" fontSize="10" textAnchor="middle" className="pointer-events-none">
-                      Gujarat
-                    </text>
-
-                    {/* Rajasthan */}
-                    <path
-                      d="M 80 160 L 160 150 L 170 200 L 120 230 L 80 240 Z"
-                      fill={hoveredState === "Rajasthan" ? "#14b8a6" : "#06b6d4"}
-                      stroke="#0891b2"
-                      strokeWidth="1"
-                      className="cursor-pointer transition-colors hover:fill-teal-500"
-                      onMouseEnter={() => setHoveredState("Rajasthan")}
-                      onMouseLeave={() => setHoveredState(null)}
-                      onClick={() => handleStateClick("Rajasthan")}
-                    />
-                    <text x="125" y="190" fill="#1f2937" fontSize="10" textAnchor="middle" className="pointer-events-none">
-                      Rajasthan
-                    </text>
-
-                    {/* Uttar Pradesh */}
-                    <path
-                      d="M 170 150 L 280 140 L 290 180 L 240 190 L 170 200 Z"
-                      fill={hoveredState === "Uttar Pradesh" ? "#14b8a6" : "#06b6d4"}
-                      stroke="#0891b2"
-                      strokeWidth="1"
-                      className="cursor-pointer transition-colors hover:fill-teal-500"
-                      onMouseEnter={() => setHoveredState("Uttar Pradesh")}
-                      onMouseLeave={() => setHoveredState(null)}
-                      onClick={() => handleStateClick("Uttar Pradesh")}
-                    />
-                    <text x="230" y="170" fill="#1f2937" fontSize="10" textAnchor="middle" className="pointer-events-none">
-                      Uttar Pradesh
-                    </text>
-
-                    {/* West Bengal */}
-                    <path
-                      d="M 320 200 L 360 190 L 370 230 L 340 240 L 320 220 Z"
-                      fill={hoveredState === "West Bengal" ? "#14b8a6" : "#06b6d4"}
-                      stroke="#0891b2"
-                      strokeWidth="1"
-                      className="cursor-pointer transition-colors hover:fill-teal-500"
-                      onMouseEnter={() => setHoveredState("West Bengal")}
-                      onMouseLeave={() => setHoveredState(null)}
-                      onClick={() => handleStateClick("West Bengal")}
-                    />
-                    <text x="345" y="215" fill="#1f2937" fontSize="10" textAnchor="middle" className="pointer-events-none">
-                      West Bengal
-                    </text>
-
-                    {/* Madhya Pradesh */}
-                    <path
-                      d="M 190 200 L 280 190 L 270 240 L 200 250 L 180 220 Z"
-                      fill={hoveredState === "Madhya Pradesh" ? "#14b8a6" : "#06b6d4"}
-                      stroke="#0891b2"
-                      strokeWidth="1"
-                      className="cursor-pointer transition-colors hover:fill-teal-500"
-                      onMouseEnter={() => setHoveredState("Madhya Pradesh")}
-                      onMouseLeave={() => setHoveredState(null)}
-                      onClick={() => handleStateClick("Madhya Pradesh")}
-                    />
-                    <text x="235" y="220" fill="#1f2937" fontSize="10" textAnchor="middle" className="pointer-events-none">
-                      Madhya Pradesh
-                    </text>
-
-                    {/* Odisha */}
-                    <path
-                      d="M 280 240 L 320 230 L 330 270 L 300 280 L 270 270 Z"
-                      fill={hoveredState === "Odisha" ? "#14b8a6" : "#06b6d4"}
-                      stroke="#0891b2"
-                      strokeWidth="1"
-                      className="cursor-pointer transition-colors hover:fill-teal-500"
-                      onMouseEnter={() => setHoveredState("Odisha")}
-                      onMouseLeave={() => setHoveredState(null)}
-                      onClick={() => handleStateClick("Odisha")}
-                    />
-                    <text x="300" y="255" fill="#1f2937" fontSize="10" textAnchor="middle" className="pointer-events-none">
-                      Odisha
-                    </text>
-
-                    {/* Legend */}
-                    <g transform="translate(350, 450)">
-                      <rect x="0" y="0" width="120" height="80" fill="white" stroke="#e5e7eb" strokeWidth="1" rx="4"/>
-                      <text x="60" y="15" fill="#1f2937" fontSize="12" fontWeight="bold" textAnchor="middle">Legend</text>
-                      <circle cx="15" cy="35" r="6" fill="#059669"/>
-                      <text x="25" y="40" fill="#1f2937" fontSize="10">High Activity</text>
-                      <circle cx="15" cy="55" r="6" fill="#06b6d4"/>
-                      <text x="25" y="60" fill="#1f2937" fontSize="10">Medium Activity</text>
-                    </g>
-                  </svg>
+                <div className="h-96">
+                  <LeafletMap 
+                    stateData={stateData} 
+                    onStateClick={handleStateClick}
+                    selectedState={selectedState}
+                  />
                 </div>
               </div>
             </div>

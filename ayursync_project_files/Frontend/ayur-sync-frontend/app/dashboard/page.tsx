@@ -22,7 +22,9 @@ const Dashboard = () => {
             <div className="flex items-center space-x-3 mb-6">
               <div className="flex flex-col">
                 <span className="text-lg font-semibold">AYUR-SYNC v1 beta</span>
-                <span className="text-xs text-gray-400">AI Powered</span>
+                <div className="mt-1">
+                  <span className="text-xs text-gray-300 bg-gray-800 px-2 py-1 rounded-full border border-gray-700">AI Powered</span>
+                </div>
               </div>
             </div>
           </div>
@@ -31,52 +33,52 @@ const Dashboard = () => {
             <div className="text-gray-400 text-xs uppercase tracking-wider mb-4">General</div>
             
             <Link href="/dashboard" className="flex items-center space-x-3 p-3 rounded-lg bg-teal-600 text-white">
-              <div className="w-5 h-5 flex items-center justify-center">
-                <Image src="/dashboard.png" alt="Dashboard" width={20} height={20} className="rounded" />
+              <div className="w-7 h-7 flex items-center justify-center">
+                <Image src="/dashboard.png" alt="Dashboard" width={32} height={32} className="rounded" />
               </div>
               <span>Dashboard</span>
             </Link>
             
             <Link href="/dashboard/schedule" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 flex items-center justify-center">
-                <Image src="/schedule.png" alt="Schedule" width={20} height={20} className="rounded" />
+              <div className="w-7 h-7 flex items-center justify-center">
+                <Image src="/schedule.png" alt="Schedule" width={32} height={32} className="rounded" />
               </div>
               <span>Schedule</span>
             </Link>
             
             <Link href="/dashboard/patients" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 flex items-center justify-center">
-                <Image src="/patients.png" alt="Patients" width={20} height={20} className="rounded" />
+              <div className="w-7 h-7 flex items-center justify-center">
+                <Image src="/patients.png" alt="Patients" width={32} height={32} className="rounded" />
               </div>
               <span>Patients</span>
             </Link>
             
             <Link href="/dashboard/india-map" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 flex items-center justify-center">
-                <Image src="/india map.png" alt="India Map" width={20} height={20} className="rounded" />
+              <div className="w-7 h-7 flex items-center justify-center">
+                <Image src="/india map.png" alt="India Map" width={32} height={32} className="rounded" />
               </div>
               <span>India Map</span>
             </Link>
             
-            <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 flex items-center justify-center">
-                <Image src="/chatbot.png" alt="Chatbot" width={20} height={20} className="rounded" />
+            <Link href="/dashboard/chatbot" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+              <div className="w-7 h-7 flex items-center justify-center">
+                <Image src="/chatbot.png" alt="Chatbot" width={32} height={32} className="rounded" />
               </div>
               <span>Chatbot</span>
-            </a>
+            </Link>
             
-            <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 flex items-center justify-center">
-                <Image src="/my profile.png" alt="My Profile" width={20} height={20} className="rounded" />
+            <Link href="/dashboard/profile" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+              <div className="w-7 h-7 flex items-center justify-center">
+                <Image src="/my profile.png" alt="My Profile" width={32} height={32} className="rounded" />
               </div>
               <span>My profile</span>
-            </a>
+            </Link>
 
             <div className="border-t border-gray-700 my-4"></div>
             
             <Link href="/" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 bg-gray-600 rounded flex items-center justify-center">
-                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <div className="w-7 h-7 bg-gray-600 rounded flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
                 </svg>
               </div>
@@ -86,8 +88,8 @@ const Dashboard = () => {
             <div className="border-t border-gray-700 my-4"></div>
             
             <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-5 h-5 flex items-center justify-center">
-                <Image src="/settings.png" alt="Settings" width={20} height={20} className="rounded" />
+              <div className="w-7 h-7 flex items-center justify-center">
+                <Image src="/settings.png" alt="Settings" width={32} height={32} className="rounded" />
               </div>
               <span>Settings</span>
             </a>

@@ -5,11 +5,86 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link"; // Import the Link component
 import Image from "next/image"; // Import the Image component
 
+// Typewriter Text Component
+const TypewriterText = ({ text, isActive, speed = 100 }: { text: string; isActive: boolean; speed?: number }) => {
+  const [displayText, setDisplayText] = useState("");
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    if (!isActive) {
+      setDisplayText("");
+      setCurrentIndex(0);
+      return;
+    }
+
+    if (currentIndex < text.length) {
+      const timer = setTimeout(() => {
+        setDisplayText((prev) => prev + text[currentIndex]);
+        setCurrentIndex((prev) => prev + 1);
+      }, speed);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isActive, currentIndex, text, speed]);
+
+  return (
+    <span className="inline-block">
+      {displayText}
+      {isActive && currentIndex < text.length && (
+        <span className="animate-pulse text-teal-600">|</span>
+      )}
+    </span>
+  );
+};
+
 const HomePage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
+  
+  // Hero section animation states
+  const [isHeroVisible, setIsHeroVisible] = useState(false);
+  const [animationStep, setAnimationStep] = useState(0);
+  const heroRef = useRef<HTMLDivElement>(null);
+
+  // Hero section animation sequence
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !isHeroVisible) {
+          setIsHeroVisible(true);
+          startAnimationSequence();
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    if (heroRef.current) {
+      observer.observe(heroRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [isHeroVisible]);
+
+  const startAnimationSequence = () => {
+    // Icon animation (scale + bounce)
+    setTimeout(() => setAnimationStep(1), 100);
+    // Headline typewriter start
+    setTimeout(() => setAnimationStep(2), 800);
+    // Sub-headline fade + slide
+    setTimeout(() => setAnimationStep(3), 2200);
+    // Video player materialization
+    setTimeout(() => setAnimationStep(4), 3000);
+    // Background ambient motion
+    setTimeout(() => setAnimationStep(5), 3500);
+  };
+  const [isProblemExpanded, setIsProblemExpanded] = useState(false);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const heroRef = useRef(null);
   const statsRef = useRef(null);
+
+  const handleDashboardClick = () => {
+    setIsNavigating(true);
+    // The navigation will happen through the Link component
+  };
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -74,32 +149,43 @@ const HomePage = () => {
 
   return (
     <div
-      className="min-h-screen"
+      className={`min-h-screen ${isNavigating ? 'cursor-wait' : ''}`}
       style={{
         backgroundColor: "#FAF3E0",
         position: "relative",
         overflowX: "hidden",
       }}
     >
-      <nav className="flex items-center justify-between px-6 py-4 bg-white/80 backdrop-blur-sm border-b border-amber-200 transition-all duration-500 ease-in-out animate-slideDown fixed top-0 left-0 right-0 z-50">
-        <div className="flex items-center space-x-2 animate-slideInLeft">
-          <div className="w-8 h-8 bg-[#1A5A5A] rounded-full flex items-center justify-center hover:bg-[#134444] transition-all duration-300 ease-in-out hover:scale-110 hover:rotate-12">
-            <span className="text-white font-bold text-xs">AS</span>
+      {/* Loading Overlay */}
+      {isNavigating && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-lg p-6 flex items-center space-x-3 shadow-lg">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-600"></div>
+            <span className="text-gray-700 font-medium">Loading Dashboard...</span>
+          </div>
+        </div>
+      )}
+      <nav className="flex items-center justify-between px-8 py-5 bg-white/85 backdrop-blur-md border-b border-amber-200 transition-all duration-500 ease-in-out animate-slideDown fixed top-0 left-0 right-0 z-50 shadow-sm">
+        <div className="flex items-center space-x-3 animate-slideInLeft">
+          <div className="w-10 h-10 bg-[#1A5A5A] rounded-full flex items-center justify-center hover:bg-[#134444] transition-all duration-300 ease-in-out hover:scale-110 hover:rotate-12 shadow-md">
+            <span className="text-white font-bold text-sm">AS</span>
           </div>
           <div className="flex flex-col">
-            <span className="font-semibold text-gray-800">
+            <span className="font-semibold text-gray-800 text-lg">
               AYUR-SYNC v1 beta
             </span>
-            <span className="text-xs text-gray-500">AI Powered</span>
+            <div className="inline-flex mt-1">
+              <span className="text-xs text-gray-600 bg-gray-100/80 px-2.5 py-1 rounded-full border border-gray-200">AI Powered</span>
+            </div>
           </div>
         </div>
 
-        <div className="hidden md:flex items-center space-x-6 animate-slideInRight">
+        <div className="hidden md:flex items-center space-x-4 animate-slideInRight">
           {/* Main Sign In button */}
           <Link href="/signin">
             <button
               type="button"
-              className="bg-[#1A5A5A] text-white px-3 py-1.5 border-2 border-transparent rounded-full hover:bg-[#134444] transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95"
+              className="bg-[#1A5A5A] text-white px-6 py-2.5 text-sm font-medium border-2 border-transparent rounded-full hover:bg-[#134444] transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95"
             >
               Sign In
             </button>
@@ -107,15 +193,15 @@ const HomePage = () => {
           <Link href="/dashboard">
             <button
               type="button"
-              className="bg-teal-600 text-white px-3 py-1.5 border-2 border-transparent rounded-full hover:bg-teal-700 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95"
+              onClick={handleDashboardClick}
+              className="bg-teal-600 text-white px-6 py-2.5 text-sm font-medium border-2 border-transparent rounded-full hover:bg-teal-700 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95"
             >
               View Dashboard
             </button>
           </Link>
-          <button className="bg-gradient-to-r from-teal-100/30 via-green-100/30 to-teal-100/30 backdrop-blur-sm border-2 border-[#1A5A5A] text-[#1A5A5A] px-3 py-1.5 rounded-full hover:bg-green-50 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95 animate-fluid">
+          <button className="bg-gradient-to-r from-teal-100/30 via-green-100/30 to-teal-100/30 backdrop-blur-sm border-2 border-[#1A5A5A] text-[#1A5A5A] px-6 py-2.5 text-sm font-medium rounded-full hover:bg-green-50 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95 animate-fluid">
             Learn More
           </button>
-          <div className="w-8 h-8 bg-gray-300 rounded-full hover:bg-gray-400 transition-all duration-300 ease-in-out transform hover:scale-110"></div>
         </div>
 
         <button
@@ -161,7 +247,8 @@ const HomePage = () => {
             <Link href="/dashboard">
               <button
                 type="button"
-                className="block w-full text-center bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition-all duration-200 ease-in-out"
+                onClick={handleDashboardClick}
+                className="w-full text-center bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition-all duration-200 ease-in-out"
               >
                 View Dashboard
               </button>
@@ -176,13 +263,14 @@ const HomePage = () => {
       {/* Hero Section with Parallax */}
       <section
         ref={heroRef}
-        className="relative px-6 py-16 text-center overflow-hidden"
+        className="relative px-6 py-20 text-center overflow-hidden"
         style={{
           position: "sticky",
           top: "80px",
           zIndex: 10,
           backgroundColor: "#FAF3E0",
           marginTop: "80px",
+          minHeight: "calc(100vh - 80px)",
         }}
       >
         {/* Floating Background Elements */}
@@ -195,44 +283,47 @@ const HomePage = () => {
 
         {/* Watermark Image */}
         <div
-          className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none"
-          style={{ top: "-90px" }}
+          className="absolute inset-0 flex items-center justify-center opacity-15 pointer-events-none"
+          style={{ top: "-60px" }}
         >
           <Image
             src="/doc_sym.png"
             alt="Watermark"
-            width={460}
-            height={460}
+            width={500}
+            height={500}
           />
         </div>
 
-        <div className="relative z-10 max-w-4xl mx-auto">
+        <div className="relative z-10 max-w-5xl mx-auto flex flex-col justify-center" style={{ minHeight: "calc(100vh - 200px)" }}>
           <div className="flex flex-col items-center">
-            <h1 className="text-5xl md:text-7xl font-bold text-teal-700 mb-2 tracking-tight animate-slideInUp hover:text-teal-600 transition-all duration-500 ease-in-out cursor-default">
+            <div className="mb-4 animate-slideInUp">
+              <span className="text-xs text-gray-400 bg-white/30 backdrop-blur-sm px-3 py-1 rounded-full border border-gray-200/30 shadow-sm opacity-70">AI Powered</span>
+            </div>
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-teal-700 mb-6 tracking-tight animate-slideInUp hover:text-teal-600 transition-all duration-500 ease-in-out cursor-default leading-tight text-center">
               AYUR-SYNC v1 beta
             </h1>
-            <span className="text-lg md:text-xl text-gray-500 mb-4 font-light animate-slideInUp animation-delay-100">AI Powered</span>
-          </div>
-          <p className="text-xl md:text-2xl text-gray-600 mb-8 font-light animate-slideInUp animation-delay-200 hover:text-gray-700 transition-all duration-300 ease-in-out">
-            Unifying Ayurveda and Modern Medicine for You
-          </p>
+            <p className="text-xl md:text-2xl lg:text-3xl text-gray-600 mb-12 font-light animate-slideInUp animation-delay-200 hover:text-gray-700 transition-all duration-300 ease-in-out max-w-4xl leading-relaxed text-center">
+              Unifying Ayurveda and Modern Medicine for You
+            </p>
 
-          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-16 animate-slideInUp animation-delay-400">
-            <Link href="/signin">
-              <button className="bg-[#1A5A5A] text-white font-medium px-8 py-3 rounded-full hover:bg-[#134444] transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg hover:shadow-xl active:scale-95 pulse-on-hover">
-                Get Started
+            <div className="flex flex-col sm:flex-row justify-center items-center gap-6 mb-16 animate-slideInUp animation-delay-400">
+              <Link href="/signin">
+                <button className="bg-[#1A5A5A] text-white font-semibold px-10 py-4 text-lg rounded-full hover:bg-[#134444] transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg hover:shadow-xl active:scale-95 pulse-on-hover min-w-[180px]">
+                  Get Started
+                </button>
+              </Link>
+              <button className="bg-gradient-to-r from-teal-100/30 via-green-100/30 to-teal-100/30 backdrop-blur-sm border-2 border-[#1A5A5A] text-[#1A5A5A] font-semibold px-10 py-4 text-lg rounded-full hover:bg-green-50 transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg hover:shadow-xl active:scale-95 animate-fluid min-w-[180px]">
+                Learn More
               </button>
-            </Link>
-            <button className="bg-gradient-to-r from-teal-100/30 via-green-100/30 to-teal-100/30 backdrop-blur-sm border-2 border-[#1A5A5A] text-[#1A5A5A] font-medium px-8 py-3 rounded-full hover:bg-green-50 transition-all duration-300 ease-in-out transform hover:scale-105 shadow-lg hover:shadow-xl active:scale-95 animate-fluid">
-              Learn More
-            </button>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Masterpiece Showcase Section with STICKY effect */}
+      {/* Masterpiece Showcase Section with STICKY effect and HERO ANIMATIONS */}
       <section
-        className="relative px-6 py-16"
+        ref={heroRef}
+        className="relative px-8 py-20"
         style={{
           position: "sticky",
           top: "80px",
@@ -240,13 +331,55 @@ const HomePage = () => {
           backgroundColor: "#FAF3E0",
         }}
       >
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 md:p-12 border border-amber-200 hover:shadow-3xl transition-all duration-500 ease-in-out transform hover:scale-[1.02]">
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-10 flex items-center justify-center border border-white/20 backdrop-blur-sm shadow-inner transition-all duration-500 ease-in-out hover:from-gray-100 hover:to-gray-200">
-              <div className="text-center space-y-8 w-full">
-                <div className="w-28 h-28 bg-gradient-to-br from-teal-500 to-teal-600 rounded-3xl mx-auto flex items-center justify-center shadow-lg transform rotate-3 transition-all duration-500 ease-in-out hover:rotate-6 hover:scale-110 hover:shadow-2xl">
+        {/* Ambient background circles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div
+            className={`absolute -top-4 -left-4 w-72 h-72 bg-teal-200/30 rounded-full transition-all duration-[3000ms] ease-in-out ${
+              animationStep >= 5
+                ? "animate-pulse opacity-40 scale-100"
+                : "opacity-0 scale-50"
+            }`}
+          />
+          <div
+            className={`absolute top-1/2 -right-8 w-96 h-96 bg-amber-200/20 rounded-full transition-all duration-[3500ms] ease-in-out ${
+              animationStep >= 5
+                ? "animate-bounce opacity-30 scale-100"
+                : "opacity-0 scale-75"
+            }`}
+            style={{ animationDuration: "4s" }}
+          />
+          <div
+            className={`absolute -bottom-8 left-1/3 w-64 h-64 bg-teal-300/25 rounded-full transition-all duration-[4000ms] ease-in-out ${
+              animationStep >= 5
+                ? "animate-pulse opacity-35 scale-100"
+                : "opacity-0 scale-50"
+            }`}
+            style={{ animationDelay: "1s" }}
+          />
+        </div>
+
+        <div className="max-w-6xl mx-auto">
+          <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-10 md:p-16 border border-amber-200/50 hover:shadow-3xl transition-all duration-500 ease-in-out transform hover:scale-[1.01]">
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl p-12 md:p-16 flex items-center justify-center border border-white/30 backdrop-blur-sm shadow-inner transition-all duration-500 ease-in-out hover:from-gray-100 hover:to-gray-200">
+              <div className="text-center space-y-12 w-full max-w-4xl">
+                {/* Animated Icon */}
+                <div
+                  className={`w-32 h-32 bg-gradient-to-br from-teal-500 to-teal-600 rounded-3xl mx-auto flex items-center justify-center shadow-xl transform rotate-3 transition-all duration-1000 ease-out ${
+                    animationStep >= 1
+                      ? "scale-100 opacity-100 rotate-6 shadow-2xl"
+                      : "scale-0 opacity-0 rotate-0"
+                  }`}
+                  style={{
+                    animation:
+                      animationStep >= 1
+                        ? "bounceIn 0.8s ease-out 0.2s both"
+                        : "none",
+                  }}
+                >
                   <svg
-                    className="w-14 h-14 text-white transition-all duration-300 ease-in-out hover:scale-110"
+                    className={`w-16 h-16 text-white transition-all duration-700 ease-in-out ${
+                      animationStep >= 1 ? "scale-100" : "scale-0"
+                    }`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -259,18 +392,54 @@ const HomePage = () => {
                     />
                   </svg>
                 </div>
-                <div>
-                  <h3 className="text-4xl md:text-5xl font-semibold text-gray-800 mb-6 transition-all duration-500 ease-in-out hover:text-teal-700 cursor-default">
-                    A place to display your masterpieces
+
+                {/* Animated Headlines */}
+                <div className="space-y-6">
+                  <h3
+                    className={`text-4xl md:text-6xl lg:text-7xl font-bold text-gray-800 mb-8 transition-all duration-1000 ease-in-out leading-tight ${
+                      animationStep >= 2
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-8"
+                    }`}
+                  >
+                    <TypewriterText
+                      text="A place to display your masterpieces"
+                      isActive={animationStep >= 2}
+                      speed={50}
+                    />
                   </h3>
-                  <p className="text-xl md:text-2xl text-gray-600 transition-all duration-500 ease-in-out hover:text-gray-700">
+                  <p
+                    className={`text-xl md:text-2xl lg:text-3xl text-gray-600 leading-relaxed max-w-3xl mx-auto transition-all duration-1000 ease-out ${
+                      animationStep >= 3
+                        ? "opacity-100 translate-y-0 translate-x-0"
+                        : "opacity-0 translate-y-8 -translate-x-4"
+                    }`}
+                    style={{
+                      transitionDelay: animationStep >= 3 ? "0.3s" : "0s",
+                    }}
+                  >
                     Showcase your medical innovations and Ayurvedic solutions
                   </p>
                 </div>
-                <div className="w-full">
+
+                {/* Animated Video Player */}
+                <div
+                  className={`w-full mt-12 transition-all duration-1200 ease-out ${
+                    animationStep >= 4
+                      ? "opacity-100 scale-100 translate-y-0"
+                      : "opacity-0 scale-95 translate-y-8"
+                  }`}
+                  style={{
+                    transitionDelay: animationStep >= 4 ? "0.2s" : "0s",
+                    filter:
+                      animationStep >= 4
+                        ? "blur(0px) brightness(1)"
+                        : "blur(4px) brightness(0.8)",
+                  }}
+                >
                   <video
                     controls
-                    className="w-full h-auto rounded-lg transition-all duration-500 ease-in-out hover:shadow-2xl transform hover:scale-[1.02]"
+                    className="w-full h-auto rounded-2xl transition-all duration-500 ease-in-out hover:shadow-2xl transform hover:scale-[1.02] shadow-lg"
                   >
                     <source src="path/to/your/video.mp4" type="video/mp4" />
                     Your browser does not support the video tag.
@@ -312,10 +481,38 @@ const HomePage = () => {
                 inefficient data use and poor compliance with EHR standards.&quot;
               </p>
 
-              <button className="text-teal-600 font-medium hover:text-teal-700 transition-all duration-300 ease-in-out inline-flex items-center space-x-2 transform hover:scale-105 active:scale-95 group">
-                <span>Read More</span>
+              {/* Expandable Content */}
+              <div className={`overflow-hidden transition-all duration-500 ease-in-out ${isProblemExpanded ? 'max-h-96 opacity-100 mb-6' : 'max-h-0 opacity-0 mb-0'}`}>
+                <div className="border-t border-gray-200 pt-6">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-3">Key Challenges Include:</h4>
+                  <ul className="text-gray-700 space-y-2 text-left">
+                    <li className="flex items-start space-x-2">
+                      <span className="text-teal-600 mt-1">•</span>
+                      <span>Complex medical coding systems that are difficult to navigate during patient consultations</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-teal-600 mt-1">•</span>
+                      <span>Time-consuming manual data entry processes that reduce efficiency</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-teal-600 mt-1">•</span>
+                      <span>Lack of integration between traditional Ayurvedic practices and modern EHR standards</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-teal-600 mt-1">•</span>
+                      <span>Inconsistent data formats leading to poor healthcare analytics and reporting</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setIsProblemExpanded(!isProblemExpanded)}
+                className="text-teal-600 font-medium hover:text-teal-700 transition-all duration-300 ease-in-out inline-flex items-center space-x-2 transform hover:scale-105 active:scale-95 group"
+              >
+                <span>{isProblemExpanded ? 'Read Less' : 'Read More'}</span>
                 <svg
-                  className="w-4 h-4 transition-all duration-300 ease-in-out group-hover:translate-x-1"
+                  className={`w-4 h-4 transition-all duration-300 ease-in-out ${isProblemExpanded ? 'rotate-90' : 'group-hover:translate-x-1'}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -324,7 +521,7 @@ const HomePage = () => {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M9 5l7 7-7 7"
+                    d={isProblemExpanded ? "M19 9l-7 7-7-7" : "M9 5l7 7-7 7"}
                   />
                 </svg>
               </button>
@@ -572,10 +769,9 @@ const HomePage = () => {
             </div>
             <div className="animate-slideInUp animation-delay-300">
               <div className="flex flex-col">
-                <h4 className="font-semibold mb-1 hover:text-teal-600 transition-all duration-300 ease-in-out">
+                <h4 className="font-semibold mb-2 hover:text-teal-600 transition-all duration-300 ease-in-out">
                   Ayur-SYNC v1 beta
                 </h4>
-                <span className="text-xs text-gray-500 mb-2">AI Powered</span>
               </div>
               <a
                 href="#"
