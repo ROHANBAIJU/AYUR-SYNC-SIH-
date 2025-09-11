@@ -148,7 +148,7 @@ const IndiaMap = () => {
             {/* Map Section */}
             <div className="lg:col-span-2">
               <div className="bg-white rounded-2xl shadow-lg border border-amber-200 overflow-hidden">
-                <div className="h-96">
+                <div className="h-[600px]">
                   <LeafletMap 
                     stateData={stateData} 
                     onStateClick={handleStateClick}

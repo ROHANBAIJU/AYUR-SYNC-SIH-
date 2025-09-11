@@ -144,7 +144,10 @@ const SignInPage = () => {
               placeholder="Password"
               className="bg-gray-100 border-none p-3 my-2 w-full rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
-            <button className="rounded-full border mt-4 border-teal-600 bg-teal-600 text-white text-sm font-bold py-3 px-12 tracking-wider uppercase transition-transform duration-75 ease-in active:scale-95 focus:outline-none">
+            <button 
+              type="submit"
+              className="rounded-full border mt-4 border-teal-600 bg-teal-600 text-white text-sm font-bold py-3 px-12 tracking-wider uppercase transition-transform duration-75 ease-in active:scale-95 focus:outline-none"
+            >
               Sign Up
             </button>
           </form>
@@ -174,7 +177,10 @@ const SignInPage = () => {
             <a href="#" className="text-sm my-4">
               Forgot your password?
             </a>
-            <button className="rounded-full border border-teal-600 bg-teal-600 text-white text-sm font-bold py-3 px-12 tracking-wider uppercase transition-transform duration-75 ease-in active:scale-95 focus:outline-none">
+            <button 
+              type="submit"
+              className="rounded-full border border-teal-600 bg-teal-600 text-white text-sm font-bold py-3 px-12 tracking-wider uppercase transition-transform duration-75 ease-in active:scale-95 focus:outline-none"
+            >
               Sign In
             </button>
           </form>

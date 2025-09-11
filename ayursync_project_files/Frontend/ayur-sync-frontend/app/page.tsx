@@ -40,6 +40,7 @@ const TypewriterText = ({ text, isActive, speed = 100 }: { text: string; isActiv
 const HomePage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isSignInNavigating, setIsSignInNavigating] = useState(false);
   
   // Hero section animation states
   const [isHeroVisible, setIsHeroVisible] = useState(false);
@@ -83,6 +84,11 @@ const HomePage = () => {
 
   const handleDashboardClick = () => {
     setIsNavigating(true);
+    // The navigation will happen through the Link component
+  };
+
+  const handleSignInClick = () => {
+    setIsSignInNavigating(true);
     // The navigation will happen through the Link component
   };
 
@@ -149,7 +155,7 @@ const HomePage = () => {
 
   return (
     <div
-      className={`min-h-screen ${isNavigating ? 'cursor-wait' : ''}`}
+      className={`min-h-screen ${(isNavigating || isSignInNavigating) ? 'cursor-wait' : ''}`}
       style={{
         backgroundColor: "#FAF3E0",
         position: "relative",
@@ -162,6 +168,15 @@ const HomePage = () => {
           <div className="bg-white rounded-lg p-6 flex items-center space-x-3 shadow-lg">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-600"></div>
             <span className="text-gray-700 font-medium">Loading Dashboard...</span>
+          </div>
+        </div>
+      )}
+      {/* Sign In Loading Overlay */}
+      {isSignInNavigating && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-lg p-6 flex items-center space-x-3 shadow-lg">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-teal-600"></div>
+            <span className="text-gray-700 font-medium">Loading Sign Up...</span>
           </div>
         </div>
       )}
@@ -185,9 +200,10 @@ const HomePage = () => {
           <Link href="/signin">
             <button
               type="button"
+              onClick={handleSignInClick}
               className="bg-[#1A5A5A] text-white px-6 py-2.5 text-sm font-medium border-2 border-transparent rounded-full hover:bg-[#134444] transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg active:scale-95"
             >
-              Sign In
+              Sign Up
             </button>
           </Link>
           <Link href="/dashboard">
@@ -239,9 +255,10 @@ const HomePage = () => {
             <Link href="/signin">
               <button
                 type="button"
+                onClick={handleSignInClick}
                 className="block w-full text-center bg-[#1A5A5A] text-white px-4 py-2 rounded-lg hover:bg-[#134444] transition-all duration-200 ease-in-out"
               >
-                Sign In
+                Sign Up
               </button>
             </Link>
             <Link href="/dashboard">

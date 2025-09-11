@@ -294,7 +294,6 @@ const LeafletMap: React.FC<LeafletMapProps> = ({ stateData, onStateClick, select
     <div 
       ref={mapContainerRef} 
       className="w-full h-full rounded-lg"
-      style={{ minHeight: '400px' }}
     />
   );
 };
