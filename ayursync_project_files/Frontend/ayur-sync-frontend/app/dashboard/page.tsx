@@ -3,8 +3,11 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useState } from "react";
 
 const Dashboard = () => {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  
   // Sample data for the dashboard
   const todaysPatients = [
     { name: "Tyler Williamson", time: "09:00 AM", status: "confirmed", avatar: "TW", condition: "Skin consultation", type: "New Patient" },
@@ -17,94 +20,105 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-teal-50">
       <div className="flex">
         {/* Sidebar */}
-        <div className="w-64 bg-gray-900 text-white min-h-screen p-4 fixed left-0 top-0">
-          <div className="mb-8">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="flex flex-col">
-                <span className="text-lg font-semibold">AYUR-SYNC v1 beta</span>
-                <div className="mt-1">
-                  <span className="text-xs text-gray-300 bg-gray-800 px-2 py-1 rounded-full border border-gray-700">AI Powered</span>
+        <div className={`${isSidebarCollapsed ? 'w-16' : 'w-64'} transition-all duration-300 bg-gray-900 text-white min-h-screen fixed left-0 top-0 z-40 flex flex-col`}>
+          {/* Header with hamburger menu */}
+          <div className="p-4 border-b border-gray-700">
+            <div className="flex items-center justify-between">
+              {!isSidebarCollapsed && (
+                <div className="flex flex-col">
+                  <span className="text-lg font-semibold">AYUR-SYNC v1 beta</span>
+                  <div className="mt-1">
+                    <span className="text-xs text-gray-300 bg-gray-800 px-2 py-1 rounded-full border border-gray-700 opacity-80">AI Powered</span>
+                  </div>
                 </div>
-              </div>
+              )}
+              <button
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className="p-2 rounded-lg hover:bg-gray-800 transition-colors ml-auto"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
             </div>
           </div>
 
-          <nav className="space-y-2">
-            <div className="text-gray-400 text-xs uppercase tracking-wider mb-4">General</div>
+          <nav className="flex-1 p-4 space-y-2">
+            {!isSidebarCollapsed && <div className="text-gray-400 text-xs uppercase tracking-wider mb-4">General</div>}
             
-            <Link href="/dashboard" className="flex items-center space-x-3 p-3 rounded-lg bg-teal-600 text-white">
-              <div className="w-7 h-7 flex items-center justify-center">
-                <Image src="/dashboard.png" alt="Dashboard" width={32} height={32} className="rounded" />
+            <Link href="/dashboard" className={`flex items-center p-3 rounded-lg bg-teal-600 text-white ${isSidebarCollapsed ? 'justify-center' : 'space-x-3'}`}>
+              <div className={`${isSidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'} flex items-center justify-center`}>
+                <Image src="/dashboard.png" alt="Dashboard" width={isSidebarCollapsed ? 36 : 32} height={isSidebarCollapsed ? 36 : 32} className="rounded" />
               </div>
-              <span>Dashboard</span>
+              {!isSidebarCollapsed && <span>Dashboard</span>}
             </Link>
             
-            <Link href="/dashboard/schedule" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-7 h-7 flex items-center justify-center">
-                <Image src="/schedule.png" alt="Schedule" width={32} height={32} className="rounded" />
+            <Link href="/dashboard/schedule" className={`flex items-center p-3 rounded-lg hover:bg-gray-800 transition-colors ${isSidebarCollapsed ? 'justify-center' : 'space-x-3'}`}>
+              <div className={`${isSidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'} flex items-center justify-center`}>
+                <Image src="/schedule.png" alt="Schedule" width={isSidebarCollapsed ? 36 : 32} height={isSidebarCollapsed ? 36 : 32} className="rounded" />
               </div>
-              <span>Schedule</span>
+              {!isSidebarCollapsed && <span>Schedule</span>}
             </Link>
             
-            <Link href="/dashboard/patients" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-7 h-7 flex items-center justify-center">
-                <Image src="/patients.png" alt="Patients" width={32} height={32} className="rounded" />
+            <Link href="/dashboard/patients" className={`flex items-center p-3 rounded-lg hover:bg-gray-800 transition-colors ${isSidebarCollapsed ? 'justify-center' : 'space-x-3'}`}>
+              <div className={`${isSidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'} flex items-center justify-center`}>
+                <Image src="/patients.png" alt="Patients" width={isSidebarCollapsed ? 36 : 32} height={isSidebarCollapsed ? 36 : 32} className="rounded" />
               </div>
-              <span>Patients</span>
+              {!isSidebarCollapsed && <span>Patients</span>}
             </Link>
             
-            <Link href="/dashboard/india-map" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-7 h-7 flex items-center justify-center">
-                <Image src="/india map.png" alt="India Map" width={32} height={32} className="rounded" />
+            <Link href="/dashboard/india-map" className={`flex items-center p-3 rounded-lg hover:bg-gray-800 transition-colors ${isSidebarCollapsed ? 'justify-center' : 'space-x-3'}`}>
+              <div className={`${isSidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'} flex items-center justify-center`}>
+                <Image src="/india map.png" alt="India Map" width={isSidebarCollapsed ? 36 : 32} height={isSidebarCollapsed ? 36 : 32} className="rounded" />
               </div>
-              <span>India Map</span>
+              {!isSidebarCollapsed && <span>India Map</span>}
             </Link>
             
-            <Link href="/dashboard/chatbot" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-7 h-7 flex items-center justify-center">
-                <Image src="/chatbot.png" alt="Chatbot" width={32} height={32} className="rounded" />
+            <Link href="/dashboard/chatbot" className={`flex items-center p-3 rounded-lg hover:bg-gray-800 transition-colors ${isSidebarCollapsed ? 'justify-center' : 'space-x-3'}`}>
+              <div className={`${isSidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'} flex items-center justify-center`}>
+                <Image src="/chatbot.png" alt="Chatbot" width={isSidebarCollapsed ? 36 : 32} height={isSidebarCollapsed ? 36 : 32} className="rounded" />
               </div>
-              <span>Chatbot</span>
+              {!isSidebarCollapsed && <span>Chatbot</span>}
             </Link>
             
-            <Link href="/dashboard/profile" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-7 h-7 flex items-center justify-center">
-                <Image src="/my profile.png" alt="My Profile" width={32} height={32} className="rounded" />
+            <Link href="/dashboard/profile" className={`flex items-center p-3 rounded-lg hover:bg-gray-800 transition-colors ${isSidebarCollapsed ? 'justify-center' : 'space-x-3'}`}>
+              <div className={`${isSidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'} flex items-center justify-center`}>
+                <Image src="/my profile.png" alt="My Profile" width={isSidebarCollapsed ? 36 : 32} height={isSidebarCollapsed ? 36 : 32} className="rounded" />
               </div>
-              <span>My profile</span>
+              {!isSidebarCollapsed && <span>My profile</span>}
             </Link>
 
-            <div className="border-t border-gray-700 my-4"></div>
+            {!isSidebarCollapsed && <div className="border-t border-gray-700 my-4"></div>}
             
-            <Link href="/" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-7 h-7 bg-gray-600 rounded flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+            <Link href="/" className={`flex items-center p-3 rounded-lg hover:bg-gray-800 transition-colors ${isSidebarCollapsed ? 'justify-center' : 'space-x-3'}`}>
+              <div className={`${isSidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'} bg-gray-600 rounded flex items-center justify-center`}>
+                <svg className={`${isSidebarCollapsed ? 'w-6 h-6' : 'w-5 h-5'} text-white`} fill="currentColor" viewBox="0 0 20 20">
                   <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
                 </svg>
               </div>
-              <span>Home</span>
+              {!isSidebarCollapsed && <span>Home</span>}
             </Link>
 
-            <div className="border-t border-gray-700 my-4"></div>
+            {!isSidebarCollapsed && <div className="border-t border-gray-700 my-4"></div>}
             
-            <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-              <div className="w-7 h-7 flex items-center justify-center">
-                <Image src="/settings.png" alt="Settings" width={32} height={32} className="rounded" />
+            <a href="#" className={`flex items-center p-3 rounded-lg hover:bg-gray-800 transition-colors ${isSidebarCollapsed ? 'justify-center' : 'space-x-3'}`}>
+              <div className={`${isSidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'} flex items-center justify-center`}>
+                <Image src="/settings.png" alt="Settings" width={isSidebarCollapsed ? 36 : 32} height={isSidebarCollapsed ? 36 : 32} className="rounded" />
               </div>
-              <span>Settings</span>
+              {!isSidebarCollapsed && <span>Settings</span>}
             </a>
 
-            <div className="border-t border-gray-700 my-4"></div>
+            {!isSidebarCollapsed && <div className="border-t border-gray-700 my-4"></div>}
             
-            <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors text-red-400">
-              <div className="w-5 h-5 bg-red-600 rounded"></div>
-              <span>Log out</span>
+            <a href="#" className={`flex items-center p-3 rounded-lg hover:bg-gray-800 transition-colors text-red-400 ${isSidebarCollapsed ? 'justify-center' : 'space-x-3'}`}>
+              <div className={`${isSidebarCollapsed ? 'w-7 h-7' : 'w-5 h-5'} bg-red-600 rounded`}></div>
+              {!isSidebarCollapsed && <span>Log out</span>}
             </a>
           </nav>
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 ml-64 p-6 space-y-6">
+        <div className={`flex-1 ${isSidebarCollapsed ? 'ml-16' : 'ml-64'} transition-all duration-300 p-6 space-y-6`}>
           {/* Header */}
           <div className="flex justify-between items-start">
             <div>
