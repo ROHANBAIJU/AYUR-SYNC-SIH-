@@ -1,7 +1,7 @@
 // app/dashboard/patients/page.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef, memo } from "react";
 
 // Define patient type
 type Patient = {
@@ -20,6 +20,183 @@ type Patient = {
   contact: string;
   abhaNo: string;
 };
+
+// Isolated form component to prevent re-rendering issues
+const PatientForm = memo(({ onSave, onClose }: { onSave: (patient: any) => void; onClose: () => void }) => {
+  const [formData, setFormData] = useState({
+    name: "",
+    dob: "",
+    age: "",
+    gender: "",
+    contact: "",
+    abhaNo: "",
+    condition: "",
+    notes: "",
+    consentFlag: false
+  });
+
+  const updateField = useCallback((field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }, []);
+
+  const handleSubmit = () => {
+    onSave(formData);
+  };
+
+  return (
+    <div className="p-6">
+      <h3 className="text-lg font-semibold text-gray-800 mb-6 text-center">
+        NAME AND BASIC DETAILS WITH CONSENT FLAG
+      </h3>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Name */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Full Name *
+          </label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => updateField('name', e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            placeholder="Enter patient name"
+          />
+        </div>
+
+        {/* Date of Birth */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Date of Birth *
+          </label>
+          <input
+            type="text"
+            value={formData.dob}
+            onChange={(e) => updateField('dob', e.target.value)}
+            onFocus={(e) => e.target.type = 'date'}
+            onBlur={(e) => {
+              if (!e.target.value) {
+                e.target.type = 'text';
+              }
+            }}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            placeholder="DD/MM/YYYY or use date picker"
+          />
+        </div>
+
+        {/* Age */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Age
+          </label>
+          <input
+            type="number"
+            value={formData.age}
+            onChange={(e) => updateField('age', e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            placeholder="Age"
+          />
+        </div>
+
+        {/* Gender */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Gender *
+          </label>
+          <select
+            value={formData.gender}
+            onChange={(e) => updateField('gender', e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          >
+            <option value="">Select Gender</option>
+            <option value="M">Male</option>
+            <option value="F">Female</option>
+            <option value="O">Other</option>
+          </select>
+        </div>
+
+        {/* Contact */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Contact Number *
+          </label>
+          <input
+            type="tel"
+            value={formData.contact}
+            onChange={(e) => updateField('contact', e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            placeholder="+91 XXXXXXXXXX"
+          />
+        </div>
+
+        {/* ABHA Number */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            ABHA Number
+          </label>
+          <input
+            type="text"
+            value={formData.abhaNo}
+            onChange={(e) => updateField('abhaNo', e.target.value)}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            placeholder="14-XXXX-XXXX-XXXX"
+          />
+        </div>
+      </div>
+
+      {/* Consent Flag */}
+      <div className="mt-6">
+        <div className="flex items-center space-x-3">
+          <input
+            type="checkbox"
+            id="consent"
+            checked={formData.consentFlag}
+            onChange={(e) => updateField('consentFlag', e.target.checked)}
+            className="w-5 h-5 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+          />
+          <label htmlFor="consent" className="text-sm font-medium text-gray-700">
+            Patient has provided consent for data collection and treatment
+          </label>
+        </div>
+      </div>
+
+      {/* Condition Field */}
+      <div className="mt-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Primary Condition
+        </label>
+        <input
+          type="text"
+          value={formData.condition}
+          onChange={(e) => updateField('condition', e.target.value)}
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          placeholder="Enter primary condition"
+        />
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex justify-end mt-8 space-x-4">
+        <button
+          onClick={onClose}
+          className="px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSubmit}
+          className="px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+        >
+          Save Patient
+        </button>
+      </div>
+    </div>
+  );
+});
+
+PatientForm.displayName = 'PatientForm';
 
 const initialPatients: Patient[] = [
     {
@@ -160,6 +337,7 @@ const Patients = () => {
   const [showAddPatientModal, setShowAddPatientModal] = useState(false);
   const [showEditPatientModal, setShowEditPatientModal] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [newPatient, setNewPatient] = useState({
     name: "",
     dob: "",
@@ -218,6 +396,54 @@ const Patients = () => {
       consentFlag: false
     });
   };
+
+  // Stable handlers to prevent focus loss
+  const handleNewPatientChange = useCallback((field: string, value: any) => {
+    setNewPatient(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }, []);
+
+  const handleEditPatientChange = useCallback((field: string, value: any) => {
+    setEditingPatient(prev => prev ? ({
+      ...prev,
+      [field]: value
+    }) : prev);
+  }, []);
+
+  // Individual stable handlers for better performance
+  const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewPatient(prev => ({ ...prev, name: e.target.value }));
+  }, []);
+
+  const handleDobChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewPatient(prev => ({ ...prev, dob: e.target.value }));
+  }, []);
+
+  const handleAgeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewPatient(prev => ({ ...prev, age: e.target.value }));
+  }, []);
+
+  const handleGenderChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setNewPatient(prev => ({ ...prev, gender: e.target.value }));
+  }, []);
+
+  const handleContactChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewPatient(prev => ({ ...prev, contact: e.target.value }));
+  }, []);
+
+  const handleAbhaChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewPatient(prev => ({ ...prev, abhaNo: e.target.value }));
+  }, []);
+
+  const handleConditionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewPatient(prev => ({ ...prev, condition: e.target.value }));
+  }, []);
+
+  const handleConsentChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewPatient(prev => ({ ...prev, consentFlag: e.target.checked }));
+  }, []);
 
   const handleSavePatient = () => {
     const getInitials = (name: string) => {
@@ -340,7 +566,7 @@ const Patients = () => {
                   <input
                     type="text"
                     value={newPatient.name}
-                    onChange={(e) => setNewPatient(p => ({...p, name: e.target.value}))}
+                    onChange={(e) => setNewPatient(prev => ({ ...prev, name: e.target.value }))}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     placeholder="Enter patient name"
                   />
@@ -352,10 +578,17 @@ const Patients = () => {
                     Date of Birth *
                   </label>
                   <input
-                    type="date"
+                    type="text"
                     value={newPatient.dob}
-                    onChange={(e) => setNewPatient(p => ({...p, dob: e.target.value}))}
+                    onChange={(e) => setNewPatient(prev => ({ ...prev, dob: e.target.value }))}
+                    onFocus={(e) => e.target.type = 'date'}
+                    onBlur={(e) => {
+                      if (!e.target.value) {
+                        e.target.type = 'text';
+                      }
+                    }}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    placeholder="DD/MM/YYYY or use date picker"
                   />
                 </div>
 
@@ -367,7 +600,7 @@ const Patients = () => {
                   <input
                     type="number"
                     value={newPatient.age}
-                    onChange={(e) => setNewPatient(p => ({...p, age: e.target.value}))}
+                    onChange={(e) => setNewPatient(prev => ({ ...prev, age: e.target.value }))}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     placeholder="Age"
                   />
@@ -380,7 +613,7 @@ const Patients = () => {
                   </label>
                   <select
                     value={newPatient.gender}
-                    onChange={(e) => setNewPatient(p => ({...p, gender: e.target.value}))}
+                    onChange={handleGenderChange}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                   >
                     <option value="">Select Gender</option>
@@ -398,7 +631,7 @@ const Patients = () => {
                   <input
                     type="tel"
                     value={newPatient.contact}
-                    onChange={(e) => setNewPatient(p => ({...p, contact: e.target.value}))}
+                    onChange={(e) => setNewPatient(prev => ({ ...prev, contact: e.target.value }))}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     placeholder="+91 XXXXXXXXXX"
                   />
@@ -412,7 +645,7 @@ const Patients = () => {
                   <input
                     type="text"
                     value={newPatient.abhaNo}
-                    onChange={(e) => setNewPatient(p => ({...p, abhaNo: e.target.value}))}
+                    onChange={handleAbhaChange}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                     placeholder="14-XXXX-XXXX-XXXX"
                   />
@@ -426,7 +659,7 @@ const Patients = () => {
                     type="checkbox"
                     id="consent"
                     checked={newPatient.consentFlag}
-                    onChange={(e) => setNewPatient(p => ({...p, consentFlag: e.target.checked}))}
+                    onChange={handleConsentChange}
                     className="w-5 h-5 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
                   />
                   <label htmlFor="consent" className="text-sm font-medium text-gray-700">
@@ -453,12 +686,7 @@ const Patients = () => {
                     <input
                       type="text"
                       value={newPatient.condition}
-                      onChange={(e) =>
-                        setNewPatient(p => ({
-                          ...p,
-                          condition: e.target.value,
-                        }))
-                      }
+                      onChange={handleConditionChange}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                       placeholder="Search primary condition"
                     />
@@ -589,7 +817,7 @@ const Patients = () => {
                       <input
                         type="text"
                         value={editingPatient.name}
-                        onChange={(e) => setEditingPatient(p => p ? ({...p, name: e.target.value}) : p)}
+                        onChange={(e) => handleEditPatientChange('name', e.target.value)}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                       />
                     </div>
@@ -597,10 +825,17 @@ const Patients = () => {
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth *</label>
                       <input
-                        type="date"
+                        type="text"
                         value={editingPatient.dob}
-                        onChange={(e) => setEditingPatient(p => p ? ({...p, dob: e.target.value}) : p)}
+                        onChange={(e) => handleEditPatientChange('dob', e.target.value)}
+                        onFocus={(e) => e.target.type = 'date'}
+                        onBlur={(e) => {
+                          if (!e.target.value) {
+                            e.target.type = 'text';
+                          }
+                        }}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                        placeholder="DD/MM/YYYY or use date picker"
                       />
                     </div>
                      {/* Age */}
@@ -609,7 +844,7 @@ const Patients = () => {
                         <input
                             type="number"
                             value={editingPatient.age}
-                            onChange={(e) => setEditingPatient(p => p ? ({...p, age: parseInt(e.target.value,10) || 0}) : p)}
+                            onChange={(e) => handleEditPatientChange('age', parseInt(e.target.value,10) || 0)}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                         />
                     </div>
@@ -618,7 +853,7 @@ const Patients = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-2">Gender *</label>
                       <select
                         value={editingPatient.gender}
-                        onChange={(e) => setEditingPatient(p => p ? ({...p, gender: e.target.value}) : p)}
+                        onChange={(e) => handleEditPatientChange('gender', e.target.value)}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                       >
                         <option value="M">Male</option>
@@ -632,7 +867,7 @@ const Patients = () => {
                         <input
                             type="tel"
                             value={editingPatient.contact}
-                            onChange={(e) => setEditingPatient(p => p ? ({...p, contact: e.target.value}) : p)}
+                            onChange={(e) => handleEditPatientChange('contact', e.target.value)}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                         />
                     </div>
@@ -642,7 +877,7 @@ const Patients = () => {
                         <input
                             type="text"
                             value={editingPatient.abhaNo}
-                            onChange={(e) => setEditingPatient(p => p ? ({...p, abhaNo: e.target.value}) : p)}
+                            onChange={(e) => handleEditPatientChange('abhaNo', e.target.value)}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                         />
                     </div>
@@ -656,7 +891,7 @@ const Patients = () => {
                         <input
                             type="text"
                             value={editingPatient.condition}
-                            onChange={(e) => setEditingPatient(p => p ? ({...p, condition: e.target.value}) : p)}
+                            onChange={(e) => handleEditPatientChange('condition', e.target.value)}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                         />
                     </div>
@@ -666,7 +901,7 @@ const Patients = () => {
                         <input
                             type="text"
                             value={editingPatient.treatment}
-                            onChange={(e) => setEditingPatient(p => p ? ({...p, treatment: e.target.value}) : p)}
+                            onChange={(e) => handleEditPatientChange('treatment', e.target.value)}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                         />
                     </div>
@@ -675,7 +910,7 @@ const Patients = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                       <select
                         value={editingPatient.status}
-                        onChange={(e) => setEditingPatient(p => p ? ({...p, status: e.target.value}) : p)}
+                        onChange={(e) => handleEditPatientChange('status', e.target.value)}
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                       >
                         <option>Active</option>
@@ -688,7 +923,7 @@ const Patients = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">Clinical Notes</label>
                         <textarea
                             value={editingPatient.notes}
-                            onChange={(e) => setEditingPatient(p => p ? ({...p, notes: e.target.value}) : p)}
+                            onChange={(e) => handleEditPatientChange('notes', e.target.value)}
                             rows={6}
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                         />
@@ -708,87 +943,126 @@ const Patients = () => {
       <div className="min-h-screen bg-gradient-to-br from-amber-50 to-teal-50">
         <div className="flex">
           {/* Sidebar */}
-          <div className="w-64 bg-gray-900 text-white min-h-screen p-4 fixed left-0 top-0">
-            <div className="mb-8">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="flex flex-col">
-                  <span className="text-lg font-semibold">AYUR-SYNC v1 beta</span>
-                  <div className="mt-1">
-                    <span className="text-xs text-gray-300 bg-gray-800 px-2 py-1 rounded-full border border-gray-700">AI Powered</span>
+          <div className={`${isSidebarCollapsed ? 'w-20' : 'w-64'} transition-all duration-300 bg-gray-900 text-white min-h-screen fixed left-0 top-0 z-40 flex flex-col`}>
+            {/* Header with hamburger menu */}
+            <div className={`${isSidebarCollapsed ? 'p-3' : 'p-4'} border-b border-gray-700`}>
+              <div className="flex items-center justify-between">
+                {!isSidebarCollapsed && (
+                  <div className="flex flex-col">
+                    <span className="text-lg font-semibold">AYUR-SYNC v1 beta</span>
+                    <div className="mt-1">
+                      <span className="text-xs text-gray-300 bg-gray-800 px-2 py-1 rounded-full border border-gray-700 opacity-80">AI Powered</span>
+                    </div>
                   </div>
-                </div>
+                )}
+                <button
+                  onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                  className={`p-2 rounded-lg hover:bg-gray-800 transition-colors ${isSidebarCollapsed ? 'mx-auto' : 'ml-auto'}`}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
               </div>
             </div>
 
-            <nav className="space-y-2">
-              <div className="text-gray-400 text-xs uppercase tracking-wider mb-4">General</div>
+            <nav className={`flex-1 ${isSidebarCollapsed ? 'px-2 py-4' : 'p-4'} space-y-1`}>
+              {!isSidebarCollapsed && <div className="text-gray-400 text-xs uppercase tracking-wider mb-4">General</div>}
               
-              <a href="/dashboard" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-                <div className="w-7 h-7 flex items-center justify-center">
-                  <img src="/dashboard.png" alt="Dashboard" className="rounded" style={{width: '32px', height: '32px'}}/>
+              <a href="/dashboard" className={`flex items-center ${isSidebarCollapsed ? 'p-2 justify-center' : 'p-3 space-x-3'} rounded-lg hover:bg-gray-800 transition-colors`}>
+                <div className={`${isSidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'} flex items-center justify-center`}>
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+                  </svg>
                 </div>
-                <span>Dashboard</span>
+                {!isSidebarCollapsed && <span>Dashboard</span>}
               </a>
               
-              <a href="/dashboard/schedule" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-                <div className="w-7 h-7 flex items-center justify-center">
-                  <img src="/schedule.png" alt="Schedule" className="rounded" style={{width: '32px', height: '32px'}} />
+              <a href="/dashboard/schedule" className={`flex items-center ${isSidebarCollapsed ? 'p-2 justify-center' : 'p-3 space-x-3'} rounded-lg hover:bg-gray-800 transition-colors`}>
+                <div className={`${isSidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'} flex items-center justify-center`}>
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd"/>
+                  </svg>
                 </div>
-                <span>Schedule</span>
+                {!isSidebarCollapsed && <span>Schedule</span>}
               </a>
               
-              <a href="/dashboard/patients" className="flex items-center space-x-3 p-3 rounded-lg bg-teal-600 text-white">
-                <div className="w-7 h-7 flex items-center justify-center">
-                  <img src="/patients.png" alt="Patients" className="rounded" style={{width: '32px', height: '32px'}} />
+              <a href="/dashboard/patients" className={`flex items-center ${isSidebarCollapsed ? 'p-2 justify-center' : 'p-3 space-x-3'} rounded-lg bg-teal-600 text-white`}>
+                <div className={`${isSidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'} flex items-center justify-center`}>
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+                  </svg>
                 </div>
-                <span>Patients</span>
+                {!isSidebarCollapsed && <span>Patients</span>}
               </a>
               
-              <a href="/dashboard/india-map" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-                <div className="w-7 h-7 flex items-center justify-center">
-                  <img src="/india map.png" alt="India Map" className="rounded" style={{width: '32px', height: '32px'}} />
+              <a href="/dashboard/india-map" className={`flex items-center ${isSidebarCollapsed ? 'p-2 justify-center' : 'p-3 space-x-3'} rounded-lg hover:bg-gray-800 transition-colors`}>
+                <div className={`${isSidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'} flex items-center justify-center`}>
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"/>
+                  </svg>
                 </div>
-                <span>India Map</span>
+                {!isSidebarCollapsed && <span>India Map</span>}
               </a>
               
-              <a href="/dashboard/chatbot" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-                <div className="w-7 h-7 flex items-center justify-center">
-                  <img src="/chatbot.png" alt="Chatbot" className="rounded" style={{width: '32px', height: '32px'}} />
+              <a href="/dashboard/chatbot" className={`flex items-center ${isSidebarCollapsed ? 'p-2 justify-center' : 'p-3 space-x-3'} rounded-lg hover:bg-gray-800 transition-colors`}>
+                <div className={`${isSidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'} flex items-center justify-center`}>
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd"/>
+                  </svg>
                 </div>
-                <span>Chatbot</span>
+                {!isSidebarCollapsed && <span>Chatbot</span>}
               </a>
               
-              <a href="/dashboard/profile" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-                <div className="w-7 h-7 flex items-center justify-center">
-                  <img src="/my profile.png" alt="My Profile" className="rounded" style={{width: '32px', height: '32px'}} />
+              <a href="/dashboard/profile" className={`flex items-center ${isSidebarCollapsed ? 'p-2 justify-center' : 'p-3 space-x-3'} rounded-lg hover:bg-gray-800 transition-colors`}>
+                <div className={`${isSidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'} flex items-center justify-center`}>
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/>
+                  </svg>
                 </div>
-                <span>My profile</span>
+                {!isSidebarCollapsed && <span>My profile</span>}
               </a>
 
-              <div className="border-t border-gray-700 my-4"></div>
+              {!isSidebarCollapsed && <div className="border-t border-gray-700 my-4"></div>}
+              {isSidebarCollapsed && <div className="w-full h-px bg-gray-700 my-3"></div>}
               
-              <a href="/" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-                <div className="w-7 h-7 bg-gray-600 rounded flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <a href="/" className={`flex items-center ${isSidebarCollapsed ? 'p-2 justify-center' : 'p-3 space-x-3'} rounded-lg hover:bg-gray-800 transition-colors`}>
+                <div className={`${isSidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'} flex items-center justify-center`}>
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
                   </svg>
                 </div>
-                <span>Home</span>
+                {!isSidebarCollapsed && <span>Home</span>}
               </a>
 
-              <div className="border-t border-gray-700 my-4"></div>
+              {!isSidebarCollapsed && <div className="border-t border-gray-700 my-4"></div>}
+              {isSidebarCollapsed && <div className="w-full h-px bg-gray-700 my-3"></div>}
               
-              <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
-                <div className="w-7 h-7 flex items-center justify-center">
-                  <img src="/settings.png" alt="Settings" className="rounded" style={{width: '32px', height: '32px'}} />
+              <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'p-2 justify-center' : 'p-3 space-x-3'} rounded-lg hover:bg-gray-800 transition-colors`}>
+                <div className={`${isSidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'} flex items-center justify-center`}>
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd"/>
+                  </svg>
                 </div>
-                <span>Settings</span>
+                {!isSidebarCollapsed && <span>Settings</span>}
+              </a>
+
+              {!isSidebarCollapsed && <div className="border-t border-gray-700 my-4"></div>}
+              {isSidebarCollapsed && <div className="w-full h-px bg-gray-700 my-3"></div>}
+              
+              <a href="#" className={`flex items-center ${isSidebarCollapsed ? 'p-2 justify-center' : 'p-3 space-x-3'} rounded-lg hover:bg-gray-800 transition-colors text-red-400`}>
+                <div className={`${isSidebarCollapsed ? 'w-8 h-8' : 'w-7 h-7'} flex items-center justify-center`}>
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd"/>
+                  </svg>
+                </div>
+                {!isSidebarCollapsed && <span>Log out</span>}
               </a>
             </nav>
           </div>
 
           {/* Main Content - Three Column Layout */}
-          <div className="flex-1 ml-64 p-6">
+          <div className={`${isSidebarCollapsed ? 'ml-20' : 'ml-64'} transition-all duration-300 flex-1 p-6`}>
             {/* Back Button */}
             <div className="mb-6">
               <button
@@ -981,42 +1255,54 @@ const Patients = () => {
             
             <a href="/dashboard" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
               <div className="w-7 h-7 flex items-center justify-center">
-                <img src="/dashboard.png" alt="Dashboard" className="rounded" style={{width: '32px', height: '32px'}} />
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+                </svg>
               </div>
               <span>Dashboard</span>
             </a>
             
             <a href="/dashboard/schedule" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
               <div className="w-7 h-7 flex items-center justify-center">
-                <img src="/schedule.png" alt="Schedule" className="rounded" style={{width: '32px', height: '32px'}} />
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd"/>
+                </svg>
               </div>
               <span>Schedule</span>
             </a>
             
             <a href="/dashboard/patients" className="flex items-center space-x-3 p-3 rounded-lg bg-teal-600 text-white">
               <div className="w-7 h-7 flex items-center justify-center">
-                <img src="/patients.png" alt="Patients" className="rounded" style={{width: '32px', height: '32px'}} />
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+                </svg>
               </div>
               <span>Patients</span>
             </a>
             
             <a href="/dashboard/india-map" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
               <div className="w-7 h-7 flex items-center justify-center">
-                <img src="/india map.png" alt="India Map" className="rounded" style={{width: '32px', height: '32px'}} />
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd"/>
+                </svg>
               </div>
               <span>India Map</span>
             </a>
             
             <a href="/dashboard/chatbot" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
               <div className="w-7 h-7 flex items-center justify-center">
-                <img src="/chatbot.png" alt="Chatbot" className="rounded" style={{width: '32px', height: '32px'}} />
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd"/>
+                </svg>
               </div>
               <span>Chatbot</span>
             </a>
             
             <a href="/dashboard/profile" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
               <div className="w-7 h-7 flex items-center justify-center">
-                <img src="/my profile.png" alt="My Profile" className="rounded" style={{width: '32px', height: '32px'}} />
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd"/>
+                </svg>
               </div>
               <span>My profile</span>
             </a>
@@ -1036,7 +1322,9 @@ const Patients = () => {
             
             <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
               <div className="w-7 h-7 flex items-center justify-center">
-                <img src="/settings.png" alt="Settings" className="rounded" style={{width: '32px', height: '32px'}} />
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd"/>
+                </svg>
               </div>
               <span>Settings</span>
             </a>

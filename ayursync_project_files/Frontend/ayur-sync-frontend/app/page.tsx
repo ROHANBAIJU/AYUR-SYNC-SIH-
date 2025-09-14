@@ -568,21 +568,42 @@ const HomePage = () => {
               Our Solution
             </h2>
             <div className="flex flex-col items-center">
-              <h3 className="text-3xl md:text-4xl font-bold text-transparent bg-gradient-to-r from-teal-600 to-teal-500 bg-clip-text animate-slideInUp animation-delay-100 hover:from-teal-500 hover:to-teal-400 transition-all duration-500 ease-in-out cursor-default">
-                AYUR-SYNC v1 beta
+              <h3 className="text-4xl md:text-5xl lg:text-6xl font-bold text-transparent bg-gradient-to-r from-teal-600 to-teal-500 bg-clip-text animate-slideInUp animation-delay-100 hover:from-teal-500 hover:to-teal-400 transition-all duration-500 ease-in-out cursor-default">
+                AYUR-SYNC
               </h3>
               <span className="text-sm text-gray-500 mt-1 animate-slideInUp animation-delay-150">AI Powered</span>
+              
+              {/* GitHub Button */}
+              <a
+                href="https://github.com/your-repo-url"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center px-4 py-2 bg-[#1a5a5a] hover:bg-[#144646] text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:scale-105 animate-slideInUp animation-delay-200"
+              >
+                <svg
+                  className="w-4 h-4 mr-2"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                View on GitHub
+              </a>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
             {/* Card - One API for all Ayurveda */}
-            <div className="animate-slideInUp animation-delay-200">
+            <div className="animate-slideInUp animation-delay-200 h-full">
               <div
                 ref={(el) => {
                   cardRefs.current[0] = el;
                 }}
-                className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-amber-200 hover:shadow-2xl hover:scale-105 transition-all duration-300 ease-in-out transform hover:-translate-y-2 group cursor-pointer"
+                className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-amber-200 hover:shadow-2xl hover:scale-105 transition-all duration-300 ease-in-out transform hover:-translate-y-2 group cursor-pointer h-full flex flex-col"
               >
                 <div className="w-16 h-16 bg-gradient-to-br from-teal-100 to-teal-200 rounded-xl flex items-center justify-center mb-4 mx-auto group-hover:from-teal-200 group-hover:to-teal-300 transition-all duration-300 ease-in-out transform group-hover:rotate-6 group-hover:scale-110">
                   <svg
@@ -602,20 +623,20 @@ const HomePage = () => {
                 <h3 className="text-xl font-bold text-gray-800 mb-3 text-center group-hover:text-teal-700 transition-all duration-300 ease-in-out">
                   One API for all Ayurveda
                 </h3>
-                <p className="text-gray-600 text-center group-hover:text-gray-700 transition-all duration-300 ease-in-out">
+                <p className="text-gray-600 text-center group-hover:text-gray-700 transition-all duration-300 ease-in-out flex-grow">
                   Comprehensive integration of traditional Ayurvedic practices
                   with modern medical systems through a unified API interface.
                 </p>
               </div>
             </div>
 
-            {/* Card - Patient records, simplified */}
-            <div className="animate-slideInUp animation-delay-300">
+            {/* Card - Unify Health Records with AI */}
+            <div className="animate-slideInUp animation-delay-300 h-full">
               <div
                 ref={(el) => {
                   cardRefs.current[1] = el;
                 }}
-                className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-amber-200 hover:shadow-2xl hover:scale-105 transition-all duration-300 ease-in-out transform hover:-translate-y-2 group cursor-pointer"
+                className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-amber-200 hover:shadow-2xl hover:scale-105 transition-all duration-300 ease-in-out transform hover:-translate-y-2 group cursor-pointer h-full flex flex-col"
               >
                 <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mb-4 mx-auto group-hover:from-blue-200 group-hover:to-blue-300 transition-all duration-300 ease-in-out transform group-hover:rotate-6 group-hover:scale-110">
                   <svg
@@ -633,22 +654,23 @@ const HomePage = () => {
                   </svg>
                 </div>
                 <h3 className="text-xl font-bold text-gray-800 mb-3 text-center group-hover:text-blue-700 transition-all duration-300 ease-in-out">
-                  Patient records, simplified
+                  Unify Health Records with AI
                 </h3>
-                <p className="text-gray-600 text-center group-hover:text-gray-700 transition-all duration-300 ease-in-out">
-                  Streamlined patient management system integrating both
-                  traditional and modern medical records.
+                <p className="text-gray-600 text-center group-hover:text-gray-700 transition-all duration-300 ease-in-out flex-grow">
+                  Eliminate data silos. Our API uses AI to map NAMASTE to
+                  ICD-11, ensuring your EHR system is fully integrated and
+                  compliant with Indian standards.
                 </p>
               </div>
             </div>
 
-            {/* Card - Smart Analytics */}
-            <div className="animate-slideInUp animation-delay-400">
+            {/* Card - AI Precision, Doctor Approved */}
+            <div className="animate-slideInUp animation-delay-400 h-full">
               <div
                 ref={(el) => {
                   cardRefs.current[2] = el;
                 }}
-                className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-amber-200 hover:shadow-2xl hover:scale-105 transition-all duration-300 ease-in-out transform hover:-translate-y-2 group cursor-pointer"
+                className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-amber-200 hover:shadow-2xl hover:scale-105 transition-all duration-300 ease-in-out transform hover:-translate-y-2 group cursor-pointer h-full flex flex-col"
               >
                 <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center mb-4 mx-auto group-hover:from-green-200 group-hover:to-green-300 transition-all duration-300 ease-in-out transform group-hover:rotate-6 group-hover:scale-110">
                   <svg
@@ -666,11 +688,10 @@ const HomePage = () => {
                   </svg>
                 </div>
                 <h3 className="text-xl font-bold text-gray-800 mb-3 text-center group-hover:text-green-700 transition-all duration-300 ease-in-out">
-                  Smart Analytics
+                  AI Precision, Doctor Approved
                 </h3>
-                <p className="text-gray-600 text-center group-hover:text-gray-700 transition-all duration-300 ease-in-out">
-                  Advanced data analytics to improve treatment outcomes and
-                  medical decision making.
+                <p className="text-gray-600 text-center group-hover:text-gray-700 transition-all duration-300 ease-in-out flex-grow">
+                  Empower your experts. The admin panel provides a seamless interface for doctors to verify NAMASTE to ICD-11 mappings, ensuring every code is accurate and reliable.
                 </p>
               </div>
             </div>
@@ -795,6 +816,25 @@ const HomePage = () => {
                 className="block hover:text-teal-600 transition-all duration-300 ease-in-out transform hover:translate-x-2"
               >
                 Our Mission
+              </a>
+              <a
+                href="https://github.com/your-repo-url"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-teal-600 transition-all duration-300 ease-in-out transform hover:translate-x-2 flex items-center justify-start mt-1"
+              >
+                GitHub
+                <svg
+                  className="w-4 h-4 ml-1"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+                    clipRule="evenodd"
+                  />
+                </svg>
               </a>
             </div>
           </div>
