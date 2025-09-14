@@ -1,9 +1,7 @@
 // app/dashboard/patients/page.tsx
 "use client";
 
-import Link from "next/link";
-import Image from "next/image";
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 // Define patient type
 type Patient = {
@@ -23,13 +21,7 @@ type Patient = {
   abhaNo: string;
 };
 
-const Patients = () => {
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [viewMode, setViewMode] = useState<'cards' | 'details'>('cards');
-  const [symptomSearch, setSymptomSearch] = useState("");
-  
-  // Sample patient data
-  const patients = [
+const initialPatients: Patient[] = [
     {
       id: 1,
       name: "Rajesh Kumar",
@@ -158,7 +150,43 @@ const Patients = () => {
       contact: "+91 9876543217",
       abhaNo: "14-1234-5678-9019"
     }
-  ];
+];
+
+const Patients = () => {
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [viewMode, setViewMode] = useState<'cards' | 'details'>('cards');
+  const [symptomSearch, setSymptomSearch] = useState("");
+  const [showAddPatientModal, setShowAddPatientModal] = useState(false);
+  const [showEditPatientModal, setShowEditPatientModal] = useState(false);
+  const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [newPatient, setNewPatient] = useState({
+    name: "",
+    dob: "",
+    age: "",
+    gender: "",
+    contact: "",
+    abhaNo: "",
+    condition: "",
+    notes: "",
+    consentFlag: false
+  });
+
+  useEffect(() => {
+    try {
+      const storedPatients = localStorage.getItem('patients');
+      if (storedPatients) {
+        setPatients(JSON.parse(storedPatients));
+      } else {
+        localStorage.setItem('patients', JSON.stringify(initialPatients));
+        setPatients(initialPatients);
+      }
+    } catch (error) {
+      console.error("Failed to parse patients from localStorage", error);
+      localStorage.setItem('patients', JSON.stringify(initialPatients));
+      setPatients(initialPatients);
+    }
+  }, []);
 
   const handleViewDetails = (patient: Patient) => {
     setSelectedPatient(patient);
@@ -169,6 +197,90 @@ const Patients = () => {
     setViewMode('cards');
     setSelectedPatient(null);
   };
+
+  const handleAddPatient = () => {
+    setShowAddPatientModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowAddPatientModal(false);
+    setShowEditPatientModal(false);
+    setEditingPatient(null);
+    setNewPatient({
+      name: "",
+      dob: "",
+      age: "",
+      gender: "",
+      contact: "",
+      abhaNo: "",
+      condition: "",
+      notes: "",
+      consentFlag: false
+    });
+  };
+
+  const handleSavePatient = () => {
+    const getInitials = (name: string) => {
+        const nameParts = name.trim().split(' ');
+        if (nameParts.length > 1 && nameParts[0] && nameParts[nameParts.length - 1]) {
+            return (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+        } else if (nameParts[0] && nameParts[0].length > 1) {
+            return nameParts[0].substring(0, 2).toUpperCase();
+        }
+        return '??';
+    };
+
+    const newId = patients.length > 0 ? Math.max(...patients.map(p => p.id)) + 1 : 1;
+
+    const patientToAdd: Patient = {
+        ...newPatient,
+        id: newId,
+        age: parseInt(newPatient.age, 10) || 0,
+        avatar: getInitials(newPatient.name),
+        lastVisit: new Date().toLocaleDateString('en-GB'),
+        nextAppointment: 'N/A',
+        treatment: 'Initial Consultation',
+        status: 'Active',
+    };
+
+    const newPatientsList = [...patients, patientToAdd];
+    setPatients(newPatientsList);
+    localStorage.setItem('patients', JSON.stringify(newPatientsList));
+    handleCloseModal();
+  };
+  
+  const handleEditClick = (patient: Patient) => {
+    setEditingPatient(patient);
+    setShowEditPatientModal(true);
+  };
+
+  const handleUpdatePatient = () => {
+    if (!editingPatient) return;
+
+    const getInitials = (name: string) => {
+        const nameParts = name.trim().split(' ');
+        if (nameParts.length > 1 && nameParts[0] && nameParts[nameParts.length - 1]) {
+            return (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+        } else if (nameParts[0] && nameParts[0].length > 1) {
+            return nameParts[0].substring(0, 2).toUpperCase();
+        }
+        return '??';
+    };
+    
+    const updatedPatient = {
+      ...editingPatient,
+      avatar: getInitials(editingPatient.name)
+    };
+
+    const updatedPatients = patients.map(p =>
+        p.id === updatedPatient.id ? updatedPatient : p
+    );
+
+    setPatients(updatedPatients);
+    localStorage.setItem('patients', JSON.stringify(updatedPatients));
+    handleCloseModal();
+  };
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -182,6 +294,413 @@ const Patients = () => {
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
+
+  // Add Patient Modal Component
+  const AddPatientModal = () => {
+    if (!showAddPatientModal) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+          {/* Modal Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <h2 className="text-2xl font-bold text-gray-800">Patients Interface</h2>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={handleSavePatient}
+                className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+              >
+                SAVE PATIENT CARD BUTTON
+              </button>
+              <button
+                onClick={handleCloseModal}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Modal Content */}
+          <div className="p-6">
+            {/* Top Section - Name and Basic Details */}
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-800 mb-6 text-center">
+                NAME AND BASIC DETAILS WITH CONSENT FLAG
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={newPatient.name}
+                    onChange={(e) => setNewPatient(p => ({...p, name: e.target.value}))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    placeholder="Enter patient name"
+                  />
+                </div>
+
+                {/* Date of Birth */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Date of Birth *
+                  </label>
+                  <input
+                    type="date"
+                    value={newPatient.dob}
+                    onChange={(e) => setNewPatient(p => ({...p, dob: e.target.value}))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Age */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Age
+                  </label>
+                  <input
+                    type="number"
+                    value={newPatient.age}
+                    onChange={(e) => setNewPatient(p => ({...p, age: e.target.value}))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    placeholder="Age"
+                  />
+                </div>
+
+                {/* Gender */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Gender *
+                  </label>
+                  <select
+                    value={newPatient.gender}
+                    onChange={(e) => setNewPatient(p => ({...p, gender: e.target.value}))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  >
+                    <option value="">Select Gender</option>
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
+                    <option value="O">Other</option>
+                  </select>
+                </div>
+
+                {/* Contact */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Contact Number *
+                  </label>
+                  <input
+                    type="tel"
+                    value={newPatient.contact}
+                    onChange={(e) => setNewPatient(p => ({...p, contact: e.target.value}))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    placeholder="+91 XXXXXXXXXX"
+                  />
+                </div>
+
+                {/* ABHA Number */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ABHA Number
+                  </label>
+                  <input
+                    type="text"
+                    value={newPatient.abhaNo}
+                    onChange={(e) => setNewPatient(p => ({...p, abhaNo: e.target.value}))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    placeholder="14-XXXX-XXXX-XXXX"
+                  />
+                </div>
+              </div>
+
+              {/* Consent Flag */}
+              <div className="mt-6">
+                <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    id="consent"
+                    checked={newPatient.consentFlag}
+                    onChange={(e) => setNewPatient(p => ({...p, consentFlag: e.target.checked}))}
+                    className="w-5 h-5 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
+                  />
+                  <label htmlFor="consent" className="text-sm font-medium text-gray-700">
+                    Patient has provided consent for data collection and treatment
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Section - Two Column Layout */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Left Column - ICD Diagnosis */}
+              <div className="bg-gray-50 p-6 rounded-lg">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">ICD DIAGNOSIS +</h3>
+                </div>
+                
+                {/* Primary Condition Search */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Primary Condition
+                  </label>
+                   <div className="relative">
+                    <input
+                      type="text"
+                      value={newPatient.condition}
+                      onChange={(e) =>
+                        setNewPatient(p => ({
+                          ...p,
+                          condition: e.target.value,
+                        }))
+                      }
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      placeholder="Search primary condition"
+                    />
+                    <svg
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* ICD Code Display Area */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ICD Code
+                  </label>
+                  <div className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 min-h-[46px]">
+                    <span className="italic">ICD codes will appear here...</span>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Clinical Notes
+                  </label>
+                  <textarea
+                    value={newPatient.notes}
+                    onChange={(e) => setNewPatient(p => ({...p, notes: e.target.value}))}
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    placeholder="Enter clinical notes and observations..."
+                  />
+                </div>
+              </div>
+
+              {/* Right Column - ICD to Namaste Translation */}
+              <div className="bg-gray-50 p-6 rounded-lg">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-800">TRANSLATION</h3>
+                </div>
+
+                {/* Namaste Code Output */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Namaste Code
+                  </label>
+                  <textarea
+                    readOnly
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
+                    placeholder="Namaste code will appear here..."
+                  />
+                </div>
+
+                {/* Translation Controls */}
+                <div className="flex space-x-3">
+                  <button className="flex-1 bg-teal-500 hover:bg-teal-600 text-white py-2 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                    <span>Translate Code</span>
+                  </button>
+                  <button className="bg-gray-200 hover:bg-gray-300 text-gray-700 py-2 px-4 rounded-lg transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Edit Patient Modal Component
+  const EditPatientModal = () => {
+    if (!showEditPatientModal || !editingPatient) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+          {/* Modal Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <h2 className="text-2xl font-bold text-gray-800">Edit Patient Details</h2>
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={handleUpdatePatient}
+                className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+              >
+                UPDATE PATIENT
+              </button>
+              <button
+                onClick={handleCloseModal}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Modal Content */}
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Left Column */}
+                <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-6 text-center">PATIENT INFORMATION</h3>
+                    {/* Name */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                      <input
+                        type="text"
+                        value={editingPatient.name}
+                        onChange={(e) => setEditingPatient(p => p ? ({...p, name: e.target.value}) : p)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      />
+                    </div>
+                    {/* DOB */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth *</label>
+                      <input
+                        type="date"
+                        value={editingPatient.dob}
+                        onChange={(e) => setEditingPatient(p => p ? ({...p, dob: e.target.value}) : p)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      />
+                    </div>
+                     {/* Age */}
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
+                        <input
+                            type="number"
+                            value={editingPatient.age}
+                            onChange={(e) => setEditingPatient(p => p ? ({...p, age: parseInt(e.target.value,10) || 0}) : p)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                        />
+                    </div>
+                    {/* Gender */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Gender *</label>
+                      <select
+                        value={editingPatient.gender}
+                        onChange={(e) => setEditingPatient(p => p ? ({...p, gender: e.target.value}) : p)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      >
+                        <option value="M">Male</option>
+                        <option value="F">Female</option>
+                        <option value="O">Other</option>
+                      </select>
+                    </div>
+                    {/* Contact */}
+                     <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number *</label>
+                        <input
+                            type="tel"
+                            value={editingPatient.contact}
+                            onChange={(e) => setEditingPatient(p => p ? ({...p, contact: e.target.value}) : p)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                        />
+                    </div>
+                    {/* ABHA */}
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">ABHA Number</label>
+                        <input
+                            type="text"
+                            value={editingPatient.abhaNo}
+                            onChange={(e) => setEditingPatient(p => p ? ({...p, abhaNo: e.target.value}) : p)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                        />
+                    </div>
+                </div>
+                {/* Right Column */}
+                <div>
+                     <h3 className="text-lg font-semibold text-gray-800 mb-6 text-center">MEDICAL INFORMATION</h3>
+                    {/* Condition */}
+                     <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Primary Condition</label>
+                        <input
+                            type="text"
+                            value={editingPatient.condition}
+                            onChange={(e) => setEditingPatient(p => p ? ({...p, condition: e.target.value}) : p)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                        />
+                    </div>
+                    {/* Treatment */}
+                     <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Current Treatment</label>
+                        <input
+                            type="text"
+                            value={editingPatient.treatment}
+                            onChange={(e) => setEditingPatient(p => p ? ({...p, treatment: e.target.value}) : p)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                        />
+                    </div>
+                    {/* Status */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                      <select
+                        value={editingPatient.status}
+                        onChange={(e) => setEditingPatient(p => p ? ({...p, status: e.target.value}) : p)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                      >
+                        <option>Active</option>
+                        <option>In Treatment</option>
+                        <option>Monitoring</option>
+                      </select>
+                    </div>
+                     {/* Notes */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Clinical Notes</label>
+                        <textarea
+                            value={editingPatient.notes}
+                            onChange={(e) => setEditingPatient(p => p ? ({...p, notes: e.target.value}) : p)}
+                            rows={6}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                        />
+                    </div>
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
 
   // Three-column details view
   if (viewMode === 'details') {
@@ -204,64 +723,64 @@ const Patients = () => {
             <nav className="space-y-2">
               <div className="text-gray-400 text-xs uppercase tracking-wider mb-4">General</div>
               
-              <Link href="/dashboard" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+              <a href="/dashboard" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
                 <div className="w-7 h-7 flex items-center justify-center">
-                  <Image src="/dashboard.png" alt="Dashboard" width={32} height={32} className="rounded" />
+                  <img src="/dashboard.png" alt="Dashboard" className="rounded" style={{width: '32px', height: '32px'}}/>
                 </div>
                 <span>Dashboard</span>
-              </Link>
+              </a>
               
-              <Link href="/dashboard/schedule" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+              <a href="/dashboard/schedule" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
                 <div className="w-7 h-7 flex items-center justify-center">
-                  <Image src="/schedule.png" alt="Schedule" width={32} height={32} className="rounded" />
+                  <img src="/schedule.png" alt="Schedule" className="rounded" style={{width: '32px', height: '32px'}} />
                 </div>
                 <span>Schedule</span>
-              </Link>
+              </a>
               
-              <Link href="/dashboard/patients" className="flex items-center space-x-3 p-3 rounded-lg bg-teal-600 text-white">
+              <a href="/dashboard/patients" className="flex items-center space-x-3 p-3 rounded-lg bg-teal-600 text-white">
                 <div className="w-7 h-7 flex items-center justify-center">
-                  <Image src="/patients.png" alt="Patients" width={32} height={32} className="rounded" />
+                  <img src="/patients.png" alt="Patients" className="rounded" style={{width: '32px', height: '32px'}} />
                 </div>
                 <span>Patients</span>
-              </Link>
+              </a>
               
-              <Link href="/dashboard/india-map" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+              <a href="/dashboard/india-map" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
                 <div className="w-7 h-7 flex items-center justify-center">
-                  <Image src="/india map.png" alt="India Map" width={32} height={32} className="rounded" />
+                  <img src="/india map.png" alt="India Map" className="rounded" style={{width: '32px', height: '32px'}} />
                 </div>
                 <span>India Map</span>
-              </Link>
+              </a>
               
-              <Link href="/dashboard/chatbot" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+              <a href="/dashboard/chatbot" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
                 <div className="w-7 h-7 flex items-center justify-center">
-                  <Image src="/chatbot.png" alt="Chatbot" width={32} height={32} className="rounded" />
+                  <img src="/chatbot.png" alt="Chatbot" className="rounded" style={{width: '32px', height: '32px'}} />
                 </div>
                 <span>Chatbot</span>
-              </Link>
+              </a>
               
-              <Link href="/dashboard/profile" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+              <a href="/dashboard/profile" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
                 <div className="w-7 h-7 flex items-center justify-center">
-                  <Image src="/my profile.png" alt="My Profile" width={32} height={32} className="rounded" />
+                  <img src="/my profile.png" alt="My Profile" className="rounded" style={{width: '32px', height: '32px'}} />
                 </div>
                 <span>My profile</span>
-              </Link>
+              </a>
 
               <div className="border-t border-gray-700 my-4"></div>
               
-              <Link href="/" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+              <a href="/" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
                 <div className="w-7 h-7 bg-gray-600 rounded flex items-center justify-center">
                   <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
                   </svg>
                 </div>
                 <span>Home</span>
-              </Link>
+              </a>
 
               <div className="border-t border-gray-700 my-4"></div>
               
               <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
                 <div className="w-7 h-7 flex items-center justify-center">
-                  <Image src="/settings.png" alt="Settings" width={32} height={32} className="rounded" />
+                  <img src="/settings.png" alt="Settings" className="rounded" style={{width: '32px', height: '32px'}} />
                 </div>
                 <span>Settings</span>
               </a>
@@ -432,6 +951,10 @@ const Patients = () => {
             </div>
           </div>
         </div>
+        
+        {/* Add Patient Modal */}
+        <AddPatientModal />
+        <EditPatientModal />
       </div>
     );
   }
@@ -456,64 +979,64 @@ const Patients = () => {
           <nav className="space-y-2">
             <div className="text-gray-400 text-xs uppercase tracking-wider mb-4">General</div>
             
-            <Link href="/dashboard" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+            <a href="/dashboard" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
               <div className="w-7 h-7 flex items-center justify-center">
-                <Image src="/dashboard.png" alt="Dashboard" width={32} height={32} className="rounded" />
+                <img src="/dashboard.png" alt="Dashboard" className="rounded" style={{width: '32px', height: '32px'}} />
               </div>
               <span>Dashboard</span>
-            </Link>
+            </a>
             
-            <Link href="/dashboard/schedule" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+            <a href="/dashboard/schedule" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
               <div className="w-7 h-7 flex items-center justify-center">
-                <Image src="/schedule.png" alt="Schedule" width={32} height={32} className="rounded" />
+                <img src="/schedule.png" alt="Schedule" className="rounded" style={{width: '32px', height: '32px'}} />
               </div>
               <span>Schedule</span>
-            </Link>
+            </a>
             
-            <Link href="/dashboard/patients" className="flex items-center space-x-3 p-3 rounded-lg bg-teal-600 text-white">
+            <a href="/dashboard/patients" className="flex items-center space-x-3 p-3 rounded-lg bg-teal-600 text-white">
               <div className="w-7 h-7 flex items-center justify-center">
-                <Image src="/patients.png" alt="Patients" width={32} height={32} className="rounded" />
+                <img src="/patients.png" alt="Patients" className="rounded" style={{width: '32px', height: '32px'}} />
               </div>
               <span>Patients</span>
-            </Link>
+            </a>
             
-            <Link href="/dashboard/india-map" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+            <a href="/dashboard/india-map" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
               <div className="w-7 h-7 flex items-center justify-center">
-                <Image src="/india map.png" alt="India Map" width={32} height={32} className="rounded" />
+                <img src="/india map.png" alt="India Map" className="rounded" style={{width: '32px', height: '32px'}} />
               </div>
               <span>India Map</span>
-            </Link>
+            </a>
             
-            <Link href="/dashboard/chatbot" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+            <a href="/dashboard/chatbot" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
               <div className="w-7 h-7 flex items-center justify-center">
-                <Image src="/chatbot.png" alt="Chatbot" width={32} height={32} className="rounded" />
+                <img src="/chatbot.png" alt="Chatbot" className="rounded" style={{width: '32px', height: '32px'}} />
               </div>
               <span>Chatbot</span>
-            </Link>
+            </a>
             
-            <Link href="/dashboard/profile" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+            <a href="/dashboard/profile" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
               <div className="w-7 h-7 flex items-center justify-center">
-                <Image src="/my profile.png" alt="My Profile" width={32} height={32} className="rounded" />
+                <img src="/my profile.png" alt="My Profile" className="rounded" style={{width: '32px', height: '32px'}} />
               </div>
               <span>My profile</span>
-            </Link>
+            </a>
 
             <div className="border-t border-gray-700 my-4"></div>
             
-            <Link href="/" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
+            <a href="/" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
               <div className="w-7 h-7 bg-gray-600 rounded flex items-center justify-center">
                 <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
                 </svg>
               </div>
               <span>Home</span>
-            </Link>
+            </a>
 
             <div className="border-t border-gray-700 my-4"></div>
             
             <a href="#" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition-colors">
               <div className="w-7 h-7 flex items-center justify-center">
-                <Image src="/settings.png" alt="Settings" width={32} height={32} className="rounded" />
+                <img src="/settings.png" alt="Settings" className="rounded" style={{width: '32px', height: '32px'}} />
               </div>
               <span>Settings</span>
             </a>
@@ -533,7 +1056,10 @@ const Patients = () => {
                 <button className="bg-white border border-amber-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-amber-50 transition-colors">
                   Export
                 </button>
-                <button className="bg-gradient-to-r from-teal-600 to-teal-700 text-white px-6 py-2 rounded-lg hover:from-teal-700 hover:to-teal-800 transition-all shadow-lg">
+                <button 
+                  onClick={handleAddPatient}
+                  className="bg-gradient-to-r from-teal-600 to-teal-700 text-white px-6 py-2 rounded-lg hover:from-teal-700 hover:to-teal-800 transition-all shadow-lg"
+                >
                   Add New Patient
                 </button>
               </div>
@@ -619,7 +1145,7 @@ const Patients = () => {
                   >
                     View Details
                   </button>
-                  <button className="flex-1 bg-gradient-to-r from-amber-50 to-amber-100 text-amber-700 py-2 px-3 rounded-lg hover:from-amber-100 hover:to-amber-200 transition-all text-sm font-medium">
+                  <button onClick={() => handleEditClick(patient)} className="flex-1 bg-gradient-to-r from-amber-50 to-amber-100 text-amber-700 py-2 px-3 rounded-lg hover:from-amber-100 hover:to-amber-200 transition-all text-sm font-medium">
                     Edit Record
                   </button>
                 </div>
@@ -635,8 +1161,14 @@ const Patients = () => {
           </div>
         </div>
       </div>
+      
+      {/* Add/Edit Patient Modals */}
+      <AddPatientModal />
+      <EditPatientModal />
     </div>
   );
 };
 
 export default Patients;
+
+
