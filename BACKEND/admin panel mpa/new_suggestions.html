@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAMASTE-ICD | New Suggestions</title>
+    <script src="https://cdn.jsdelivr.net/npm/idb@7/build/umd.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="h-full">
+
+    <div id="app-screen" class="hidden h-full flex flex-col">
+        <header class="bg-white p-4 border-b border-gray-200 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">NAMASTE-ICD Curation Platform</h1>
+            <div class="flex items-center">
+                <button id="reset-button" class="text-sm font-medium text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-md mr-4 flex items-center">
+                    <span class="btn-text">Reset Curation</span>
+                    <div class="loader hidden ml-2"></div>
+                </button>
+                <button id="logout-button" class="text-sm font-medium text-gray-700 hover:text-red-600">Logout</button>
+            </div>
+        </header>
+        <main class="flex-grow p-6 bg-gray-100 overflow-y-auto">
+            <!-- Stats Section -->
+            <div class="grid grid-cols-1 md:grid-cols-7 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">New Suggestions</p><p id="stat-review" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">Master Map (Staged)</p><p id="stat-master-map" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">Master Map (Verified)</p><p id="stat-master-map-verified" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">Rejected Mappings</p><p id="stat-rejected" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">3-System Mappings</p><p id="stat-three-systems" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">2+ System Mappings</p><p id="stat-two-systems" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">1-System Mappings</p><p id="stat-one-system" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500 mb-2">Source Files</p><div class="flex space-x-4 text-sm"><a href="../data/source/NATIONAL-AYURVEDA-MORBIDITY-COD.csv" target="_blank" class="text-blue-600 hover:underline">Ayurveda</a><a href="../data/source/NATIONAL-SIDDHA-MORBIDITY-CODES.csv" target="_blank" class="text-blue-600 hover:underline">Siddha</a><a href="../data/source/NATIONAL-UNANI-MORBIDITY-CODES.csv" target="_blank" class="text-blue-600 hover:underline">Unani</a></div></div>
+            </div>
+            
+            <!-- Main Content -->
+            <div class="bg-white rounded-lg shadow-sm border">
+                <div class="p-4 border-b border-gray-200">
+                    <div class="flex border-b border-gray-200">
+                        <a href="analytics.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Analytics</a>
+                        <a href="new_suggestions.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 tab-active">New Suggestions</a>
+                        <a href="master_map.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Master Map</a>
+                        <a href="rejections.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Rejected Mappings</a>
+                        <a href="icd11.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">ICD-11 Disease List</a>
+                    </div>
+                </div>
+                <div id="main-loader" class="p-16 flex justify-center"><div class="loader" style="width: 48px; height: 48px;"></div></div>
+                <div id="content-area"></div>
+            </div>
+        </main>
+        
+        <!-- Floating Action Button -->
+        <div id="fab-new-suggestions" class="floating-actions active fixed bottom-6 right-6">
+            <button onclick="handleSaveCuration(this)" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-lg hover:bg-blue-700 transition flex items-center">
+                <span class="btn-text">Save Curation Changes</span>
+                <div class="loader hidden ml-2"></div>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Modals and Popovers (Shared across pages) -->
+    <div id="rejection-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div id="rejection-reason-view">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">Why are you rejecting this mapping?</h3>
+                <p class="text-sm text-gray-600 mb-6">Your choice determines where this rejected item goes.</p>
+                <div class="space-y-3">
+                    <button onclick="submitRejection('incorrect')" class="w-full text-left px-4 py-3 border rounded-lg hover:bg-gray-100 transition"><p class="font-semibold text-gray-700">Traditional Term is Valid, ICD-11 Mapping is Wrong</p><p class="text-xs text-gray-500 mt-1">Send to the <span class="font-bold">Correction Queue</span> to assign a new ICD-11 code.</p></button>
+                    <button onclick="submitRejection('orphan')" class="w-full text-left px-4 py-3 border rounded-lg hover:bg-gray-100 transition"><p class="font-semibold text-gray-700">Traditional Term is Invalid or Misspelled</p><p class="text-xs text-gray-500 mt-1">Send to the <span class="font-bold">Orphanage</span> for future analysis and correction of the term itself.</p></button>
+                </div>
+            </div>
+            <div id="rejection-undo-view" class="hidden">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">Undo Rejection?</h3>
+                <p class="text-sm text-gray-600 mb-6">This will remove the item from the rejected list and make it available for curation again.</p>
+                <button onclick="submitUndoRejection()" class="w-full text-left px-4 py-3 border rounded-lg hover:bg-gray-100 transition bg-yellow-50 border-yellow-200"><p class="font-semibold text-yellow-800">Confirm and Undo Rejection</p></button>
+            </div>
+            <div class="mt-6 text-right"><button onclick="closeRejectionModal()" class="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2">Cancel</button></div>
+        </div>
+    </div>
+    <!-- Modals and Popovers -->
+    <!-- ... (rejection-modal is unchanged) ... -->
+    <div id="validation-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
+            
+            <!-- View for Standard Validation Errors -->
+            <div id="validation-error-view">
+                <h3 class="text-lg font-bold text-yellow-800 mb-4"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Action Required</h3>
+                <p class="text-sm text-gray-600 mb-4">Some of your selections are incomplete. Please resolve the following issues before saving:</p>
+                <div id="validation-issues" class="max-h-60 overflow-y-auto bg-gray-50 p-3 rounded-md border text-sm space-y-2"></div>
+                <div class="mt-6 text-right">
+                    <button onclick="closeValidationModal()" class="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md">Understood</button>
+                </div>
+            </div>
+
+            <!-- View for Alias Promotion Confirmation -->
+            <div id="validation-promote-view" class="hidden">
+                 <h3 class="text-lg font-bold text-blue-800 mb-4"><i class="fa-solid fa-circle-question mr-2"></i>Confirm Alias Promotion</h3>
+                 <div id="promotion-message" class="text-sm text-gray-600 mb-6 bg-gray-50 p-4 rounded-md border"></div>
+                 <div class="mt-6 flex justify-end items-center space-x-3">
+                    <button onclick="closeValidationModal()" class="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2">Cancel</button>
+                    <button id="confirm-promote-button" class="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md flex items-center">
+                        <span class="btn-text">Confirm & Promote</span>
+                        <div class="loader hidden ml-2"></div>
+                    </button>
+                 </div>
+            </div>
+
+        </div>
+    </div>
+    <!-- ... (suggestions-popover is unchanged) ... -->
+    <div id="suggestions-popover" class="suggestions-popover hidden"></div>
+    
+    <script src="shared.js"></script>
+    <script src="new_suggestions.js"></script>
+</body>
+</html>

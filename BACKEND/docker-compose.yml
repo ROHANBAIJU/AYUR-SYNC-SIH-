@@ -1,0 +1,39 @@
+services:
+  # The FastAPI Application Service
+  ayur-sync-api:
+    build: .
+    image: ayur-sync-api:latest
+    container_name: ayur-sync-api
+    ports:
+      - "8000:8000"
+    volumes:
+      # This syncs your local code for live reloading
+      - ./app:/app/app
+      - ./scripts:/app/scripts
+      - ./data:/app/data
+    env_file:
+      - ./.env
+    depends_on:
+      ayur-sync-db:
+        condition: service_healthy
+
+  # The PostgreSQL Database Service
+  ayur-sync-db:
+    image: postgres:15
+    container_name: ayur-sync-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=rb123@arb
+      - POSTGRES_DB=ayursync_icd_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ayursync_icd_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres_data:

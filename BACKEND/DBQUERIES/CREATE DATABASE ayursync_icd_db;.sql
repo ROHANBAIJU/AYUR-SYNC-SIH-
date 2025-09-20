@@ -1,0 +1,1 @@
+CREATE DATABASE ayursync_icd_db;

@@ -1,13 +1,155 @@
-Dependencies
-This will ignore any folder named node_modules anywhere in the project
-node_modules
-
-Next.js build output
-This will ignore any folder named .next anywhere in the project
-.next
-
-Other common files to ignore
+# ============================================================
+# Global ignores (OS/editor)
+# ============================================================
+# OS
 .DS_Store
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Editors / IDEs
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+.idea/
+*.iml
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+*.log
+logs/
+**/logs/
+
+# Environment and secrets
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!.env.*.example
+
+# Archives / temp
+*.zip
+*.tar
+*.gz
+*.tgz
+*.tmp
+*.temp
+~*
+
+# Databases / data blobs
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# ============================================================
+# Node / Frontend (Next.js + pnpm)
+# ============================================================
+node_modules/
+**/node_modules/
+
+# Next.js
+.next/
+.next/cache/
+out/
+.vercel/
+.turbo/
+.eslintcache
+
+# Package managers
+.pnpm-store/
+.npm/
+.yarn/
+# Keep lockfiles tracked
+# yarn.lock
+# package-lock.json
+# pnpm-lock.yaml (keep tracked)
+
+# Testing / coverage
+coverage/
+.nyc_output/
+
+# TS build info
+*.tsbuildinfo
+
+# Storybook, if ever added
+.storybook-out/
+
+# ============================================================
+# Python / Backend (FastAPI + SQLAlchemy)
+# ============================================================
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# Packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Testing / tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage*
+coverage.xml
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Uvicorn/Temp
+*.pid
+
+# Docker (local artifacts)
+**/docker-compose.override.yml
+
+# ============================================================
+# Project-specific paths
+# ============================================================
+# Backend app mounted logs (container writes under /app/logs)
+BACKEND/logs/
+
+# Data: ignore large/generated datasets, keep docs/examples
+BACKEND/data/**/*.csv
+BACKEND/data/**/*.parquet
+BACKEND/data/**/*.jsonl
+BACKEND/data/**/tmp/**
+BACKEND/data/**/cache/**
+# Allow keeping readme/examples
+!BACKEND/data/**/README.md
+!BACKEND/data/**/.gitkeep
+
+# Additional data folder from experiments
+DATA SUGGESTIONS REVERTERR/**
+!DATA SUGGESTIONS REVERTERR/README.md
+
+# Compiled cache from Python files already covered, but explicit paths here too
+BACKEND/app/**/__pycache__/
+
+# Root stray artifacts
+error.txt
+
+# Admin panel local cache (if any is added later)
+BACKEND/admin panel mpa/.cache/
+
+# ============================================================
+# End of file
+# ============================================================

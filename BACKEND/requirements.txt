@@ -1,0 +1,45 @@
+# File: requirements.txt
+# This file lists the Python packages needed for the project.
+
+# For data handling
+pandas
+openpyxl
+
+# For interacting with the Gemini API
+google-generativeai
+
+# For handling environment variables
+python-dotenv
+
+# For the FastAPI web framework
+fastapi
+uvicorn[standard]
+
+# For data validation (used by FastAPI)
+pydantic
+pydantic_settings
+# Email validation support for Pydantic's EmailStr
+email-validator
+# For authentication (JWT)
+python-jose[cryptography]
+passlib[bcrypt]
+
+# For interacting with CSV data in the API
+# No new package needed, pandas is sufficient
+#multipart
+
+python-multipart
+
+pydantic-settings
+
+xlrd
+
+psycopg2-binary
+
+sqlalchemy
+
+cachetools
+
+numpy
+
+certifi

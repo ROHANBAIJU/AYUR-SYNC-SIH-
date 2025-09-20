@@ -1,0 +1,1 @@
+SELECT * FROM mappings LIMIT 100;

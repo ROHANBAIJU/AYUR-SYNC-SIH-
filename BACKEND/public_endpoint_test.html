@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Public Endpoint Test</title>
+  <link rel="stylesheet" href="admin panel mpa/style.css" />
+  <script>
+    const API_BASE = 'http://127.0.0.1:8000/api';
+    const PUBLIC = `${API_BASE}/public`;
+    const ADMIN = `${API_BASE}/admin`;
+    const ICD_RELEASE = '2025-01';
+    let selectedNamaste = null; // { system, code, term }
+
+    function $(id){ return document.getElementById(id); }
+
+    async function loadVerifiedNames(){
+      try{
+        const res = await fetch(`${ADMIN}/verified-icd-names`);
+        const names = await res.json();
+        $('verified-list').innerHTML = names.slice(0, 200).map(n => `<span class="tag">${n}</span>`).join('');
+        $('verified-count').textContent = names.length;
+      }catch(err){ $('verified-list').innerHTML = '<em>Failed to load verified names</em>'; }
+    }
+
+    let debounce;
+    function handleSearchInput(e){
+      clearTimeout(debounce);
+      const q = e.value.trim();
+      const out = $('results');
+      out.innerHTML = '';
+      if(q.length < 3){ return; }
+      debounce = setTimeout(()=> lookup(q), 350);
+    }
+
+    async function lookup(q){
+      const out = $('results');
+      out.innerHTML = '<div class="muted">Searching…</div>';
+      try{
+        const res = await fetch(`${PUBLIC}/lookup?query=${encodeURIComponent(q)}`);
+        if(!res.ok){ throw new Error(`HTTP ${res.status}`); }
+        const data = await res.json();
+        if(!Array.isArray(data) || data.length === 0){
+          out.innerHTML = '<div class="warn">Disease not verified</div>';
+          return;
+        }
+        // Render simple results: show ICD and available system primaries
+        out.innerHTML = data.map(group => renderLookupGroup(group)).join('');
+      }catch(err){ out.innerHTML = `<div class="error">Lookup failed: ${err.message}</div>`; }
+    }
+
+    function renderLookupGroup(group){
+      const { icd_name, icd_description, system_mappings } = group;
+      const sysCards = (system_mappings || []).map(s => {
+        const p = s.primary_term;
+        if(!p) return '';
+        const term = (p.term||'');
+        const code = (p.code||'');
+  return `<button class="sys-option" data-system="${s.system}" data-code="${encodeURIComponent(code)}" data-term="${encodeURIComponent(term)}" data-icd="${encodeURIComponent(icd_name)}">${s.system.toUpperCase()}: ${term} (${code})</button>`;
+      }).join('');
+      return `<div class="result">
+        <div class="icd-title">${icd_name}</div>
+        <div class="icd-desc">${icd_description || '<em>No description</em>'}</div>
+        <div class="sys-options">${sysCards || '<span class="muted">No primary terms found</span>'}</div>
+      </div>`;
+    }
+
+    function chooseNamaste(system, code, term, icd){
+      selectedNamaste = { system, code, term, icd_name: icd };
+      $('saved-traditional').innerHTML = `<div class="pill">${system.toUpperCase()}</div>
+        <div><div class="title">${term||''}</div><div class="muted">${code||''}</div></div>
+        <button class="edit" onclick="clearTraditional()">✎</button>`;
+      $('translate-btn').disabled = !(system && code);
+    }
+
+    function clearTraditional(){
+      selectedNamaste = null;
+      $('saved-traditional').innerHTML = '<span class="muted">No traditional diagnosis saved</span>';
+      $('translate-btn').disabled = true;
+    }
+
+    async function doTranslate(){
+      if(!selectedNamaste){ return; }
+      const { system, code, icd_name } = selectedNamaste;
+      $('saved-icd').innerHTML = '<div class="muted">Translating…</div>';
+      try{
+        const params = new URLSearchParams();
+        if(system) params.set('system', system);
+        if(code) params.set('code', code);
+        if(icd_name) params.set('icd_name', icd_name);
+        if(ICD_RELEASE) params.set('release', ICD_RELEASE);
+        const res = await fetch(`${PUBLIC}/translate?${params.toString()}`);
+        if(!res.ok){
+          const err = await res.json().catch(()=>({detail:`HTTP ${res.status}`}));
+          throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        renderTranslateResult(data);
+      }catch(err){
+        $('saved-icd').innerHTML = `<div class="error">${err.message}</div>`;
+      }
+    }
+
+    function renderTranslateResult(data){
+      const icd = data.icd;
+      const left = icd ? `<div class=\"pill\">ICD-11</div>
+        <div>
+          <div class="title">${icd.name || ''}</div>
+          <div class="muted">${icd.code || ''}</div>
+          <div class="desc">${icd.description || ''}</div>
+        </div>
+        <button class="edit" onclick="clearICD()">✎</button>` : '<span class="muted">No ICD mapping found</span>';
+      $('saved-icd').innerHTML = left;
+      // Optional TM2 rendering beneath ICD info if available
+      const tm2 = data.tm2;
+      if(tm2){
+        const tm2El = document.createElement('div');
+        tm2El.className = 'mini';
+        tm2El.innerHTML = `<div class=\"mini-title\">ICD-11 TM2</div>
+          <div class=\"title\">${tm2.name||''}</div>
+          <div class=\"muted\">${tm2.code||''}</div>
+          <div class=\"desc\">${tm2.description||''}</div>`;
+        $('saved-icd').appendChild(tm2El);
+      }
+      const sysBlocks = ['ayurveda','siddha','unani'].map(k => {
+        const m = data[k];
+        if(!m) return '';
+        const p = m.primary || {};
+        const aliases = Array.isArray(m.aliases) ? m.aliases : [];
+        const aliasHtml = aliases.length ? `<details class="aliases"><summary>${aliases.length} alias(es)</summary>`+
+          aliases.map(a => `<div class="alias-item"><div class="title">${a.name||''}</div><div class="muted">${a.code||''}</div><div class="desc">${a.description||''}</div></div>`).join('')+
+          `</details>` : '<div class="muted">No aliases</div>';
+        return `<div class="mini">
+          <div class="mini-title">${k.toUpperCase()}</div>
+          <div class="title">${p.name||''}</div>
+          <div class="muted">${p.code||''}</div>
+          <div class="desc">${p.description||''}</div>
+          ${aliasHtml}
+        </div>`;
+      }).join('');
+      $('systems-panel').innerHTML = sysBlocks || '';
+    }
+
+    function clearICD(){
+      $('saved-icd').innerHTML = '<span class="muted">No ICD diagnosis saved</span>';
+    }
+
+    function savePatient(){
+      const name = $('pname').value.trim();
+      const consent = $('consent').checked;
+      if(!consent){ alert('Consent is required'); return; }
+      const payload = {
+        name,
+        consent,
+        traditional: selectedNamaste,
+        savedAt: new Date().toISOString()
+      };
+      localStorage.setItem('patientCard', JSON.stringify(payload));
+      alert('Saved locally (demo)');
+    }
+
+    window.addEventListener('DOMContentLoaded', ()=>{
+      loadVerifiedNames();
+      clearTraditional();
+      clearICD();
+      // Delegate clicks on system option buttons to avoid fragile inline handlers
+      const resultsEl = $('results');
+      resultsEl.addEventListener('click', (e) => {
+        const btn = e.target.closest('.sys-option');
+        if(!btn) return;
+  const system = btn.getAttribute('data-system');
+  const code = decodeURIComponent(btn.getAttribute('data-code')||'');
+  const term = decodeURIComponent(btn.getAttribute('data-term')||'');
+  const icd = decodeURIComponent(btn.getAttribute('data-icd')||'');
+  chooseNamaste(system, code, term, icd);
+      });
+    });
+  </script>
+  <style>
+    body{font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#f7f7fb; margin:0;}
+    header{display:flex; justify-content:space-between; align-items:center; padding:16px; background:#fff; border-bottom:1px solid #e5e7eb}
+    main{padding:16px; max-width:1200px; margin:0 auto;}
+    .grid{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+    .card{background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:16px;}
+    .row{display:flex; gap:12px; align-items:center;}
+    .pill{background:#eef2ff; color:#3730a3; font-weight:600; font-size:12px; padding:4px 8px; border-radius:12px; margin-right:8px;}
+    .title{font-weight:600}
+    .muted{color:#6b7280; font-size:12px}
+    .desc{margin-top:8px; color:#374151; font-size:14px}
+    .edit{margin-left:auto; border:none; background:#f3f4f6; border-radius:6px; padding:6px 8px; cursor:pointer}
+    .result{border:1px solid #e5e7eb; border-radius:8px; padding:12px; margin-top:8px; background:#fff}
+    .icd-title{font-weight:700}
+    .icd-desc{font-size:13px; color:#4b5563; margin-top:4px}
+    .sys-options{margin-top:8px; display:flex; flex-wrap:wrap; gap:8px}
+    .sys-option{font-size:12px; padding:6px 8px; border:1px solid #e5e7eb; border-radius:6px; background:#fafafa; cursor:pointer}
+    .warn{color:#92400e; background:#fef3c7; border:1px solid #fde68a; padding:8px; border-radius:6px}
+    .error{color:#991b1b; background:#fee2e2; border:1px solid #fecaca; padding:8px; border-radius:6px}
+    .tag{display:inline-block; margin:3px; padding:3px 8px; background:#f3f4f6; border-radius:12px; font-size:12px}
+    .toolbar{display:flex; gap:8px; align-items:center}
+    .search{width:100%; padding:8px 10px; border:1px solid #e5e7eb; border-radius:6px}
+    .save{padding:10px 14px; background:#059669; color:#fff; border:none; border-radius:8px; cursor:pointer}
+    .mini{border:1px dashed #e5e7eb; border-radius:8px; padding:8px; margin-top:8px; background:#fafafa}
+  </style>
+</head>
+<body>
+  <header>
+    <div><strong>Patients Interface</strong></div>
+    <button class="save" onclick="savePatient()">Save Patient Card</button>
+  </header>
+  <main>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="row" style="justify-content:space-between;">
+        <div class="row" style="gap:16px;">
+          <div>
+            <div class="muted">Name</div>
+            <input id="pname" class="search" placeholder="Patient Name"/>
+          </div>
+        </div>
+        <label class="row" style="gap:6px;">
+          <input type="checkbox" id="consent"/>
+          <span class="muted">Consent</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="toolbar">
+          <input class="search" placeholder="Search (verified only)" onkeyup="handleSearchInput(this)"/>
+          <button id="translate-btn" class="save" onclick="doTranslate()" disabled>Translate</button>
+        </div>
+        <div id="results" style="margin-top:10px;"></div>
+        <div class="card" style="margin-top:12px;">
+          <div class="muted" style="margin-bottom:6px;">ICD Diagnosis Saved</div>
+          <div id="saved-icd" class="row"></div>
+          <div id="systems-panel"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="muted" style="margin-bottom:6px;">Traditional Diagnosis Saved</div>
+        <div id="saved-traditional" class="row"></div>
+        <div class="card" style="margin-top:12px;">
+          <div class="title">Verified diseases you can type (<span id="verified-count">0</span>)</div>
+          <div id="verified-list" style="margin-top:8px; max-height:200px; overflow:auto;"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

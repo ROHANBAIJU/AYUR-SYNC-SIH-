@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NAMASTE-ICD | Analytics</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .card { background:#fff; border:1px solid #e5e7eb; border-radius:0.5rem; }
+  </style>
+</head>
+<body class="h-full">
+  <div id="app-screen" class="h-full flex flex-col">
+    <header class="bg-white p-4 border-b border-gray-200 flex justify-between items-center">
+      <h1 class="text-xl font-bold text-gray-800">Analytics Dashboard</h1>
+      <div class="flex items-center gap-4">
+        <a href="new_suggestions.html" class="text-sm text-gray-700 hover:text-indigo-600"></a>
+        <button id="logout-button" class="text-sm font-medium text-gray-700 hover:text-red-600">Logout</button>
+      </div>
+    </header>
+    <main class="flex-1 p-6 space-y-6">
+      <div class="bg-white rounded-lg shadow-sm border">
+        <div class="p-4 border-b border-gray-200">
+          <div class="flex border-b border-gray-200">
+            <a href="analytics.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 tab-active">Analytics</a>
+            <a href="new_suggestions.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">New Suggestions</a>
+            <a href="master_map.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Master Map</a>
+            <a href="rejections.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Rejected Mappings</a>
+            <a href="icd11.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">ICD-11 Disease List</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Instructions Section -->
+      <section class="card p-4">
+        <div class="bg-gradient-to-r from-indigo-50 to-teal-50 -m-4 mb-4 p-4 border-b rounded-t-lg">
+          <h2 class="text-xl font-bold text-gray-800">How this works + Live Test</h2>
+          <p class="text-sm text-gray-700 mt-1">Real API telemetry from your backend. The middleware logs every request to JSONL; this dashboard aggregates it. Use the Live Test to call endpoints and watch charts update in near‑real time.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Live Test Instructions -->
+          <div>
+            <h3 class="font-semibold mb-2">Using the Live Test area</h3>
+            <ul class="text-sm text-gray-700 space-y-2">
+              <li class="flex gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">Step</span><span><strong>Method</strong>: choose GET or POST (PUT/PATCH supported with body).</span></li>
+              <li class="flex gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">Step</span><span><strong>Endpoint</strong>: enter a full URL or a path starting with <code>/api</code> (base host is auto‑prefixed).</span></li>
+              <li class="flex gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">Step</span><span><strong>Body</strong> (POST/PUT/PATCH): provide JSON. We attempt to parse; on failure it is sent as‑is.</span></li>
+              <li class="flex gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">Step</span><span><strong>Auth</strong>: Bearer token is added automatically. If you see 401, re‑login.</span></li>
+              <li class="flex gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">Step</span><span>After calling, check <strong>Latency</strong>, <strong>Status</strong>, and the formatted <strong>Response</strong>.</span></li>
+              <li class="flex gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-indigo-100 text-indigo-700 border border-indigo-200">Step</span><span>Within ~0.5s, charts refresh to include your request.</span></li>
+            </ul>
+            <div class="mt-3">
+              <p class="text-sm font-medium text-gray-800">Examples to try:</p>
+              <pre class="text-xs bg-gray-50 border rounded p-3 overflow-auto ring-1 ring-gray-100">
+GET /api/public/lookup?query=Dengue
+GET /api/public/translate?system=ayurveda&amp;code=AKK-12&amp;target=icd11
+GET /api/fhir/metadata
+GET /api/fhir/CodeSystem/ayurveda
+GET /api/fhir/CodeSystem/$lookup?system=ayurveda&amp;code=AKK-12
+              </pre>
+            </div>
+          </div>
+
+          <!-- System Overview & Flow -->
+          <div>
+            <h3 class="font-semibold mb-2">Overall flow: Clinician ↔ Analytics ↔ Curation</h3>
+            <ol class="list-decimal pl-5 text-sm text-gray-700 space-y-1">
+              <li>Clinicians use Public or FHIR endpoints to lookup/translate terminology. Only verified mappings are exposed.</li>
+              <li>Every request is logged by middleware to <code>/app/logs/access.log</code> as JSON lines and rendered here.</li>
+              <li>Curation Admins use the panel (New Suggestions, Master Map, Rejections, ICD-11) to improve and verify mappings.</li>
+              <li>Once verified, mappings influence clinician results immediately (unified lookup, translations, FHIR).</li>
+            </ol>
+            <div class="mt-3">
+              <p class="text-sm font-medium text-gray-800">Access log JSON (one line per request):</p>
+              <pre class="text-xs bg-gray-50 border rounded p-2 overflow-auto">{"ts":"2025-09-19T10:25:31.123Z","method":"GET","path":"/api/public/lookup","status":200,"duration_ms":42,"client":"127.0.0.1","has_auth":true}</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Endpoints Catalog -->
+        <div class="mt-6 grid grid-cols-1 gap-6">
+          <div>
+            <h3 class="font-semibold mb-2">Public clinician endpoints</h3>
+            <ul class="text-sm text-gray-700 space-y-2">
+              <li class="flex items-start gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">GET</span><span><code>/api/public/lookup?query=...</code> — unified lookup for ICD/TM names or codes; returns verified mappings.</span></li>
+              <li class="flex items-start gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">GET</span><span><code>/api/public/translate?system=ayurveda|siddha|unani&amp;code=...&amp;icd_name=...&amp;target=icd11</code> — translate NAMASTE ↔ ICD11.</span></li>
+            </ul>
+            <h3 class="font-semibold mt-3 mb-2">FHIR endpoints (R4 semantics)</h3>
+            <ul class="text-sm text-gray-700 space-y-2">
+              <li class="flex items-start gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">GET</span><span><code>/api/fhir/metadata</code> — CapabilityStatement.</span></li>
+              <li class="flex items-start gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">GET</span><span><code>/api/fhir/CodeSystem/{system}</code> — CodeSystem read for ayurveda/siddha/unani.</span></li>
+              <li class="flex items-start gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">GET</span><span><code>/api/fhir/CodeSystem/$lookup?system=...&amp;code=...</code> — concept details.</span></li>
+              <li class="flex items-start gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">GET</span><span><code>/api/fhir/ConceptMap/$translate?system=...&amp;code=...&amp;target=icd11</code> — mapping to ICD‑11.</span></li>
+              <li class="flex items-start gap-2 text-gray-500"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200">GET</span><span><code>/api/fhir/ValueSet/$expand?system=...&amp;icdName=...</code> — optional; unified lookup covers this in clinician flows.</span></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+      <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="card p-4"><p class="text-sm text-gray-500">Total Requests</p><p id="stat-total" class="text-2xl font-semibold">0</p></div>
+        <div class="card p-4"><p class="text-sm text-gray-500">Avg Latency (ms)</p><p id="stat-avg" class="text-2xl font-semibold">0</p></div>
+        <div class="card p-4"><p class="text-sm text-gray-500">2xx</p><p id="stat-2xx" class="text-2xl font-semibold">0</p></div>
+        <div class="card p-4"><p class="text-sm text-gray-500">4xx/5xx</p><p id="stat-err" class="text-2xl font-semibold">0</p></div>
+      </section>
+      <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="card p-4">
+          <h3 class="font-semibold mb-2">Requests over time</h3>
+          <canvas id="tsChart" height="140"></canvas>
+        </div>
+        <div class="card p-4">
+          <h3 class="font-semibold mb-2">Top paths</h3>
+          <div id="paths-table" class="text-sm"></div>
+        </div>
+      </section>
+      <section class="card p-4">
+        <h3 class="font-semibold mb-3">Live test area</h3>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
+          <select id="method" class="border rounded p-2"><option>GET</option><option>POST</option></select>
+          <input id="endpoint" class="border rounded p-2" placeholder="/api/public/lookup?query=Dengue" />
+          <input id="body" class="border rounded p-2" placeholder='{"foo":"bar"} (for POST)' />
+          <button id="run" class="bg-indigo-600 text-white rounded p-2">Run</button>
+        </div>
+        <div class="text-xs text-gray-600">Latency: <span id="latency">-</span> ms, Status: <span id="status">-</span></div>
+        <pre id="output" class="mt-2 bg-gray-50 border rounded p-2 overflow-auto max-h-64 text-xs"></pre>
+      </section>
+      <section class="card p-4">
+        <h3 class="font-semibold mb-3">Recent requests</h3>
+        <pre id="recent" class="bg-gray-50 border rounded p-2 overflow-auto max-h-64 text-xs"></pre>
+      </section>
+
+      <!-- India Map Section -->
+      <section class="card p-0 overflow-hidden">
+        <div class="p-4 border-b">
+          <h3 class="font-semibold">Diagnosis heatmap of India</h3>
+          <p class="text-sm text-gray-600">Pins are clustered by area; hover for top diagnoses; click to see doctors and detailed events.</p>
+          <div class="mt-3 flex flex-wrap gap-2 items-end">
+            <label class="text-sm">System
+              <select id="map-system" class="border rounded p-1 ml-1">
+                <option value="">All</option>
+                <option value="ayurveda">Ayurveda</option>
+                <option value="siddha">Siddha</option>
+                <option value="unani">Unani</option>
+              </select>
+            </label>
+            <label class="text-sm">From <input id="map-from" type="date" class="border rounded p-1 ml-1" /></label>
+            <label class="text-sm">To <input id="map-to" type="date" class="border rounded p-1 ml-1" /></label>
+            <button id="map-refresh" class="bg-indigo-600 text-white rounded px-3 py-1 text-sm">Refresh</button>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3" style="min-height: 480px;">
+          <div class="lg:col-span-2 relative">
+            <div id="india-map" class="w-full h-full" style="min-height: 480px;"></div>
+          </div>
+          <div class="border-l bg-white h-full overflow-auto">
+            <div class="p-3 border-b"><h4 class="font-semibold">Selection details</h4></div>
+            <div id="map-details" class="p-3 text-sm text-gray-700">
+              <p class="text-gray-500">Click a cluster to see details.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="shared.js"></script>
+  <script src="analytics.js"></script>
+</body>
+</html>

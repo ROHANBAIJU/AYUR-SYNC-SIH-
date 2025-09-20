@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAMASTE-ICD | Curation Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .tab-button { border-bottom: 3px solid transparent; transition: all 0.2s ease-in-out; }
+        .tab-active { border-bottom-color: #3b82f6; color: #3b82f6; font-weight: 600; }
+        .sub-tab-active { background-color: #e0e7ff; color: #4338ca; }
+        .loader { border: 4px solid #f3f4f6; border-top: 4px solid #3b82f6; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .grid-table { border-collapse: collapse; border: 1px solid #e5e7eb; table-layout: fixed; }
+        .table-cell { padding: 8px 12px; border: 1px solid #e5e7eb; vertical-align: top; }
+        .cell-approved { background-color: #dcfce7 !important; }
+        .cell-rejected { background-color: #fee2e2 !important; }
+        .cell-review { background-color: #ffedd5 !important; }
+        .alias-approved { background-color: #e0e7ff !important; }
+        .alias-rejected { background-color: #fee2e2 !important; }
+        .floating-actions { transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out; transform: translateY(10px); opacity: 0; pointer-events: none; }
+        .floating-actions.active { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        .modal-backdrop { 
+            transition: opacity 0.2s ease-in-out; 
+            z-index: 60;
+        }
+        
+        .suggestions-popover {
+            position: absolute;
+            z-index: 50;
+            background-color: #f8fafc; 
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 380px; 
+            max-height: 400px;
+            overflow-y: auto;
+            transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+        }
+    </style>
+</head>
+<body class="h-full">
+
+    <div id="login-screen" class="min-h-screen flex items-center justify-center bg-gray-100">
+        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-sm"><h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Curation Platform</h2><form id="login-form"><div class="mb-4"><label for="username" class="block text-sm font-medium text-gray-600 mb-1">Username</label><input type="text" id="username" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" value="admin" required></div><div class="mb-6"><label for="password" class="block text-sm font-medium text-gray-600 mb-1">Password</label><input type="password" id="password" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" value="sih2024" required></div><button type="submit" class="w-full bg-indigo-600 text-white py-2.5 rounded-md hover:bg-indigo-700 transition-colors flex items-center justify-center font-semibold"><span class="btn-text">Login</span><div class="loader hidden ml-2"></div></button><p id="login-error" class="text-red-500 text-sm mt-4 text-center"></p></form></div>
+    </div>
+
+    <div id="app-screen" class="hidden h-full flex flex-col">
+        <header class="bg-white p-4 border-b border-gray-200 flex justify-between items-center"><h1 class="text-xl font-bold text-gray-800">NAMASTE-ICD Curation Platform</h1><div class="flex items-center"><button id="reset-button" class="text-sm font-medium text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-md mr-4 flex items-center"><span class="btn-text">Reset Curation</span><div class="loader hidden ml-2"></div></button><button id="logout-button" class="text-sm font-medium text-gray-700 hover:text-red-600">Logout</button></div></header>
+        <main class="flex-grow p-6 bg-gray-100 overflow-y-auto">
+            <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">New Suggestions</p><p id="stat-review" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">Master Map (Staged)</p><p id="stat-master-map" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">Master Map (Verified)</p><p id="stat-master-map-verified" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">3-System Mappings</p><p id="stat-three-systems" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">2+ System Mappings</p><p id="stat-two-systems" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">1-System Mappings</p><p id="stat-one-system" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500 mb-2">Source Files</p><div class="flex space-x-4 text-sm"><a href="../data/source/NATIONAL-AYURVEDA-MORBIDITY-COD.csv" target="_blank" class="text-blue-600 hover:underline">Ayurveda</a><a href="../data/source/NATIONAL-SIDDHA-MORBIDITY-CODES.csv" target="_blank" class="text-blue-600 hover:underline">Siddha</a><a href="../data/source/NATIONAL-UNANI-MORBIDITY-CODES.csv" target="_blank" class="text-blue-600 hover:underline">Unani</a></div></div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm border">
+                <div class="p-4 border-b border-gray-200"><div class="flex border-b border-gray-200"><button data-tab="new" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 tab-active">New Suggestions</button><button data-tab="master" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Master Map</button><button data-tab="rejected" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Rejected Mappings</button><button data-tab="icd" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">ICD-11 Disease List</button></div></div>
+                <div id="main-loader" class="p-16 flex justify-center hidden"><div class="loader" style="width: 48px; height: 48px;"></div></div>
+                <div id="content-area"></div>
+            </div>
+        </main>
+        <div id="fab-new-suggestions" class="floating-actions fixed bottom-6 right-6"><button onclick="handleSaveCuration(this)" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-lg hover:bg-blue-700 transition flex items-center"><span class="btn-text">Save Curation Changes</span><div class="loader hidden ml-2"></div></button></div>
+        <div id="fab-master-map" class="floating-actions fixed bottom-6 right-6"><button onclick="handleCommitToMaster(this)" class="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-lg hover:bg-green-700 transition flex items-center"><span class="btn-text">Commit to Verified DB</span><div class="loader hidden ml-2"></div></button></div>
+    </div>
+    
+    <div id="rejection-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div id="rejection-reason-view">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">Why are you rejecting this mapping?</h3>
+                <p class="text-sm text-gray-600 mb-6">Your choice determines where this rejected item goes.</p>
+                <div class="space-y-3">
+                    <button onclick="submitRejection('incorrect')" class="w-full text-left px-4 py-3 border rounded-lg hover:bg-gray-100 transition"><p class="font-semibold text-gray-700">Traditional Term is Valid, ICD-11 Mapping is Wrong</p><p class="text-xs text-gray-500 mt-1">Send to the <span class="font-bold">Correction Queue</span> to assign a new ICD-11 code.</p></button>
+                    <button onclick="submitRejection('orphan')" class="w-full text-left px-4 py-3 border rounded-lg hover:bg-gray-100 transition"><p class="font-semibold text-gray-700">Traditional Term is Invalid or Misspelled</p><p class="text-xs text-gray-500 mt-1">Send to the <span class="font-bold">Orphanage</span> for future analysis and correction of the term itself.</p></button>
+                </div>
+            </div>
+            <div id="rejection-undo-view" class="hidden">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">Undo Rejection?</h3>
+                <p class="text-sm text-gray-600 mb-6">This will remove the item from the rejected list and make it available for curation again.</p>
+                <button onclick="submitUndoRejection()" class="w-full text-left px-4 py-3 border rounded-lg hover:bg-gray-100 transition bg-yellow-50 border-yellow-200"><p class="font-semibold text-yellow-800">Confirm and Undo Rejection</p></button>
+            </div>
+            <div class="mt-6 text-right"><button onclick="closeRejectionModal()" class="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2">Cancel</button></div>
+        </div>
+    </div>
+
+    <div id="validation-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
+            <h3 class="text-lg font-bold text-yellow-800 mb-4"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Action Required</h3>
+            <p class="text-sm text-gray-600 mb-4">Some of your selections are incomplete. Please resolve the following issues before saving:</p>
+            <div id="validation-issues" class="max-h-60 overflow-y-auto bg-gray-50 p-3 rounded-md border text-sm space-y-2">
+            </div>
+            <div class="mt-6 text-right">
+                <button onclick="closeValidationModal()" class="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md">Understood</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Revert warning modal: require Undo before Revert when row is Verified -->
+    <div id="revert-warning-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
+            <h3 class="text-lg font-bold text-red-700 mb-2"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Undo Required Before Revert</h3>
+            <p class="text-sm text-gray-700 mb-4">This mapping is currently <span class="font-semibold">Verified</span>. Please <span class="font-semibold">Undo Verification</span> first to move it back to <span class="font-semibold">Staged</span>. Then you can use <span class="font-semibold">Revert</span> to send it to New Suggestions.</p>
+            <div class="mt-4 flex justify-end space-x-3">
+                <button type="button" onclick="closeRevertWarningModal()" class="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2">Cancel</button>
+                <button type="button" onclick="handleUndoFromModal(this)" class="text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-md flex items-center">
+                    <span class="btn-text">Undo Verification</span>
+                    <div class="loader hidden ml-2"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="mapping-editor-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div class="p-4 border-b">
+                <h3 id="editor-title" class="text-lg font-bold text-gray-800">Edit Mapping</h3>
+            </div>
+            <div class="p-6 overflow-y-auto space-y-6">
+                <div class="p-4 border rounded-lg">
+                    <h4 class="text-md font-semibold text-gray-700 border-b pb-2 mb-3">Primary Term</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <input type="hidden" id="editor-primary-justification-hidden">
+                        <input type="hidden" id="editor-primary-confidence-hidden">
+                        <div><label class="block font-medium text-gray-600">Term Name</label><input type="text" id="editor-primary-term" class="w-full mt-1 p-2 border rounded"></div>
+                        <div><label class="block font-medium text-gray-600">Code</label><input type="text" id="editor-primary-code" class="w-full mt-1 p-2 border rounded"></div>
+                        <div><label id="editor-primary-vernacular-label" class="block font-medium text-gray-600">Vernacular</label><input type="text" id="editor-primary-vernacular" class="w-full mt-1 p-2 border rounded"></div>
+                        <div><label class="block font-medium text-gray-600">Source Row</label><input type="text" id="editor-primary-source_row" class="w-full mt-1 p-2 border rounded"></div>
+                        <div class="col-span-full"><label class="block font-medium text-gray-600">Source Description</label><textarea id="editor-primary-source_description" rows="3" class="w-full mt-1 p-2 border rounded"></textarea></div>
+                        <div class="col-span-full pt-2">
+                            <button type="button" onclick="handleRunAiSurety(this, true)" class="w-full text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-md flex items-center justify-center">
+                                <span class="btn-text"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Run AI Surety for Primary Term</span>
+                                <div class="loader hidden ml-2"></div>
+                            </button>
+                        </div>
+                        <div class="ai-feedback-container col-span-full grid-cols-5 gap-4 hidden">
+                            <div class="col-span-4 bg-gray-50 p-3 rounded-md border"><label class="block font-medium text-gray-600 text-xs">AI-Generated Justification</label><p class="editor-justification text-xs text-gray-700 mt-1 h-16 overflow-y-auto"></p></div>
+                            <div class="col-span-1 bg-gray-50 p-3 rounded-md border text-center"><label class="block font-medium text-gray-600 text-xs">AI Confidence</label><p class="editor-confidence text-2xl font-bold text-gray-800 mt-2"></p></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center border-b pb-2 mb-3">
+                         <h4 class="text-md font-semibold text-gray-700">Linked Aliases</h4>
+                         <button onclick="addAliasField()" class="text-sm font-medium text-blue-600 hover:text-blue-800 flex items-center"><i class="fa-solid fa-plus mr-1"></i> Add Alias</button>
+                    </div>
+                    <div id="alias-editor-container" class="space-y-4"></div>
+                </div>
+            </div>
+            <div class="p-4 bg-gray-50 border-t flex justify-end items-center space-x-3">
+                <button type="button" onclick="closeMappingEditor()" class="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2">Cancel</button>
+                <button type="button" onclick="handleSaveMasterMapEdit(this)" class="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md flex items-center">
+                    <span class="btn-text">Save Changes</span>
+                    <div class="loader hidden ml-2"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="add-icd-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Add New ICD-11 Disease</h3>
+            <div class="space-y-4 text-sm">
+                <div><label class="block font-medium text-gray-600">ICD-11 Disease Name</label><input type="text" id="new-icd-name" class="w-full mt-1 p-2 border rounded"></div>
+                <div><label class="block font-medium text-gray-600">Official Description</label><textarea id="new-icd-description" rows="4" class="w-full mt-1 p-2 border rounded"></textarea></div>
+            </div>
+            <div class="p-4 bg-gray-50 -m-6 mt-6 border-t flex justify-end items-center space-x-3">
+                 <button type="button" onclick="document.getElementById('add-icd-modal').classList.add('hidden')" class="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2">Cancel</button>
+                <button type="button" onclick="handleAddIcdCode(this)" class="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md flex items-center">
+                    <span class="btn-text">Add to Master List</span>
+                    <div class="loader hidden ml-2"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="suggestions-popover" class="suggestions-popover hidden"></div>
+
+<script>
+const state = { token: null, currentTab: 'new', currentRejectedSubTab: 'correction', allSuggestionsCache: [], filteredSuggestions: [], data: { master: [], rejected: { needs_correction: [], no_mapping: [] }, icdMasterList: [] }, curationDecisions: {}, pagination: { new: { page: 1, limit: 20, total: 0 } }, stats: { review: 0, master_map: 0, rejected: 0, completeness: {} }, rejectionContext: { icdName: null, system: null, suggestion: null, isPrimary: null }, popoverContext: { button: null, icdName: null, system: null }, editorContext: { icdName: null, system: null, originalJustification: '', originalConfidence: '' }, revertContext: { icdName: null }, searchTerm: '', searchTimeout: null };
+const dom = {};
+const API_BASE_URL = 'http://127.0.0.1:8000/api';
+
+document.addEventListener('DOMContentLoaded', () => {
+    Object.assign(dom, { 
+        loginScreen: document.getElementById('login-screen'), appScreen: document.getElementById('app-screen'), loginForm: document.getElementById('login-form'), loginError: document.getElementById('login-error'), 
+        logoutButton: document.getElementById('logout-button'), resetButton: document.getElementById('reset-button'), tabButtons: document.querySelectorAll('.tab-button'), 
+        contentArea: document.getElementById('content-area'), mainLoader: document.getElementById('main-loader'), 
+    statReview: document.getElementById('stat-review'), statMasterMap: document.getElementById('stat-master-map'), statMasterMapVerified: document.getElementById('stat-master-map-verified'), statRejected: document.getElementById('stat-rejected'), 
+        statThreeSystems: document.getElementById('stat-three-systems'), statTwoSystems: document.getElementById('stat-two-systems'), statOneSystem: document.getElementById('stat-one-system'), 
+        fabNew: document.getElementById('fab-new-suggestions'), fabMaster: document.getElementById('fab-master-map'), 
+        rejectionModal: document.getElementById('rejection-modal'), rejectionReasonView: document.getElementById('rejection-reason-view'), rejectionUndoView: document.getElementById('rejection-undo-view'),
+        suggestionsPopover: document.getElementById('suggestions-popover'),
+        validationModal: document.getElementById('validation-modal'),
+        validationIssues: document.getElementById('validation-issues'),
+        mappingEditorModal: document.getElementById('mapping-editor-modal'),
+        aliasEditorContainer: document.getElementById('alias-editor-container'),
+        addIcdModal: document.getElementById('add-icd-modal'),
+        revertWarningModal: document.getElementById('revert-warning-modal')
+    });
+    state.token = localStorage.getItem('accessToken');
+    if (state.token) { initializeApp(); } else { dom.loginScreen.classList.remove('hidden'); }
+    dom.loginForm.addEventListener('submit', (e) => { e.preventDefault(); handleLogin(e.target.querySelector('button')); });
+});
+
+async function initializeApp() {
+    dom.loginScreen.classList.add('hidden');
+    dom.appScreen.classList.remove('hidden');
+    dom.logoutButton.addEventListener('click', handleLogout);
+    dom.tabButtons.forEach(btn => btn.addEventListener('click', (e) => handleTabSwitch(e.currentTarget)));
+    dom.resetButton.addEventListener('click', () => handleResetCuration(dom.resetButton));
+    document.querySelector('main').addEventListener('scroll', updatePopoverPositionOnScroll);
+    await fetchAllData();
+    renderCurrentTab();
+}
+
+async function handleLogin(button) {
+    toggleButtonLoading(button, true, 'Logging in...');
+    const form = dom.loginForm;
+    dom.loginError.textContent = '';
+    const details = new URLSearchParams();
+    details.append('username', form.username.value);
+    details.append('password', form.password.value);
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/token`, { method: 'POST', body: details });
+        if (!response.ok) { 
+             const errorData = await response.json().catch(() => ({detail: 'Login failed.'}));
+             throw new Error(errorData.detail);
+        }
+        const data = await response.json();
+        state.token = data.access_token;
+        localStorage.setItem('accessToken', state.token);
+        initializeApp();
+    } catch (error) {
+        dom.loginError.textContent = error.message;
+    } finally {
+        toggleButtonLoading(button, false, 'Login');
+    }
+}
+
+function handleLogout() {
+    localStorage.removeItem('accessToken');
+    location.reload();
+}
+
+async function handleTabSwitch(clickedButton) {
+    hideSuggestionsPopover();
+    state.currentTab = clickedButton.dataset.tab;
+    dom.tabButtons.forEach(btn => btn.classList.remove('tab-active'));
+    clickedButton.classList.add('tab-active');
+    renderCurrentTab();
+}
+
+async function fetchAllData() {
+    dom.contentArea.innerHTML = '';
+    dom.mainLoader.classList.remove('hidden');
+    try {
+        const [statsRes, completenessStatsRes, allSuggestions, masterRes, rejectedRes, icdListRes] = await Promise.all([
+            fetchAPI('/admin/stats'),
+            fetchAPI('/admin/completeness-stats'),
+            fetchAPI('/admin/all-suggestions'),
+            fetchAPI('/admin/master-map-data'),
+            fetchAPI('/admin/rejected-mappings'),
+            fetchAPI('/admin/icd-master-list')
+        ]);
+    state.stats = { ...statsRes, completeness: completenessStatsRes };
+        state.allSuggestionsCache = allSuggestions;
+        state.data.master = masterRes; 
+        state.data.rejected = rejectedRes;
+        state.data.icdMasterList = icdListRes;
+        
+        state.filteredSuggestions = state.allSuggestionsCache;
+        state.pagination.new.total = state.filteredSuggestions.length;
+        
+        updateStats();
+    } catch (error) { 
+        console.error("Error fetching data:", error); 
+    } finally { 
+        dom.mainLoader.classList.add('hidden'); 
+    }
+}
+
+function filterAndRenderSuggestions() {
+    const searchTerm = state.searchTerm.toLowerCase();
+    let filtered;
+
+    if (searchTerm.length >= 3) {
+        filtered = state.allSuggestionsCache.filter(row => {
+            if (row.suggested_icd_name.toLowerCase().includes(searchTerm)) return true;
+            for (const system of ['ayurveda', 'siddha', 'unani']) {
+                if (row[`${system}_suggestions`].toLowerCase().includes(searchTerm)) return true;
+            }
+            return false;
+        });
+    } else {
+        filtered = state.allSuggestionsCache;
+    }
+    
+    state.filteredSuggestions = filtered;
+    state.pagination.new.total = filtered.length;
+    if (state.currentTab === 'new') {
+        updateNewSuggestionsContent();
+    }
+}
+
+function handleSearch(inputElement) {
+    clearTimeout(state.searchTimeout);
+    const searchLoader = document.getElementById('search-loader');
+    if (searchLoader) searchLoader.classList.remove('hidden');
+
+    state.searchTimeout = setTimeout(() => {
+        state.searchTerm = inputElement.value;
+        state.pagination.new.page = 1;
+        filterAndRenderSuggestions();
+        if (searchLoader) searchLoader.classList.add('hidden');
+    }, 300);
+}
+
+function renderCurrentTab() {
+    hideSuggestionsPopover();
+    updateFABs();
+    if (state.currentTab === 'new') {
+        renderNewSuggestions(); 
+        return; 
+    }
+    let contentHtml = '';
+    if (state.currentTab === 'master') contentHtml = renderMasterMap();
+    if (state.currentTab === 'rejected') contentHtml = renderRejected();
+    if (state.currentTab === 'icd') contentHtml = renderIcdList();
+    dom.contentArea.innerHTML = contentHtml;
+}
+
+function showSuggestionsPopover(buttonElement, icdName, system) {
+    state.popoverContext = { button: buttonElement, icdName, system };
+    if (!dom.suggestionsPopover.classList.contains('hidden') && dom.suggestionsPopover.dataset.trigger === buttonElement.id) {
+        hideSuggestionsPopover();
+        return;
+    }
+    renderSuggestionsPopover();
+    positionPopover(); 
+    dom.suggestionsPopover.classList.remove('hidden');
+}
+
+function updatePopoverPositionOnScroll() {
+    if (!dom.suggestionsPopover.classList.contains('hidden')) {
+        positionPopover();
+    }
+}
+
+function positionPopover() {
+    const { button } = state.popoverContext;
+    if (!button || !document.body.contains(button)) {
+        hideSuggestionsPopover();
+        return;
+    }
+
+    const rect = button.getBoundingClientRect();
+    dom.suggestionsPopover.style.visibility = 'hidden'; 
+    dom.suggestionsPopover.classList.remove('hidden');
+    const popoverHeight = dom.suggestionsPopover.offsetHeight;
+    const popoverWidth = dom.suggestionsPopover.offsetWidth;
+    dom.suggestionsPopover.classList.add('hidden');
+    dom.suggestionsPopover.style.visibility = 'visible';
+
+    let top = window.scrollY + rect.top - popoverHeight - 8;
+    let left = window.scrollX + rect.left + (rect.width / 2) - (popoverWidth / 2);
+
+    if (top < window.scrollY) { 
+        top = window.scrollY + rect.bottom + 8;
+    }
+    if (left < 0) { 
+        left = 5;
+    }
+    if ((left + popoverWidth) > window.innerWidth) { 
+        left = window.innerWidth - popoverWidth - 5;
+    }
+
+    dom.suggestionsPopover.style.top = `${top}px`;
+    dom.suggestionsPopover.style.left = `${left}px`;
+}
+
+
+function renderSuggestionsPopover() {
+    const { button, icdName, system } = state.popoverContext;
+    if (!button || !icdName || !system) return;
+
+    const rowData = state.allSuggestionsCache.find(r => r.suggested_icd_name === icdName);
+    if (!rowData) return;
+    
+    const suggestions = JSON.parse(rowData[`${system}_suggestions`]);
+    const decisionObj = state.curationDecisions[icdName]?.[system] || {};
+    
+    let primarySugg = null;
+    const approvedPrimaryId = decisionObj.primary;
+    const rejectedPrimaryInfo = (decisionObj.rejected_suggestions || []).find(r => r.isPrimary);
+
+    if (approvedPrimaryId) {
+        primarySugg = suggestions.find(s => getSuggestionId(s) === approvedPrimaryId);
+    } else if (decisionObj.review_suggestion) {
+        primarySugg = suggestions.find(s => getSuggestionId(s) === decisionObj.review_suggestion);
+    } else if (rejectedPrimaryInfo) {
+        primarySugg = rejectedPrimaryInfo.suggestion;
+    } else {
+        primarySugg = suggestions.find(s => !(decisionObj.rejected_suggestions || []).some(r => getSuggestionId(r.suggestion) === getSuggestionId(s)));
+    }
+    
+    if (!primarySugg) {
+        hideSuggestionsPopover();
+        return;
+    }
+
+    const otherSuggs = suggestions.filter(s => getSuggestionId(s) !== getSuggestionId(primarySugg));
+    const popoverContentHtml = otherSuggs.map(sugg => renderSuggestion(sugg, icdName, system, 'alias')).join('');
+
+    if (!popoverContentHtml) {
+        hideSuggestionsPopover();
+        return;
+    }
+
+    const closeButtonHtml = `<button onclick="hideSuggestionsPopover()" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 transition-colors"><i class="fa-solid fa-times"></i></button>`;
+    dom.suggestionsPopover.innerHTML = `<div class="relative p-2 space-y-2">${closeButtonHtml}${popoverContentHtml}</div>`;
+    dom.suggestionsPopover.dataset.trigger = button.id;
+}
+
+
+function hideSuggestionsPopover() {
+    if (dom.suggestionsPopover) {
+        dom.suggestionsPopover.classList.add('hidden');
+        dom.suggestionsPopover.removeAttribute('data-trigger');
+        state.popoverContext = { button: null, icdName: null, system: null };
+    }
+}
+
+function createCurationCell(safeIcdName, icdName, system, row) {
+    const systemDataString = row[`${system}_suggestions`]; 
+    if (!systemDataString || systemDataString === '[]') return `<td class="table-cell text-gray-400 bg-gray-50 text-xs">N/A</td>`;
+    let suggestions;
+    try {
+        suggestions = JSON.parse(systemDataString);
+        if (!Array.isArray(suggestions) || suggestions.length === 0) return `<td class="table-cell text-gray-400 bg-gray-50 text-xs">N/A</td>`;
+    } catch (e) { return `<td class="table-cell text-red-500 bg-red-100 text-xs">Data Error</td>`; }
+    
+    const decisionObj = state.curationDecisions[icdName]?.[system] || {};
+    
+    let cellClass = '';
+    if (decisionObj.primary) {
+        cellClass = 'cell-approved';
+    } else if (decisionObj.review_suggestion) {
+        cellClass = 'cell-review';
+    } else if ((decisionObj.rejected_suggestions || []).some(r => r.isPrimary)) {
+        cellClass = 'cell-rejected';
+    }
+
+    let primarySugg = null;
+    const approvedPrimaryId = decisionObj.primary;
+    const rejectedPrimaryInfo = (decisionObj.rejected_suggestions || []).find(r => r.isPrimary);
+    const isPrimaryRejected = !!rejectedPrimaryInfo;
+
+    if (approvedPrimaryId) {
+        primarySugg = suggestions.find(s => getSuggestionId(s) === approvedPrimaryId);
+    } else if (decisionObj.review_suggestion) {
+        primarySugg = suggestions.find(s => getSuggestionId(s) === decisionObj.review_suggestion);
+    } else if (rejectedPrimaryInfo) {
+        primarySugg = rejectedPrimaryInfo.suggestion;
+    } else {
+        primarySugg = suggestions.find(s => !(decisionObj.rejected_suggestions || []).some(r => getSuggestionId(r.suggestion) === getSuggestionId(s)));
+    }
+
+    if (!primarySugg) {
+        return `<td class="table-cell cell-rejected text-xs" id="cell-${safeIcdName}-${system}">All suggestions handled.</td>`;
+    }
+    
+    const otherSuggs = suggestions.filter(s => getSuggestionId(s) !== getSuggestionId(primarySugg));
+    const primaryHtml = renderSuggestion(primarySugg, icdName, system, 'primary');
+    
+    let extraContentHtml = '';
+    const totalAliasCount = otherSuggs.length;
+    if (totalAliasCount > 0) {
+        const untouchedAliasCount = otherSuggs.filter(s => {
+            const sId = getSuggestionId(s);
+            const isLinked = (decisionObj.aliases || []).includes(sId);
+            const isRejected = (decisionObj.rejected_suggestions || []).some(r => getSuggestionId(r.suggestion) === sId);
+            return !isLinked && !isRejected;
+        }).length;
+
+        const actionBadge = (untouchedAliasCount > 0 && (decisionObj.primary || isPrimaryRejected))
+            ? `<span class="ml-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">${untouchedAliasCount}</span>`
+            : '';
+        
+        const popoverButtonId = `popover-btn-${safeIcdName}-${system}`;
+        extraContentHtml = `<div class="mt-2 pt-2 border-t"><button id="${popoverButtonId}" onclick="showSuggestionsPopover(this, '${icdName}', '${system}')" class="popover-trigger w-full text-left text-xs font-semibold text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 flex items-center transition-colors"><i class="fa-solid fa-plus mr-2 text-xs"></i>+${totalAliasCount} More Suggestion(s) ${actionBadge}</button></div>`;
+    }
+    
+    return `<td class="table-cell ${cellClass} text-xs" id="cell-${safeIcdName}-${system}">${primaryHtml}${extraContentHtml}</td>`;
+}
+
+function highlightMatches(text, searchTerm) {
+    if (!text || !searchTerm || searchTerm.length < 3) {
+        return text;
+    }
+    const regex = new RegExp(`(${searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, `<mark class="bg-yellow-200 px-0.5 rounded-sm">$1</mark>`);
+}
+
+function renderSuggestion(suggestion, icdName, system, type) {
+    if (!suggestion) return '';
+    const { term = 'N/A', code = 'N/A', devanagari, tamil, arabic, confidence = 0, source_description = 'N/A', justification = 'N/A', source_row = '?' } = suggestion;
+    const suggestionId = getSuggestionId(suggestion);
+    const decisionObj = state.curationDecisions[icdName]?.[system] || {};
+    
+    const highlightedTerm = highlightMatches(term, state.searchTerm);
+    const highlightedDevanagari = devanagari ? highlightMatches(devanagari, state.searchTerm) : '';
+    const highlightedTamil = tamil ? highlightMatches(tamil, state.searchTerm) : '';
+    const highlightedArabic = arabic ? highlightMatches(arabic, state.searchTerm) : '';
+
+    const isPrimary = decisionObj.primary === suggestionId;
+    const isAlias = (decisionObj.aliases || []).includes(suggestionId);
+    const rejectedInfo = (decisionObj.rejected_suggestions || []).find(r => getSuggestionId(r.suggestion) === suggestionId);
+    const isRejected = !!rejectedInfo;
+    const isReview = decisionObj.review_suggestion === suggestionId;
+
+    const numericConfidence = parseInt(confidence, 10) || 0;
+    let confColor = 'bg-gray-200 text-gray-800';
+    if (numericConfidence >= 80) confColor = 'bg-green-100 text-green-800';
+    else if (numericConfidence >= 50) confColor = 'bg-yellow-100 text-yellow-800';
+    else if (numericConfidence > 0) confColor = 'bg-red-100 text-red-800';
+    
+    const actionButtonsHtml = (type === 'primary') ? `
+        <button onclick="handleSetPrimary('${icdName}', '${system}', '${suggestionId}')" class="${isPrimary ? 'text-green-600' : 'text-gray-400'} hover:text-green-600 text-lg" title="Set as Primary"><i class="${isPrimary ? 'fa-solid' : 'fa-regular'} fa-circle-check"></i></button>
+        <button onclick="handleSetReview('${icdName}', '${system}', '${suggestionId}')" class="${isReview ? 'text-orange-500' : 'text-gray-400'} hover:text-orange-500 text-lg" title="Mark for Review"><i class="${isReview ? 'fa-solid' : 'fa-regular'} fa-star"></i></button>
+        <button onclick="handleReject('${icdName}', '${system}', '${suggestionId}', true)" class="${isRejected ? 'text-red-600' : 'text-gray-400'} hover:text-red-600 text-lg" title="${isRejected ? 'Undo Reject' : 'Reject'}"><i class="fa-solid fa-circle-xmark"></i></button>
+    ` : `
+        <button onclick="handlePromoteToPrimary('${icdName}', '${system}', '${suggestionId}')" class="text-xs font-semibold text-gray-500 hover:text-blue-600 p-1 rounded flex items-center" title="Make Primary"><i class="fa-solid fa-arrow-up-from-bracket mr-1"></i>Promote</button>
+        <button onclick="handleAddAlias('${icdName}', '${system}', '${suggestionId}')" class="alias-button ${isAlias ? 'bg-indigo-100 text-indigo-700' : 'text-gray-500 hover:text-indigo-600'} text-xs font-semibold p-1 rounded flex items-center" title="Add as Alias"><i class="fa-solid fa-link mr-1"></i>Link</button>
+        <button onclick="handleReject('${icdName}', '${system}', '${suggestionId}', false)" class="${isRejected ? 'text-red-600' : 'text-gray-400'} hover:text-red-600 text-lg px-2" title="${isRejected ? 'Undo Reject' : 'Reject Alias'}"><i class="fa-solid fa-xmark"></i></button>
+    `;
+
+    const rejectionReasonHtml = (isRejected) ? `<p class="text-xs text-red-700 mt-1 font-semibold">Reason: ${(rejectedInfo.reason || 'N/A').replace('incorrect', 'Incorrect Mapping').replace('orphan', 'Orphaned')}</p>` : '';
+    const containerClass = isAlias ? 'alias-approved' : (isRejected ? 'alias-rejected' : '');
+
+    return `<div class="p-1 ${containerClass} rounded-md"><div class="flex justify-between items-start mb-1"><div><p class="font-semibold text-sm">${highlightedTerm}</p><p class="text-gray-500 text-sm">${highlightedDevanagari || highlightedTamil || highlightedArabic || ''}</p></div><span class="px-2 py-0.5 rounded-full text-xs font-medium ${confColor}">${confidence}%</span></div><p class="font-mono text-xs text-gray-500 mb-2">${code}</p><div class="space-y-2 text-[11px]"><div class="border-t pt-2"> <h4 class="font-semibold text-gray-500 uppercase tracking-wider text-[10px]">Source Desc. <span class="font-mono lowercase text-gray-400">(line ${source_row})</span></h4><p class="text-gray-600 break-words">${source_description}</p></div><div><h4 class="font-semibold text-gray-500 uppercase tracking-wider text-[10px]">AI Justification</h4><p class="text-gray-600 break-words">${justification}</p></div></div>${rejectionReasonHtml}<div class="flex items-center justify-end mt-2 space-x-2 pt-2 border-t">${actionButtonsHtml}</div></div>`;
+}
+
+function renderMasterMap() {
+    const rows = state.data.master.map(row => createMasterMapRow(row)).join('');
+    return `<div class="overflow-x-auto"><table class="min-w-full grid-table"><thead class="bg-gray-50"><tr class="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"><th class="table-cell w-1/4">Verified ICD-11</th><th class="table-cell w-1/4">Ayurveda Mapping</th><th class="table-cell w-1/4">Siddha Mapping</th><th class="table-cell w-1/4">Unani Mapping</th><th class="table-cell w-[100px]">Actions</th></tr></thead><tbody>${rows || `<tr><td colspan="5" class="text-center py-12 table-cell">Master map is empty.</td></tr>`}</tbody></table></div>`;
+}
+
+function createMasterMapRow(row) {
+    const icdName = row.suggested_icd_name;
+    const rowStatus = row.row_status || 'Staged';
+    const undoButton = (rowStatus === 'Verified')
+        ? `<button onclick="handleUndoVerification(this, '${icdName}')" class="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline mr-3" title="Move back to Staged"><i class="fa-solid fa-rotate-left"></i> Undo Verification</button>`
+        : '';
+    const revertButton = (rowStatus === 'Verified')
+        ? `<button onclick="showRevertWarningModal('${icdName}')" class="text-sm font-medium text-yellow-600 hover:text-yellow-800 hover:underline" title="Undo first, then Revert"><i class="fa-solid fa-arrow-rotate-left"></i> Revert</button>`
+        : `<button onclick="revertToSuggestions('${icdName}')" class="text-sm font-medium text-yellow-600 hover:text-yellow-800 hover:underline" title="Move this entire row back to New Suggestions"><i class="fa-solid fa-arrow-rotate-left"></i> Revert</button>`;
+    return `<tr><td class="table-cell font-medium text-sm">${icdName}</td><td class="table-cell">${renderGoldenRecordCell(row.ayurveda_mapping, icdName, 'ayurveda')}</td><td class="table-cell">${renderGoldenRecordCell(row.siddha_mapping, icdName, 'siddha')}</td><td class="table-cell">${renderGoldenRecordCell(row.unani_mapping, icdName, 'unani')}</td><td class="table-cell text-center">${undoButton}${revertButton}</td></tr>`;
+}
+
+function renderGoldenRecordCell(mappingStr, icdName, system) {
+    const editButton = `<button onclick="openMappingEditor('${icdName}', '${system}')" class="absolute top-2 right-2 text-gray-400 hover:text-blue-600 p-1 rounded-full hover:bg-gray-100 transition-colors" title="Edit Mapping"><i class="fa-solid fa-pencil"></i></button>`;
+
+    if (!mappingStr) {
+        return `<div class="relative h-full flex items-center justify-center">
+                    <button onclick="openMappingEditor('${icdName}', '${system}')" class="text-sm font-semibold text-gray-400 hover:text-blue-600 flex items-center p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                        <i class="fa-solid fa-plus mr-2"></i> Add Mapping
+                    </button>
+                </div>`;
+    }
+    try {
+        const mapping = JSON.parse(mappingStr);
+        if (!mapping.primary || !mapping.primary.term) {
+             return `<div class="relative h-full flex items-center justify-center">
+                        <button onclick="openMappingEditor('${icdName}', '${system}')" class="text-sm font-semibold text-gray-400 hover:text-blue-600 flex items-center p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                            <i class="fa-solid fa-plus mr-2"></i> Add Mapping
+                        </button>
+                    </div>`;
+        }
+        
+        let html = `<div class="relative">${editButton}${renderSuggestionDisplay(mapping.primary)}`;
+        
+        if (mapping.aliases && mapping.aliases.length > 0) {
+            const safeIcdName = icdName.replace(/[^a-zA-Z0-9]/g, '-');
+            const popoverButtonId = `master-popover-btn-${safeIcdName}-${system}`;
+            html += `<div class="mt-2 pt-2 border-t">
+                <button id="${popoverButtonId}" onclick="showMasterAliasPopover(this, '${icdName}', '${system}')" class="w-full text-left text-xs font-semibold text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 flex items-center transition-colors">
+                    <i class="fa-solid fa-tags mr-2 text-xs"></i>+${mapping.aliases.length} Linked Alias(es)
+                </button>
+            </div>`;
+        }
+        html += `</div>`;
+        return html;
+    } catch(e) { return '<span class="text-xs text-red-500">Data Error</span>'; }
+}
+
+function renderSuggestionDisplay(suggestion) {
+    if (!suggestion) return '';
+    const { term = 'N/A', code = 'N/A', devanagari, tamil, arabic, confidence = 'N/A', source_description = 'N/A', justification = 'N/A', source_row = '?' } = suggestion;
+    const numericConfidence = parseInt(confidence, 10);
+    let confColor = 'bg-gray-200 text-gray-800';
+    if (!isNaN(numericConfidence)) {
+        if (numericConfidence >= 80) confColor = 'bg-green-100 text-green-800';
+        else if (numericConfidence >= 50) confColor = 'bg-yellow-100 text-yellow-800';
+        else if (numericConfidence > 0) confColor = 'bg-red-100 text-red-800';
+    }
+
+    const confidenceBadge = isNaN(numericConfidence) ? '' : `<span class="px-2 py-0.5 rounded-full text-xs font-medium ${confColor}">${confidence}%</span>`;
+
+    return `<div class="p-1"><div class="flex justify-between items-start mb-1"><div><p class="font-semibold text-sm">${term}</p><p class="text-gray-500 text-sm">${devanagari || tamil || arabic || ''}</p></div>${confidenceBadge}</div><p class="font-mono text-xs text-gray-500 mb-2">${code}</p><div class="space-y-2 text-[11px]"><div class="border-t pt-2"> <h4 class="font-semibold text-gray-500 uppercase tracking-wider text-[10px]">Source Desc. <span class="font-mono lowercase text-gray-400">(line ${source_row})</span></h4><p class="text-gray-600 break-words">${source_description}</p></div><div><h4 class="font-semibold text-gray-500 uppercase tracking-wider text-[10px]">AI Justification</h4><p class="text-gray-600 break-words">${justification}</p></div></div></div>`;
+}
+
+function createNewSuggestionRow(row) { 
+    const icdName = row.suggested_icd_name;
+    const safeIcdName = icdName.replace(/[^a-zA-Z0-9]/g,'-');
+    const highlightedIcdName = highlightMatches(icdName, state.searchTerm);
+    return `<tr><td class="table-cell font-medium text-sm text-gray-800">${highlightedIcdName}</td>${createCurationCell(safeIcdName,icdName,'ayurveda',row)}${createCurationCell(safeIcdName,icdName,'siddha',row)}${createCurationCell(safeIcdName,icdName,'unani',row)}</tr>`;
+}
+
+function renderNewSuggestions() {
+    const searchBarHtml = `<div class="p-4 border-b relative"><input type="text" id="search-bar" onkeyup="handleSearch(this)" value="${state.searchTerm}" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Search by ICD-11 Name or Term (min. 3 chars)..."><div id="search-loader" class="loader hidden" style="position: absolute; right: 25px; top: 25px;"></div></div>`;
+    const tableHeader = `<thead class="bg-gray-50"><tr class="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"><th class="table-cell w-1/4">Suggested ICD-11</th><th class="table-cell w-1/4">Ayurveda</th><th class="table-cell w-1/4">Siddha</th><th class="table-cell w-1/4">Unani</th></tr></thead>`;
+    const shellHtml = `${searchBarHtml}<div class="overflow-x-auto"><table class="min-w-full grid-table">${tableHeader}<tbody id="suggestions-tbody"></tbody></table></div><div id="suggestions-pagination" class="p-4 flex justify-between items-center border-t"></div>`;
+    
+    dom.contentArea.innerHTML = shellHtml;
+    dom.suggestionsTbody = document.getElementById('suggestions-tbody');
+    dom.suggestionsPagination = document.getElementById('suggestions-pagination');
+    updateNewSuggestionsContent();
+}
+
+function updateNewSuggestionsContent() {
+    if (!dom.suggestionsTbody) return;
+    const { page, limit } = state.pagination.new;
+    const start = (page - 1) * limit;
+    const paginatedItems = state.filteredSuggestions.slice(start, start + limit);
+    const rows = paginatedItems.map(row => createNewSuggestionRow(row)).join('');
+    dom.suggestionsTbody.innerHTML = rows || `<tr><td colspan="4" class="text-center py-12 text-gray-500">No suggestions match your search.</td></tr>`;
+    if(dom.suggestionsPagination) dom.suggestionsPagination.innerHTML = renderPagination();
+}
+
+function renderRejected() { 
+    const s = state.currentRejectedSubTab;
+    const c = state.data.rejected.needs_correction.length;
+    const o = state.data.rejected.no_mapping.length;
+    let content = '';
+    if (s === 'correction') content = renderRejectedCorrectionTable();
+    else if (s === 'no_mapping') content = renderNoMappingTable();
+    
+    return `<div class="p-4 border-b"><div class="inline-flex rounded-md shadow-sm">
+        <button onclick="switchRejectedSubTab('correction')" class="relative px-4 py-2 text-sm font-medium border rounded-l-lg ${s==='correction'?'sub-tab-active':'bg-white hover:bg-gray-50'}">Correction Queue <span class="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">${c}</span></button>
+        <button onclick="switchRejectedSubTab('no_mapping')" class="relative px-4 py-2 text-sm font-medium border-t border-b border-r rounded-r-lg ${s==='no_mapping'?'sub-tab-active':'bg-white hover:bg-gray-50'}">Orphanage <span class="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-blue-100 bg-blue-600 rounded-full">${o}</span></button>
+        </div></div>
+        <div class="p-4">${content}</div>`;
+}
+
+function renderRejectedCorrectionTable() {
+    const rows = state.data.rejected.needs_correction.map(item => createRejectedCard(item)).join('');
+    return `<div class="space-y-4">${rows || '<p class="text-center py-12 text-gray-500">No items need correction.</p>'}</div>`;
+}
+
+function renderNoMappingTable() {
+    const rows = state.data.rejected.no_mapping.map(item => createRejectedCard(item, true)).join('');
+    return `<div class="space-y-4">${rows || '<p class="text-center py-12 text-gray-500">No orphaned items.</p>'}</div>`;
+}
+
+function createRejectedCard(item, isOrphanage = false) {
+    const { original_icd_name, system, term, code, source_description, devanagari, tamil, arabic, justification } = item;
+    const uniqueId = `${original_icd_name}-${system}-${term}-${code}`.replace(/[^a-zA-Z0-9]/g, '-');
+
+    const traditionalTermInfo = `
+        <div class="bg-gray-50 p-3 rounded-lg border">
+            <p class="font-bold text-sm text-gray-800">${term} <span class="font-mono text-gray-500 text-xs">(${code})</span></p>
+            <p class="text-gray-500 text-sm">${devanagari || tamil || arabic || ''}</p>
+            <p class="text-xs text-gray-600 mt-2 border-t pt-2">${source_description}</p>
+            <p class="text-xs text-gray-500 mt-2 border-t pt-2 italic">Original AI Justification: ${justification}</p>
+        </div>`;
+
+    const icdRemapSection = `
+        <div>
+            <label class="block text-sm font-medium text-gray-700">New ICD-11 Mapping</label>
+            <div class="relative mt-1">
+                <input type="text" id="remap-icd-input-${uniqueId}" onfocus="showIcdDropdown(this)" onkeyup="filterIcdDropdown(this)" onblur="hideIcdDropdown(this)" class="w-full p-2 border rounded-md" placeholder="Type or select an ICD-11 code...">
+                <div id="remap-icd-dropdown-${uniqueId}" class="absolute z-10 w-full bg-white border rounded-md mt-1 max-h-60 overflow-y-auto hidden shadow-lg"></div>
+            </div>
+        </div>`;
+
+    const actionButton = `<button disabled class="remap-button mt-2 w-full bg-blue-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-600 disabled:bg-gray-300 transition-colors" onclick="handleSendForReCuration('${uniqueId}')">Send for Re-Curation</button>`;
+    
+    return `<div class="bg-white p-4 rounded-lg shadow-sm border">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="md:col-span-2">
+                        <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">${isOrphanage ? 'Invalid Traditional Term' : 'Valid Traditional Term'} <span class="capitalize">(${system})</span></h4>
+                        ${traditionalTermInfo}
+                    </div>
+                    <div class="md:col-span-2">
+                         <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">${isOrphanage ? 'Original ICD-11 Mapping' : 'Assign Correct ICD-11 Mapping'}</h4>
+                        ${isOrphanage ? `<p class="italic text-gray-500 text-sm mt-2">${original_icd_name}</p>` : icdRemapSection}
+                    </div>
+                </div>
+                ${isOrphanage ? '' : `<div class="mt-4 border-t pt-4">${actionButton}</div>`}
+            </div>`;
+}
+
+function renderIcdList() {
+    const rows = state.data.icdMasterList.map(item => `
+        <tr class="text-sm">
+            <td class="table-cell font-semibold">${item.icd_name}</td>
+            <td class="table-cell text-gray-600">${item.description}</td>
+        </tr>
+    `).join('');
+
+    return `<div class="p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-800">ICD-11 Master List</h3>
+                    <button onclick="document.getElementById('add-icd-modal').classList.remove('hidden')" class="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md flex items-center"><i class="fa-solid fa-plus mr-2"></i>Add New ICD-11 Disease</button>
+                </div>
+                <div class="overflow-x-auto"><table class="min-w-full grid-table">
+                    <thead class="bg-gray-50"><tr class="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        <th class="table-cell w-1/3">ICD-11 Name</th><th class="table-cell w-2/3">Description</th>
+                    </tr></thead>
+                    <tbody>${rows}</tbody>
+                </table></div>
+            </div>`;
+}
+
+
+// --- START: Master Map Popover Functions ---
+function showMasterAliasPopover(buttonElement, icdName, system) {
+    state.popoverContext = { button: buttonElement, icdName, system };
+    if (!dom.suggestionsPopover.classList.contains('hidden') && dom.suggestionsPopover.dataset.trigger === buttonElement.id) {
+        hideSuggestionsPopover();
+        return;
+    }
+    renderMasterAliasPopover();
+    positionPopover();
+    dom.suggestionsPopover.classList.remove('hidden');
+}
+
+function renderMasterAliasPopover() {
+    const { button, icdName, system } = state.popoverContext;
+    if (!button || !icdName || !system) return;
+
+    const rowData = state.data.master.find(r => r.suggested_icd_name === icdName);
+    if (!rowData) return;
+
+    try {
+        const mapping = JSON.parse(rowData[`${system}_mapping`]);
+        const aliases = mapping.aliases || [];
+        if (aliases.length === 0) {
+            hideSuggestionsPopover();
+            return;
+        }
+
+        const popoverContentHtml = aliases.map(alias => renderSuggestionDisplay(alias)).join('<hr class="my-2 border-gray-100">');
+        const closeButtonHtml = `<button onclick="hideSuggestionsPopover()" class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 transition-colors"><i class="fa-solid fa-times"></i></button>`;
+        dom.suggestionsPopover.innerHTML = `<div class="relative p-3">${closeButtonHtml}<h4 class="text-sm font-bold text-gray-700 mb-2">Linked Aliases</h4><div class="space-y-2">${popoverContentHtml}</div></div>`;
+        dom.suggestionsPopover.dataset.trigger = button.id;
+    } catch (e) {
+        console.error("Error rendering master alias popover:", e);
+        hideSuggestionsPopover();
+    }
+}
+// --- END: Master Map Popover Functions ---
+
+// --- START: Master Map Editor Functions ---
+function openMappingEditor(icdName, system) {
+    state.editorContext = { icdName, system };
+    const title = document.getElementById('editor-title');
+    const vernacularLabel = document.getElementById('editor-primary-vernacular-label');
+    
+    title.textContent = `Edit Mapping for ${system.charAt(0).toUpperCase() + system.slice(1)}`;
+    if (system === 'ayurveda') vernacularLabel.textContent = 'Devanagari';
+    else if (system === 'siddha') vernacularLabel.textContent = 'Tamil';
+    else if (system === 'unani') vernacularLabel.textContent = 'Arabic';
+
+    const masterRow = state.data.master.find(r => r.suggested_icd_name === icdName);
+    const mappingStr = masterRow?.[`${system}_mapping`];
+    
+    document.getElementById('editor-primary-term').value = '';
+    document.getElementById('editor-primary-code').value = '';
+    document.getElementById('editor-primary-vernacular').value = '';
+    document.getElementById('editor-primary-source_row').value = '';
+    document.getElementById('editor-primary-source_description').value = '';
+    document.getElementById('editor-primary-justification-hidden').value = '';
+    document.getElementById('editor-primary-confidence-hidden').value = '';
+    dom.aliasEditorContainer.innerHTML = '';
+    
+    const primaryFeedbackContainer = document.querySelector('.p-4.border.rounded-lg .ai-feedback-container');
+    primaryFeedbackContainer.classList.add('hidden');
+
+    if (mappingStr) {
+        try {
+            const mapping = JSON.parse(mappingStr);
+            if (mapping.primary) {
+                const p = mapping.primary;
+                document.getElementById('editor-primary-term').value = p.term || '';
+                document.getElementById('editor-primary-code').value = p.code || '';
+                document.getElementById('editor-primary-vernacular').value = p.devanagari || p.tamil || p.arabic || '';
+                document.getElementById('editor-primary-source_row').value = p.source_row || '';
+                document.getElementById('editor-primary-source_description').value = p.source_description || '';
+                
+                document.getElementById('editor-primary-justification-hidden').value = p.justification || '';
+                document.getElementById('editor-primary-confidence-hidden').value = p.confidence || '';
+            }
+            if (mapping.aliases && mapping.aliases.length > 0) {
+                mapping.aliases.forEach(alias => addAliasField(alias));
+            }
+        } catch (e) { console.error("Could not parse master mapping:", e); }
+    }
+    
+    dom.mappingEditorModal.classList.remove('hidden');
+}
+
+function closeMappingEditor() {
+    dom.mappingEditorModal.classList.add('hidden');
+}
+
+function addAliasField(alias = null) {
+    const fieldset = document.createElement('div');
+    fieldset.className = 'alias-fieldset border-t pt-4';
+    const vernacularLabel = state.editorContext.system === 'ayurveda' ? 'Devanagari' : state.editorContext.system === 'siddha' ? 'Tamil' : 'Arabic';
+
+    fieldset.innerHTML = `
+        <div class="p-4 border rounded-lg space-y-2 relative">
+             <button type="button" onclick="this.parentElement.parentElement.remove()" class="absolute -top-2 -right-2 bg-white h-6 w-6 text-xs flex items-center justify-center font-semibold text-red-500 hover:text-red-700 border rounded-full" title="Remove Alias"><i class="fa-solid fa-times"></i></button>
+            <input type="hidden" class="editor-alias-justification-hidden" value="${alias?.justification || ''}">
+            <input type="hidden" class="editor-alias-confidence-hidden" value="${alias?.confidence || ''}">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div><label class="block font-medium text-gray-600">Term Name</label><input type="text" value="${alias?.term || ''}" class="editor-alias-term w-full mt-1 p-2 border rounded"></div>
+                <div><label class="block font-medium text-gray-600">Code</label><input type="text" value="${alias?.code || ''}" class="editor-alias-code w-full mt-1 p-2 border rounded"></div>
+                <div><label class="block font-medium text-gray-600">${vernacularLabel}</label><input type="text" value="${alias?.devanagari || alias?.tamil || alias?.arabic || ''}" class="editor-alias-vernacular w-full mt-1 p-2 border rounded"></div>
+                <div><label class="block font-medium text-gray-600">Source Row</label><input type="text" value="${alias?.source_row || ''}" class="editor-alias-source_row w-full mt-1 p-2 border rounded"></div>
+                <div class="col-span-full"><label class="block font-medium text-gray-600">Source Description</label><textarea rows="2" class="editor-alias-source_description w-full mt-1 p-2 border rounded">${alias?.source_description || ''}</textarea></div>
+                <div class="col-span-full pt-2">
+                    <button type="button" onclick="handleRunAiSurety(this, false)" class="w-full text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-md flex items-center justify-center">
+                        <span class="btn-text"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Run AI Surety for this Alias</span>
+                        <div class="loader hidden ml-2"></div>
+                    </button>
+                </div>
+                <div class="ai-feedback-container col-span-full grid-cols-5 gap-4 hidden">
+                    <div class="col-span-4 bg-gray-50 p-3 rounded-md border"><label class="block font-medium text-gray-600 text-xs">AI-Generated Justification</label><p class="editor-justification text-xs text-gray-700 mt-1 h-12 overflow-y-auto"></p></div>
+                    <div class="col-span-1 bg-gray-50 p-3 rounded-md border text-center"><label class="block font-medium text-gray-600 text-xs">AI Confidence</label><p class="editor-confidence text-2xl font-bold text-gray-800 mt-2"></p></div>
+                </div>
+            </div>
+        </div>
+    `;
+    dom.aliasEditorContainer.appendChild(fieldset);
+}
+
+async function handleRunAiSurety(button, isPrimary) {
+    toggleButtonLoading(button, true);
+    const { icdName, system } = state.editorContext;
+
+    const rootElement = button.closest(isPrimary ? '.p-4.border.rounded-lg' : '.alias-fieldset');
+    
+    const itemToVerify = {
+        term: rootElement.querySelector(isPrimary ? '#editor-primary-term' : '.editor-alias-term').value,
+        code: rootElement.querySelector(isPrimary ? '#editor-primary-code' : '.editor-alias-code').value,
+        source_row: rootElement.querySelector(isPrimary ? '#editor-primary-source_row' : '.editor-alias-source_row').value,
+        source_description: rootElement.querySelector(isPrimary ? '#editor-primary-source_description' : '.editor-alias-source_description').value
+    };
+    
+    const vernacularValue = rootElement.querySelector(isPrimary ? '#editor-primary-vernacular' : '.editor-alias-vernacular').value;
+    if (system === 'ayurveda') itemToVerify.devanagari = vernacularValue;
+    else if (system === 'siddha') itemToVerify.tamil = vernacularValue;
+    else if (system === 'unani') itemToVerify.arabic = vernacularValue;
+    
+    const payload = {
+        icd_name: icdName,
+        mapping: { primary: itemToVerify }
+    };
+
+    const justificationHidden = rootElement.querySelector(isPrimary ? '#editor-primary-justification-hidden' : '.editor-alias-justification-hidden');
+    const confidenceHidden = rootElement.querySelector(isPrimary ? '#editor-primary-confidence-hidden' : '.editor-alias-confidence-hidden');
+
+    try {
+        const result = await fetchAPI('/admin/verify-mapping-with-ai', 'POST', payload);
+        const feedbackContainer = rootElement.querySelector('.ai-feedback-container');
+        feedbackContainer.querySelector('.editor-justification').textContent = result.justification;
+        feedbackContainer.querySelector('.editor-confidence').textContent = `${result.confidence}%`;
+        justificationHidden.value = result.justification;
+        confidenceHidden.value = result.confidence;
+        feedbackContainer.classList.remove('hidden');
+        feedbackContainer.style.display = 'grid';
+    } catch(error) {
+        alert(`AI Surety check failed: ${error.message}`);
+    } finally {
+        toggleButtonLoading(button, false);
+    }
+}
+
+async function handleSaveMasterMapEdit(button) {
+    toggleButtonLoading(button, true);
+    const { icdName, system } = state.editorContext;
+
+    const primary = {
+        term: document.getElementById('editor-primary-term').value,
+        code: document.getElementById('editor-primary-code').value,
+        source_row: document.getElementById('editor-primary-source_row').value,
+        source_description: document.getElementById('editor-primary-source_description').value,
+        justification: document.getElementById('editor-primary-justification-hidden').value,
+        confidence: document.getElementById('editor-primary-confidence-hidden').value
+    };
+    const vernacularValue = document.getElementById('editor-primary-vernacular').value;
+    if (system === 'ayurveda') primary.devanagari = vernacularValue;
+    else if (system === 'siddha') primary.tamil = vernacularValue;
+    else if (system === 'unani') primary.arabic = vernacularValue;
+
+    const aliases = [];
+    document.querySelectorAll('.alias-fieldset').forEach(fieldset => {
+        const alias = {
+            term: fieldset.querySelector('.editor-alias-term').value,
+            code: fieldset.querySelector('.editor-alias-code').value,
+            source_row: fieldset.querySelector('.editor-alias-source_row').value,
+            source_description: fieldset.querySelector('.editor-alias-source_description').value,
+            justification: fieldset.querySelector('.editor-alias-justification-hidden').value,
+            confidence: fieldset.querySelector('.editor-alias-confidence-hidden').value
+        };
+        const aliasVernacular = fieldset.querySelector('.editor-alias-vernacular').value;
+        if (system === 'ayurveda') alias.devanagari = aliasVernacular;
+        else if (system === 'siddha') alias.tamil = aliasVernacular;
+        else if (system === 'unani') alias.arabic = aliasVernacular;
+        if(alias.term) aliases.push(alias);
+    });
+    
+    const payload = {
+        icd_name: icdName,
+        system: system,
+        mapping: { primary, aliases }
+    };
+    
+    try {
+        await fetchAPI('/admin/update-master-mapping', 'POST', payload);
+        
+        const [masterRes, statsRes] = await Promise.all([
+            fetchAPI('/admin/master-map-data'),
+            fetchAPI('/admin/stats')
+        ]);
+        state.data.master = masterRes;
+        state.stats = { ...state.stats, ...statsRes };
+        
+        updateStats();
+        dom.contentArea.innerHTML = renderMasterMap();
+        closeMappingEditor();
+
+    } catch (error) {
+        alert(`Failed to save changes: ${error.message}`);
+    } finally {
+        toggleButtonLoading(button, false);
+    }
+}
+// --- END: Master Map Editor Functions ---
+
+// --- START: Revert to Suggestions ---
+async function revertToSuggestions(icdName) {
+    if (!confirm(`Are you sure you want to move the entire mapping for "${icdName}" back to New Suggestions for re-curation?`)) return;
+    
+    dom.mainLoader.classList.remove('hidden');
+    dom.contentArea.innerHTML = '';
+
+    try {
+        await fetchAPI('/admin/revert-master-mapping', 'POST', { icd_name: icdName });
+        // Clear any active search so the reverted row is visible
+        state.searchTerm = '';
+        const searchBar = document.getElementById('search-bar');
+        if (searchBar) searchBar.value = '';
+
+        await fetchAllData();
+
+        state.currentTab = 'new';
+        dom.tabButtons.forEach(btn => btn.classList.remove('tab-active'));
+        const newTabButton = document.querySelector('.tab-button[data-tab="new"]');
+        newTabButton.classList.add('tab-active');
+        renderCurrentTab();
+    } catch (error) {
+        alert(`Failed to revert mapping: ${error.message}`);
+        renderCurrentTab(); 
+    } finally {
+        dom.mainLoader.classList.add('hidden');
+    }
+}
+// --- END: Revert to Suggestions ---
+
+// --- START: Verified → Revert guardrail and Undo flow ---
+function showRevertWarningModal(icdName) {
+    state.revertContext = { icdName };
+    if (dom.revertWarningModal) dom.revertWarningModal.classList.remove('hidden');
+}
+
+function closeRevertWarningModal() {
+    if (dom.revertWarningModal) dom.revertWarningModal.classList.add('hidden');
+    state.revertContext = { icdName: null };
+}
+
+async function handleUndoFromModal(button) {
+    const icdName = state.revertContext?.icdName;
+    if (!icdName) { closeRevertWarningModal(); return; }
+    await handleUndoVerification(button, icdName, true);
+}
+
+async function handleUndoVerification(button, icdName, fromModal = false) {
+    toggleButtonLoading(button, true);
+    try {
+        await fetchAPI('/admin/undo-verification', 'POST', { icd_name: icdName });
+        const [masterRes, statsRes] = await Promise.all([
+            fetchAPI('/admin/master-map-data'),
+            fetchAPI('/admin/stats')
+        ]);
+        state.data.master = masterRes;
+        state.stats = { ...state.stats, ...statsRes };
+        updateStats();
+        if (state.currentTab === 'master') {
+            dom.contentArea.innerHTML = renderMasterMap();
+        }
+        if (fromModal) {
+            closeRevertWarningModal();
+        }
+    } catch (error) {
+        alert(`Undo Verification failed: ${error.message}`);
+    } finally {
+        toggleButtonLoading(button, false);
+    }
+}
+// --- END: Verified → Revert guardrail and Undo flow ---
+
+function getSuggestionId(suggestion) { return `${suggestion.term}-${suggestion.code}`.replace(/[^a-zA-Z0-9]/g, '-'); }
+function initializeDecisionObject(icdName, system) { if (!state.curationDecisions[icdName]) state.curationDecisions[icdName] = {}; if (!state.curationDecisions[icdName][system] || typeof state.curationDecisions[icdName][system] !== 'object') { state.curationDecisions[icdName][system] = { primary: null, aliases: [], rejected_suggestions: [], review_suggestion: null }; } }
+
+function updateUIAfterPopoverAction(icdName, system) {
+    const popoverBtnId = state.popoverContext.button?.id;
+    if (!popoverBtnId) {
+        updateCellUI(icdName, system);
+        return;
+    }
+    updateCellUI(icdName, system); 
+    const newButton = document.getElementById(popoverBtnId);
+    if (newButton) {
+        state.popoverContext.button = newButton;
+        renderSuggestionsPopover();
+        positionPopover();
+        dom.suggestionsPopover.classList.remove('hidden');
+    }
+}
+
+function handleSetPrimary(icdName, system, suggestionId) {
+    initializeDecisionObject(icdName, system);
+    const d = state.curationDecisions[icdName][system];
+    d.primary = (d.primary === suggestionId) ? null : suggestionId;
+    if (d.primary) {
+        d.aliases = d.aliases.filter(id => id !== suggestionId);
+        d.review_suggestion = null;
+        d.rejected_suggestions = d.rejected_suggestions.filter(r => getSuggestionId(r.suggestion) !== suggestionId);
+    }
+    updateCellUI(icdName, system);
+}
+
+function handleAddAlias(icdName, system, suggestionId) {
+    initializeDecisionObject(icdName, system);
+    const d = state.curationDecisions[icdName][system];
+    if (d.primary === suggestionId) return;
+    const i = d.aliases.indexOf(suggestionId);
+    if (i > -1) { d.aliases.splice(i, 1); } else { d.aliases.push(suggestionId); }
+    updateUIAfterPopoverAction(icdName, system);
+}
+
+function handlePromoteToPrimary(icdName, system, suggestionId) {
+    handleSetPrimary(icdName, system, suggestionId);
+    hideSuggestionsPopover();
+}
+
+function handleSetReview(icdName, system, suggestionId) {
+    initializeDecisionObject(icdName, system);
+    const d = state.curationDecisions[icdName][system];
+    d.review_suggestion = (d.review_suggestion === suggestionId) ? null : suggestionId;
+    if (d.review_suggestion) {
+        d.primary = null;
+        d.aliases = [];
+        d.rejected_suggestions = d.rejected_suggestions.filter(r => getSuggestionId(r.suggestion) !== suggestionId);
+    }
+    updateCellUI(icdName, system);
+}
+
+function handleReject(icdName, system, suggestionId, isPrimary) {
+    initializeDecisionObject(icdName, system);
+    const all = JSON.parse(state.allSuggestionsCache.find(r => r.suggested_icd_name === icdName)[`${system}_suggestions`]);
+    const sugg = all.find(s => getSuggestionId(s) === suggestionId);
+    state.rejectionContext = { icdName, system, suggestion: sugg, isPrimary };
+    const isAlreadyRejected = state.curationDecisions[icdName][system].rejected_suggestions.some(r => getSuggestionId(r.suggestion) === suggestionId);
+    dom.rejectionReasonView.classList.toggle('hidden', isAlreadyRejected);
+    dom.rejectionUndoView.classList.toggle('hidden', !isAlreadyRejected);
+    dom.rejectionModal.classList.remove('hidden');
+}
+
+function submitRejection(reason) { 
+    const { icdName, system, suggestion, isPrimary } = state.rejectionContext; 
+    if (!icdName || !system || !suggestion) return; 
+    
+    initializeDecisionObject(icdName, system); 
+    const d = state.curationDecisions[icdName][system]; 
+    const suggestionId = getSuggestionId(suggestion);
+
+    if (!d.rejected_suggestions.some(r => getSuggestionId(r.suggestion) === suggestionId)) { 
+        d.rejected_suggestions.push({ suggestion, reason, isPrimary }); 
+    } 
+
+    d.aliases = d.aliases.filter(id => id !== suggestionId); 
+    if (d.primary === suggestionId) d.primary = null;
+    if (d.review_suggestion === suggestionId) d.review_suggestion = null;
+
+    if (isPrimary) {
+        updateCellUI(icdName, system);
+    } else {
+        updateUIAfterPopoverAction(icdName, system);
+    }
+    closeRejectionModal(); 
+}
+
+function submitUndoRejection() {
+    const { icdName, system, suggestion, isPrimary } = state.rejectionContext;
+    if (!icdName || !system || !suggestion) return;
+
+    initializeDecisionObject(icdName, system);
+    const d = state.curationDecisions[icdName][system];
+    const suggestionId = getSuggestionId(suggestion);
+    d.rejected_suggestions = d.rejected_suggestions.filter(r => getSuggestionId(r.suggestion) !== suggestionId);
+
+    if (isPrimary) {
+        updateCellUI(icdName, system);
+    } else {
+        updateUIAfterPopoverAction(icdName, system);
+    }
+    closeRejectionModal();
+}
+
+
+function closeRejectionModal() { dom.rejectionModal.classList.add('hidden'); }
+function closeValidationModal() { dom.validationModal.classList.add('hidden'); }
+
+async function handleSaveCuration(button) {
+    const issues = [];
+    const touchedIcds = Object.keys(state.curationDecisions);
+
+    for (const icdName of touchedIcds) {
+        const systemsForIcd = state.curationDecisions[icdName];
+        const isEntireRowReverted = Object.values(systemsForIcd).every(decision =>
+            !decision || Object.values(decision).every(val => !val || (Array.isArray(val) && val.length === 0))
+        );
+        if (isEntireRowReverted) {
+            continue;
+        }
+
+        const originalRow = state.allSuggestionsCache.find(r => r.suggested_icd_name === icdName);
+        if (!originalRow) continue;
+
+        for (const system of ['ayurveda', 'siddha', 'unani']) {
+            const hasSuggestions = originalRow[`${system}_suggestions`] && originalRow[`${system}_suggestions`] !== '[]';
+            if (!hasSuggestions) continue;
+
+            const decision = state.curationDecisions[icdName]?.[system];
+            const isDecisionEffectivelyEmpty = !decision || Object.values(decision).every(val => !val || (Array.isArray(val) && val.length === 0));
+            
+            if (isDecisionEffectivelyEmpty) {
+                issues.push({ icdName, system, message: `A decision is required.` });
+                continue; 
+            }
+
+            if (decision.review_suggestion) {
+                issues.push({ icdName, system, message: `Item is marked for review. Please approve or reject.`});
+                continue;
+            }
+
+            let allSuggestions;
+            try { allSuggestions = JSON.parse(originalRow[`${system}_suggestions`]); } catch (e) { continue; }
+
+            const hasPrimaryDecision = !!decision.primary;
+            const allRejected = allSuggestions.length > 0 && allSuggestions.length === (decision.rejected_suggestions || []).length;
+            const isPrimaryRejected = (decision.rejected_suggestions || []).some(r => r.isPrimary);
+
+            if (!hasPrimaryDecision && !allRejected && !isPrimaryRejected) {
+                 if (!issues.some(i => i.icdName === icdName && i.system === system)) {
+                   issues.push({ icdName, system, message: `A primary decision is required.` });
+                }
+            } else if (hasPrimaryDecision || isPrimaryRejected) {
+                 const primarySugg = hasPrimaryDecision 
+                    ? allSuggestions.find(s => getSuggestionId(s) === decision.primary)
+                    : allSuggestions.find(s => getSuggestionId(s) === getSuggestionId(decision.rejected_suggestions.find(r => r.isPrimary).suggestion));
+
+                 const otherSuggs = allSuggestions.filter(s => primarySugg && getSuggestionId(s) !== getSuggestionId(primarySugg));
+                 const untouchedCount = otherSuggs.filter(s => {
+                     const sId = getSuggestionId(s);
+                     return !(decision.aliases || []).includes(sId) && !(decision.rejected_suggestions || []).some(r => getSuggestionId(r.suggestion) === sId);
+                 }).length;
+
+                 if (untouchedCount > 0) {
+                     if (!issues.some(i => i.icdName === icdName && i.system === system)) {
+                        issues.push({ icdName, system, message: `<span class="font-semibold text-red-600">${untouchedCount} suggestion(s)</span> require action.` });
+                     }
+                 }
+            }
+        }
+    }
+
+    if (issues.length > 0) {
+        dom.validationIssues.innerHTML = issues.map(issue => `
+            <div class="p-2 bg-white border rounded-md">
+                <p class="font-bold text-gray-800">${issue.icdName}</p>
+                <p class="text-xs text-gray-500 capitalize">${issue.system}: ${issue.message}</p>
+            </div>`).join('');
+        dom.validationModal.classList.remove('hidden');
+        return;
+    }
+    
+    toggleButtonLoading(button, true);
+    const payload = [];
+    for (const [icdName, systems] of Object.entries(state.curationDecisions)) {
+        const isSystemsObjectEmpty = Object.values(systems).every(decision => 
+            !decision || Object.values(decision).every(val => !val || (Array.isArray(val) && val.length === 0))
+        );
+        if (isSystemsObjectEmpty) continue;
+
+        const originalRow = state.allSuggestionsCache.find(r => r.suggested_icd_name === icdName);
+        if (!originalRow) continue;
+        const statuses = {};
+        for (const [system, decision] of Object.entries(systems)) {
+            let allSuggestions;
+            try { allSuggestions = JSON.parse(originalRow[`${system}_suggestions`]); }
+            catch (e) { continue; }
+
+            if (Object.values(decision).every(val => !val || (Array.isArray(val) && val.length === 0))) continue;
+            
+            const systemStatus = {};
+            if (decision.primary) {
+                const pSugg = allSuggestions.find(s => getSuggestionId(s) === decision.primary);
+                const aSuggs = allSuggestions.filter(s => (decision.aliases || []).includes(getSuggestionId(s)));
+                if (pSugg) {
+                    systemStatus.primary = pSugg;
+                    systemStatus.aliases = aSuggs;
+                }
+            }
+            if (decision.rejected_suggestions && decision.rejected_suggestions.length > 0) {
+                systemStatus.rejected_suggestions = decision.rejected_suggestions;
+            }
+            if (decision.review_suggestion) {
+                const rSugg = allSuggestions.find(s => getSuggestionId(s) === decision.review_suggestion);
+                if (rSugg) systemStatus.review_suggestion = rSugg;
+            }
+
+            if (Object.keys(systemStatus).length > 0) {
+                statuses[system] = systemStatus;
+            }
+        }
+        if (Object.keys(statuses).length > 0) payload.push({ icd_name: icdName, statuses });
+    }
+    
+    if (payload.length === 0) { toggleButtonLoading(button, false); return; }
+    
+    try {
+        await fetchAPI('/admin/submit-curation', 'POST', payload);
+        alert("Curation saved successfully!");
+        state.curationDecisions = {};
+        await fetchAllData();
+        renderCurrentTab();
+    } catch (error) {
+        alert(`Failed to save curation: ${error.message}`);
+    } finally {
+        toggleButtonLoading(button, false);
+    }
+}
+
+function updateCellUI(icdName, system) {
+    const rowData = state.allSuggestionsCache.find(r => r.suggested_icd_name === icdName);
+    if (!rowData) return;
+    const safeIcdName = icdName.replace(/[^a-zA-Z0-9]/g, '-');
+    const oldCell = document.getElementById(`cell-${safeIcdName}-${system}`);
+    
+    if (oldCell) {
+        oldCell.outerHTML = createCurationCell(safeIcdName, icdName, system, rowData);
+    }
+}
+
+async function handleResetCuration(button) {
+    if (!confirm("This will delete all curated data and regenerate suggestions. This may take a moment. Continue?")) return;
+    toggleButtonLoading(button, true, 'Resetting...');
+    dom.mainLoader.classList.remove('hidden');
+    dom.contentArea.innerHTML = '';
+    
+    try {
+        const result = await fetchAPI('/admin/reset-curation', 'POST');
+        alert(result.message);
+        
+        const pollForData = setInterval(async () => {
+            try {
+                console.log("Polling for new data...");
+                const stats = await fetchAPI('/admin/stats');
+                if (stats.review > 0) {
+                    console.log("New data found! Refreshing.");
+                    clearInterval(pollForData);
+                    await fetchAllData();
+                    renderCurrentTab();
+                }
+            } catch (pollError) {
+                console.error("Polling error:", pollError);
+                clearInterval(pollForData);
+                dom.mainLoader.classList.add('hidden');
+            }
+        }, 3000);
+
+    } catch (error) {
+        alert(`Failed to reset: ${error.message}`);
+        dom.mainLoader.classList.add('hidden');
+    } finally {
+        toggleButtonLoading(button, false, 'Reset Curation');
+    }
+}
+
+
+function updateStats() {
+    if (dom.statReview && state.stats) dom.statReview.textContent = state.stats.review ?? 0;
+    if (dom.statMasterMap && state.stats) dom.statMasterMap.textContent = state.stats.master_map ?? 0;
+    if (dom.statMasterMapVerified && state.stats) dom.statMasterMapVerified.textContent = state.stats.master_map_verified ?? 0;
+    if (dom.statRejected && state.data.rejected) dom.statRejected.textContent = (state.data.rejected.needs_correction?.length || 0) + (state.data.rejected.no_mapping?.length || 0);
+    if (dom.statThreeSystems && state.stats.completeness) dom.statThreeSystems.textContent = state.stats.completeness.three_systems ?? 0;
+    if (dom.statTwoSystems && state.stats.completeness) dom.statTwoSystems.textContent = state.stats.completeness.two_systems ?? 0;
+    if (dom.statOneSystem && state.stats.completeness) dom.statOneSystem.textContent = state.stats.completeness.one_system ?? 0;
+}
+
+async function handleCommitToMaster(button) { if (!confirm("Commit all items to the final database? This cannot be undone.")) return; toggleButtonLoading(button, true); try { const result = await fetchAPI('/admin/commit-to-master', 'POST'); alert(result.message); await fetchAllData(); renderCurrentTab();} catch (error) { alert(`Failed to commit: ${error.message}`); } finally { toggleButtonLoading(button, false); } }
+async function handleSaveRejected(originalIcd, system, safeId) { const newIcd = document.getElementById(`input-icd-${safeId}`).value; if (!newIcd) return alert("New ICD Name cannot be empty."); const termInput = document.getElementById(`input-term-${safeId}`); const term = termInput ? termInput.value : state.data.rejected.no_mapping.find(r => r.original_icd_name === originalIcd && r.system === system).term; const payload = { original_icd_name: originalIcd, new_icd_name: newIcd, system: system, term: term }; try { await fetchAPI('/admin/update-rejected-mapping', 'POST', payload); alert("Item remapped successfully."); await fetchAllData(); renderCurrentTab();} catch(error) { alert(`Failed to update: ${error.message}`); } }
+function switchRejectedSubTab(subTab) { state.currentRejectedSubTab = subTab; renderCurrentTab(); }
+function updateFABs() { dom.fabNew.classList.toggle('active', state.currentTab === 'new'); dom.fabMaster.classList.toggle('active', state.currentTab === 'master'); }
+function renderPagination() { const { page, limit } = state.pagination.new; const total = state.pagination.new.total; if(state.currentTab !== 'new' || total <= limit) return ''; const totalPages = Math.ceil(total / limit); let buttons = ''; for(let i = 1; i <= totalPages; i++) { const isActive = i === page ? 'bg-indigo-600 text-white' : 'hover:bg-gray-100'; buttons += `<button onclick="changePage(${i})" class="px-3 py-1 border rounded text-xs ${isActive}">${i}</button>`; } return `<div class="flex space-x-1">${buttons}</div>`; }
+function changePage(newPage) { state.pagination.new.page = newPage; updateNewSuggestionsContent(); }
+function toggleButtonLoading(button, isLoading, loadingText = '') { if (!button) return; const btnText = button.querySelector('.btn-text'); if (!btnText) { button.disabled = isLoading; return; } const originalText = btnText.dataset.originalText || btnText.textContent; if (!btnText.dataset.originalText) btnText.dataset.originalText = originalText; const loader = button.querySelector('.loader'); button.disabled = isLoading; if (isLoading) { btnText.textContent = loadingText || originalText; if(loader) loader.classList.remove('hidden'); } else { btnText.textContent = originalText; if(loader) loader.classList.add('hidden'); } }
+
+async function fetchAPI(endpoint, method = 'GET', body = null) {
+    const options = { 
+        method, 
+        headers: { 'Authorization': `Bearer ${state.token}` },
+        cache: 'no-cache' // Ensures fresh data is always fetched
+    };
+    if (body) { 
+        options.headers['Content-Type'] = 'application/json'; 
+        options.body = JSON.stringify(body); 
+    } 
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, options); 
+    if (response.status === 401) { 
+        handleLogout(); 
+        throw new Error('401 Unauthorized. Logging out.'); 
+    } 
+    if (!response.ok) { 
+        const errorData = await response.json().catch(() => ({ detail: `An unknown error occurred (${response.status})` })); 
+        throw new Error(errorData.detail); 
+    } 
+    const contentType = response.headers.get("content-type"); 
+    if (contentType && contentType.indexOf("application/json") !== -1) { 
+        return response.json(); 
+    } 
+    return {}; 
+}
+</script>
+</body>
+</html>

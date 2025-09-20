@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAMASTE-ICD | ICD-11 List</title>
+    <script src="https://cdn.jsdelivr.net/npm/idb@7/build/umd.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="h-full">
+
+    <div id="app-screen" class="hidden h-full flex flex-col">
+        <header class="bg-white p-4 border-b border-gray-200 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">NAMASTE-ICD Curation Platform</h1>
+            <div class="flex items-center">
+                <button id="reset-button" class="text-sm font-medium text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-md mr-4 flex items-center">
+                    <span class="btn-text">Reset Curation</span>
+                    <div class="loader hidden ml-2"></div>
+                </button>
+                <button id="logout-button" class="text-sm font-medium text-gray-700 hover:text-red-600">Logout</button>
+            </div>
+        </header>
+        <main class="flex-grow p-6 bg-gray-100 overflow-y-auto">
+            <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">New Suggestions</p><p id="stat-review" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">Master Map (Staged)</p><p id="stat-master-map" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">3-System Mappings</p><p id="stat-three-systems" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">2+ System Mappings</p><p id="stat-two-systems" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">1-System Mappings</p><p id="stat-one-system" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500 mb-2">Source Files</p><div class="flex space-x-4 text-sm"><a href="../data/source/NATIONAL-AYURVEDA-MORBIDITY-COD.csv" target="_blank" class="text-blue-600 hover:underline">Ayurveda</a><a href="../data/source/NATIONAL-SIDDHA-MORBIDITY-CODES.csv" target="_blank" class="text-blue-600 hover:underline">Siddha</a><a href="../data/source/NATIONAL-UNANI-MORBIDITY-CODES.csv" target="_blank" class="text-blue-600 hover:underline">Unani</a></div></div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-sm border">
+                <div class="p-4 border-b border-gray-200">
+                    <div class="flex border-b border-gray-200">
+                        <a href="analytics.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Analytics</a>
+                        <a href="new_suggestions.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">New Suggestions</a>
+                        <a href="master_map.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Master Map</a>
+                        <a href="rejections.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Rejected Mappings</a>
+                        <a href="icd11.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 tab-active">ICD-11 Disease List</a>
+                    </div>
+                </div>
+                <div id="main-loader" class="p-16 flex justify-center"><div class="loader" style="width: 48px; height: 48px;"></div></div>
+                <div id="content-area">
+                    <div class="p-4 border-b space-y-4">
+                        <div class="flex justify-between items-center">
+                            <div id="icd-filter-buttons" class="inline-flex rounded-md shadow-sm">
+                            </div>
+                            <button onclick="document.getElementById('add-icd-modal').classList.remove('hidden'); document.getElementById('add-icd-modal').classList.add('flex');" class="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md flex items-center">
+                                <i class="fa-solid fa-plus mr-2"></i>Add New ICD-11 Disease
+                            </button>
+                        </div>
+                        <div>
+                            <input type="text" id="icd-search-input" onkeyup="searchIcdList(this)" class="w-full px-3 py-2 border border-gray-300 rounded-md" placeholder="Search by ICD-11 Name, Code, or Description...">
+                        </div>
+                    </div>
+
+                    <div id="icd-pagination-top" class="p-4 flex justify-between items-center border-b"></div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full grid-table">
+                            <thead class="bg-gray-50">
+                                <tr class="text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    <th class="table-cell w-1/3">ICD-11 Name</th>
+                                    <th class="table-cell w-[140px]">ICD Code</th>
+                                    <th class="table-cell w-1/2">Description</th>
+                                    <th class="table-cell w-[120px]">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="icd-list-tbody">
+                                <tr>
+                                    <td colspan="4" class="text-center py-12 table-cell">
+                                        <div class="flex justify-center items-center text-gray-500">
+                                            <div class="loader mr-2" style="height: 24px; width: 24px;"></div>
+                                            Loading ICD Master List...
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div id="icd-pagination" class="p-4 flex justify-between items-center border-t"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <div id="add-icd-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 items-center justify-center hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-lg">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Add New ICD-11 Disease</h3>
+            <div class="space-y-4 text-sm">
+                <div><label class="block font-medium text-gray-600">ICD-11 Disease Name</label><input type="text" id="new-icd-name" class="w-full mt-1 p-2 border rounded"></div>
+                <div><label class="block font-medium text-gray-600">Official Description</label><textarea id="new-icd-description" rows="4" class="w-full mt-1 p-2 border rounded"></textarea></div>
+            </div>
+            <div class="p-4 bg-gray-50 -m-6 mt-6 border-t flex justify-end items-center space-x-3">
+                <button type="button" onclick="document.getElementById('add-icd-modal').classList.add('hidden'); document.getElementById('add-icd-modal').classList.remove('flex');" class="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2">Cancel</button>
+                <button type="button" onclick="handleAddIcdCode(this)" class="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md flex items-center">
+                    <span class="btn-text">Add to Master List</span>
+                    <div class="loader hidden ml-2"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="shared.js"></script>
+    <script src="icd11.js"></script>
+</body>
+</html>

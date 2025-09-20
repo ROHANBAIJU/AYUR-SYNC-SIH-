@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NAMASTE-ICD | Master Map</title>
+    <script src="https://cdn.jsdelivr.net/npm/idb@7/build/umd.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="h-full">
+
+    <div id="app-screen" class="hidden h-full flex flex-col">
+        <header class="bg-white p-4 border-b border-gray-200 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">NAMASTE-ICD Curation Platform</h1>
+            <div class="flex items-center">
+                <button id="reset-button" class="text-sm font-medium text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-md mr-4 flex items-center">
+                    <span class="btn-text">Reset Curation</span>
+                    <div class="loader hidden ml-2"></div>
+                </button>
+                <button id="logout-button" class="text-sm font-medium text-gray-700 hover:text-red-600">Logout</button>
+            </div>
+        </header>
+        <main class="flex-grow p-6 bg-gray-100 overflow-y-auto">
+            <div class="grid grid-cols-1 md:grid-cols-7 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">New Suggestions</p><p id="stat-review" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">Master Map (Staged)</p><p id="stat-master-map" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">Master Map (Verified)</p><p id="stat-master-map-verified" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">Rejected Mappings</p><p id="stat-rejected" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">3-System Mappings</p><p id="stat-three-systems" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">2+ System Mappings</p><p id="stat-two-systems" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500">1-System Mappings</p><p id="stat-one-system" class="text-2xl font-semibold">0</p></div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border"><p class="text-sm text-gray-500 mb-2">Source Files</p><div class="flex space-x-4 text-sm"><a href="../data/source/NATIONAL-AYURVEDA-MORBIDITY-COD.csv" target="_blank" class="text-blue-600 hover:underline">Ayurveda</a><a href="../data/source/NATIONAL-SIDDHA-MORBIDITY-CODES.csv" target="_blank" class="text-blue-600 hover:underline">Siddha</a><a href="../data/source/NATIONAL-UNANI-MORBIDITY-CODES.csv" target="_blank" class="text-blue-600 hover:underline">Unani</a></div></div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-sm border">
+                <div class="p-4 border-b border-gray-200">
+                    <div class="flex border-b border-gray-200">
+                        <a href="analytics.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Analytics</a>
+                        <a href="new_suggestions.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">New Suggestions</a>
+                        <a href="master_map.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 tab-active">Master Map</a>
+                        <a href="rejections.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Rejected Mappings</a>
+                        <a href="icd11.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">ICD-11 Disease List</a>
+                    </div>
+                </div>
+                <div id="main-loader" class="p-16 flex justify-center"><div class="loader" style="width: 48px; height: 48px;"></div></div>
+                <div id="content-area"></div>
+            </div>
+        </main>
+
+        <div id="fab-master-map" class="floating-actions active fixed bottom-6 right-6">
+            <button onclick="handleCommitToMaster(this)" class="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-lg hover:bg-green-700 transition flex items-center">
+                <span class="btn-text">Commit to Verified DB</span>
+                <div class="loader hidden ml-2"></div>
+            </button>
+        </div>
+    </div>
+    
+    <div id="mapping-editor-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div class="p-4 border-b"><h3 id="editor-title" class="text-lg font-bold text-gray-800">Edit Mapping</h3></div>
+            <div class="p-6 overflow-y-auto space-y-6">
+                <div class="p-4 border rounded-lg">
+                    <h4 class="text-md font-semibold text-gray-700 border-b pb-2 mb-3">Primary Term</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <input type="hidden" id="editor-primary-justification-hidden"><input type="hidden" id="editor-primary-confidence-hidden">
+                        <div><label class="block font-medium text-gray-600">Term Name</label><input type="text" id="editor-primary-term" class="w-full mt-1 p-2 border rounded"></div>
+                        <div><label class="block font-medium text-gray-600">Code</label><input type="text" id="editor-primary-code" class="w-full mt-1 p-2 border rounded"></div>
+                        <div><label id="editor-primary-vernacular-label" class="block font-medium text-gray-600">Vernacular</label><input type="text" id="editor-primary-vernacular" class="w-full mt-1 p-2 border rounded"></div>
+                        <div><label class="block font-medium text-gray-600">Source Row</label><input type="text" id="editor-primary-source_row" class="w-full mt-1 p-2 border rounded"></div>
+                        <div class="col-span-full"><label class="block font-medium text-gray-600">Source Description (legacy)</label><textarea id="editor-primary-source_description" rows="3" class="w-full mt-1 p-2 border rounded" placeholder="Kept for backward compatibility; UI displays Short/Long separately."></textarea></div>
+                        <div class="col-span-full grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block font-medium text-gray-600">Source Short Definition</label>
+                                <textarea id="editor-primary-source_short_definition" rows="3" class="w-full mt-1 p-2 border rounded" placeholder="Short definition from source file"></textarea>
+                            </div>
+                            <div>
+                                <label class="block font-medium text-gray-600">Source Long Definition</label>
+                                <textarea id="editor-primary-source_long_definition" rows="3" class="w-full mt-1 p-2 border rounded" placeholder="Long definition from source file"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-span-full pt-2"><button type="button" onclick="handleRunAiSurety(this, true)" class="w-full text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-md flex items-center justify-center"><span class="btn-text"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Run AI Surety for Primary Term</span><div class="loader hidden ml-2"></div></button></div>
+                        <div class="ai-feedback-container col-span-full grid-cols-5 gap-4 hidden">
+                            <div class="col-span-4 bg-gray-50 p-3 rounded-md border"><label class="block font-medium text-gray-600 text-xs">AI-Generated Justification</label><p class="editor-justification text-xs text-gray-700 mt-1 h-16 overflow-y-auto"></p></div>
+                            <div class="col-span-1 bg-gray-50 p-3 rounded-md border text-center"><label class="block font-medium text-gray-600 text-xs">AI Confidence</label><p class="editor-confidence text-2xl font-bold text-gray-800 mt-2"></p></div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center border-b pb-2 mb-3"><h4 class="text-md font-semibold text-gray-700">Linked Aliases</h4><button onclick="addAliasField()" class="text-sm font-medium text-blue-600 hover:text-blue-800 flex items-center"><i class="fa-solid fa-plus mr-1"></i> Add Alias</button></div>
+                    <div id="alias-editor-container" class="space-y-4"></div>
+                </div>
+            </div>
+            <div class="p-4 bg-gray-50 border-t flex justify-end items-center space-x-3">
+                <p id="editor-error-message" class="text-sm font-semibold text-red-600 mr-auto"></p>
+                <button type="button" onclick="closeMappingEditor()" class="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2">Cancel</button>
+                <button type="button" onclick="handleSaveMasterMapEdit(this)" class="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md flex items-center"><span class="btn-text">Save Changes</span><div class="loader hidden ml-2"></div></button>
+            </div>
+        </div>
+    </div>
+    <div id="suggestions-popover" class="suggestions-popover hidden"></div>
+    
+    <script src="shared.js"></script>
+    <script src="master_map.js"></script>
+</body>
+</html>

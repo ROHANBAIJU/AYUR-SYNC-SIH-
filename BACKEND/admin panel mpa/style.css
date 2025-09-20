@@ -1,0 +1,28 @@
+body { font-family: 'Inter', sans-serif; }
+.tab-button { border-bottom: 3px solid transparent; transition: all 0.2s ease-in-out; }
+.tab-active { border-bottom-color: #3b82f6; color: #3b82f6; font-weight: 600; }
+.sub-tab-active { background-color: #e0e7ff; color: #4338ca; }
+.loader { border: 4px solid #f3f4f6; border-top: 4px solid #3b82f6; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+.grid-table { border-collapse: collapse; border: 1px solid #e5e7eb; table-layout: fixed; width: 100%; }
+.table-cell { padding: 8px 12px; border: 1px solid #e5e7eb; vertical-align: top; }
+.cell-approved { background-color: #dcfce7 !important; }
+.cell-rejected { background-color: #fee2e2 !important; }
+.cell-review { background-color: #ffedd5 !important; }
+.alias-approved { background-color: #e0e7ff !important; }
+.alias-rejected { background-color: #fee2e2 !important; }
+.floating-actions { transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out; transform: translateY(10px); opacity: 0; pointer-events: none; }
+.floating-actions.active { transform: translateY(0); opacity: 1; pointer-events: auto; }
+.modal-backdrop { transition: opacity 0.2s ease-in-out; z-index: 60; }
+.suggestions-popover {
+    position: absolute;
+    z-index: 50;
+    background-color: #f8fafc; 
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    width: 380px; 
+    max-height: 400px;
+    overflow-y: auto;
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+}

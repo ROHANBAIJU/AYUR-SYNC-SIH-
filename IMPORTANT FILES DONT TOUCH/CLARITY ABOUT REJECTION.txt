@@ -1,0 +1,24 @@
+n/a plus option --- add aliases 
+
+rejection handling 
+
+
+Of course. Yes, I understand the changes you're proposing perfectly. You are redefining the purpose of the two rejection queues to make the workflow much more logical and task-oriented.
+
+Here's my understanding of the new system:
+
+## 1. The New "Correction Queue": For Good Terms with Bad ICD-11 Matches
+The Scenario: An AI suggestion is rejected because the traditional medicine term (e.g., the Ayurveda name) is correct and valid, but it has been mapped to the wrong ICD-11 disease.
+
+The Journey: The item is sent to the Correction Queue.
+
+The New Functionality: Inside this queue, the traditional term's details (name, code, description) will be locked and read-only. The only action the administrator can perform is to edit the ICD-11 Name. The goal is to find a new, correct ICD-11 home for that valid traditional term.
+
+## 2. The New "Orphanage": For Invalid Traditional Terms
+The Scenario: An AI suggestion is rejected because the traditional term itself is fundamentally flawed—it might be invalid, misspelled, or non-existent in its respective medical system (Ayurveda, Siddha, or Unani).
+
+The Journey: This rejected item is sent to the Orphanage.
+
+The New Functionality: The Orphanage is no longer a place for remapping. It is now a holding area for these flawed traditional terms. The purpose is to isolate them for a separate, future process (potentially using an AI tool, as you suggested) to analyze them, correct them, or "find their meaning." Only after a term has been fixed and validated on the traditional medicine side would it be considered for remapping to an ICD-11 code.
+
+In short, you're clarifying the workflow beautifully: the Correction Queue is for fixing the ICD-11 mapping of a good term, while the Orphanage is for fixing the traditional term itself.
