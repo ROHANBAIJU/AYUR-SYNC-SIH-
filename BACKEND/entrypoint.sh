@@ -31,11 +31,16 @@ python -m app.create_tables || echo "[ENTRYPOINT] create_tables finished (or ski
 # Ensure logs directory exists for FHIR audit
 mkdir -p /app/logs || true
 
-if [ -f /app/scripts/discover_ai_mappings.py ]; then
-  echo "[ENTRYPOINT] Running AI mappings discovery..."
-  python /app/scripts/discover_ai_mappings.py || echo "[ENTRYPOINT] discover_ai_mappings ended with non-zero status (continuing)."
+# Optionally run the AI discovery script (can be slow/heavy). Allow skipping via env flag.
+if [ "${SKIP_AI_DISCOVERY}" = "1" ] || [ "${SKIP_AI_DISCOVERY}" = "true" ] || [ "${SKIP_AI_DISCOVERY}" = "TRUE" ]; then
+  echo "[ENTRYPOINT] SKIP_AI_DISCOVERY is set; skipping AI mappings discovery."
 else
-  echo "[ENTRYPOINT] Skipping AI mappings discovery (script not found)."
+  if [ -f /app/scripts/discover_ai_mappings.py ]; then
+    echo "[ENTRYPOINT] Running AI mappings discovery..."
+    python /app/scripts/discover_ai_mappings.py || echo "[ENTRYPOINT] discover_ai_mappings ended with non-zero status (continuing)."
+  else
+    echo "[ENTRYPOINT] Skipping AI mappings discovery (script not found)."
+  fi
 fi
 
 echo "[ENTRYPOINT] Starting API server..."

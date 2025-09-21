@@ -129,6 +129,7 @@ BACKEND/logs/
 
 # Data: ignore large/generated datasets, keep docs/examples
 BACKEND/data/**/*.csv
+!BACKEND/data/source2/suggested_mappings_actual.csv
 BACKEND/data/**/*.parquet
 BACKEND/data/**/*.jsonl
 BACKEND/data/**/tmp/**
