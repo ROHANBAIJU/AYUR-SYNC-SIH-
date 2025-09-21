@@ -135,7 +135,34 @@ async function initializePage() {
     try {
         // --- MODIFICATION IS HERE ---
         // We now call our caching function instead of the raw API fetch.
-        const suggestions = await getSuggestionsWithCache();
+        let suggestions = await getSuggestionsWithCache();
+        // If empty and a reset was just triggered, show hint and poll a few times
+        const resetAt = Number(localStorage.getItem('curationResetAt') || '0');
+        const recentlyReset = resetAt && (Date.now() - resetAt) < 5 * 60 * 1000; // 5 minutes
+        const hintEl = document.getElementById('reset-hint');
+        if (recentlyReset && Array.isArray(suggestions) && suggestions.length === 0) {
+            if (hintEl) hintEl.classList.remove('hidden');
+            // poll up to 6 times (every 10s) or until results arrive
+            for (let i = 0; i < 6; i++) {
+                await new Promise(r => setTimeout(r, 10000));
+                // Force bypass of cache for this refresh
+                try {
+                    const fresh = await fetchAPI('/admin/all-suggestions');
+                    if (Array.isArray(fresh) && fresh.length > 0) {
+                        // Update cache for future loads
+                        try {
+                            const db = await openCacheDb();
+                            const tx = db.transaction(SUGGESTIONS_STORE_NAME, 'readwrite');
+                            await tx.store.clear();
+                            await Promise.all(fresh.map(item => tx.store.put(item)));
+                            await tx.done;
+                        } catch {}
+                        suggestions = fresh;
+                        break;
+                    }
+                } catch {}
+            }
+        }
         // --- END OF MODIFICATION ---
 
         // Sort by mapping count (descending) then alphabetically
@@ -155,6 +182,8 @@ async function initializePage() {
         dom.contentArea.innerHTML = `<p class="p-8 text-red-500">Error loading suggestions: ${error.message}</p>`;
     } finally {
         dom.mainLoader.classList.add('hidden');
+        // Clear the reset marker once we’ve attempted to load
+        try { localStorage.removeItem('curationResetAt'); } catch {}
     }
 }
 

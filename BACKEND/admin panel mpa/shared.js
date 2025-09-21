@@ -149,6 +149,9 @@ async function handleResetCuration(button) {
     // Clear suggestions cache so the next visit to New Suggestions fetches fresh data
     await clearSuggestionsCache();
 
+    // Mark reset start time so pages can adapt UI/poll until data appears
+    try { localStorage.setItem('curationResetAt', String(Date.now())); } catch {}
+
     toggleButtonLoading(button, true, 'Resetting...');
     dom.mainLoader.classList.remove('hidden');
     dom.contentArea.innerHTML = '';
@@ -284,3 +287,7 @@ function hideSuggestionsPopover() {
         state.popoverContext = { button: null, icdName: null, system: null };
     }
 }
+
+// Expose a couple of helpers for page modules
+window.fetchSharedData = fetchSharedData;
+window.state = state; // useful for debugging
