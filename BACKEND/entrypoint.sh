@@ -39,4 +39,6 @@ else
 fi
 
 echo "[ENTRYPOINT] Starting API server..."
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# Use PORT env var if provided by host (Render/Railway), default to 8000. Disable --reload in production.
+PORT="${PORT:-8000}"
+exec uvicorn app.main:app --host 0.0.0.0 --port "$PORT"

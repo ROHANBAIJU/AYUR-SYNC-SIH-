@@ -1,6 +1,9 @@
 // This file handles the logic for the login page (index.html)
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
+// Prefer runtime-configured API base URL if provided by config.js; fallback to localhost for dev.
+const API_BASE_URL = (typeof window !== 'undefined' && window.API_BASE_URL)
+    ? window.API_BASE_URL
+    : 'http://127.0.0.1:8000/api';
 
 document.addEventListener('DOMContentLoaded', () => {
     // If user is already logged in, redirect to the main app

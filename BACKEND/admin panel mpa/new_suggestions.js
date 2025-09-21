@@ -551,7 +551,8 @@ async function handleSaveCuration() {
         const originalRow = state.allSuggestionsCache.find(r => r.suggested_icd_name === icdName);
         if (!originalRow) continue;
 
-        for (const system of ['ayurveda', 'siddha', 'unani']) {
+        // Per-system validation (only for systems with some decision touched)
+        for (const system of ['ayurveda', 'siddha', 'unani']) {
             const hasSuggestions = originalRow[`${system}_suggestions`] && originalRow[`${system}_suggestions`] !== '[]';
             if (!hasSuggestions) continue;
 
@@ -564,22 +565,48 @@ async function handleSaveCuration() {
                 continue;
             }
             const allSuggestions = JSON.parse(originalRow[`${system}_suggestions`]);
-            const hasPrimaryDecision = !!decision.primary;
+            const hasPrimaryDecision = !!decision.primary;
             const isPrimaryRejected = (decision.rejected_suggestions || []).some(r => r.isPrimary);
-            if (!hasPrimaryDecision && !isPrimaryRejected) {
-                issues.push({ icdName, system, message: `A primary decision is required.` });
-            } else {
-                const primarySuggId = hasPrimaryDecision ? decision.primary : getSuggestionId(decision.rejected_suggestions.find(r => r.isPrimary).suggestion);
-                const otherSuggs = allSuggestions.filter(s => getSuggestionId(s) !== primarySuggId);
-                const untouchedCount = otherSuggs.filter(s => {
-                    const sId = getSuggestionId(s);
-                    return !(decision.aliases || []).includes(sId) && !(decision.rejected_suggestions || []).some(r => getSuggestionId(r.suggestion) === sId);
-                }).length;
-                if (untouchedCount > 0) {
-                    issues.push({ icdName, system, message: `<span class="font-semibold text-red-600">${untouchedCount} suggestion(s)</span> still require an action (link or reject).` });
-                }
-            }
+            const allRejected = Array.isArray(allSuggestions) && allSuggestions.length > 0 && ((decision.rejected_suggestions || []).length === allSuggestions.length);
+            if (!hasPrimaryDecision && !isPrimaryRejected && !allRejected) {
+                issues.push({ icdName, system, message: `A primary decision is required (or reject all suggestions).` });
+            } else if (hasPrimaryDecision || isPrimaryRejected) {
+                const primarySuggId = hasPrimaryDecision ? decision.primary : getSuggestionId(decision.rejected_suggestions.find(r => r.isPrimary).suggestion);
+                const otherSuggs = allSuggestions.filter(s => getSuggestionId(s) !== primarySuggId);
+                const untouchedCount = otherSuggs.filter(s => {
+                    const sId = getSuggestionId(s);
+                    return !(decision.aliases || []).includes(sId) && !(decision.rejected_suggestions || []).some(r => getSuggestionId(r.suggestion) === sId);
+                }).length;
+                if (untouchedCount > 0) {
+                    issues.push({ icdName, system, message: `<span class="font-semibold text-red-600">${untouchedCount} suggestion(s)</span> still require an action (link or reject).` });
+                }
+            }
         }
+
+        // Row-level completeness rule:
+        // If any system in this row has a chosen primary, then every other system that HAS suggestions
+        // must be resolved too (either primary chosen, or all suggestions explicitly rejected).
+        const anyPrimaryChosenInRow = Object.values(systemsForIcd).some(d => d && d.primary);
+        if (anyPrimaryChosenInRow) {
+            for (const system of ['ayurveda', 'siddha', 'unani']) {
+                const hasSuggestions = originalRow[`${system}_suggestions`] && originalRow[`${system}_suggestions`] !== '[]';
+                if (!hasSuggestions) continue;
+                const decision = systemsForIcd[system];
+                // Empty decision → unresolved
+                if (!decision || (!decision.primary && !decision.review_suggestion && (!decision.aliases || decision.aliases.length === 0) && (!decision.rejected_suggestions || decision.rejected_suggestions.length === 0))) {
+                    issues.push({ icdName, system, message: `A primary decision is required (or reject all suggestions).` });
+                    continue;
+                }
+                // If decision exists but not resolved (no primary, no primary-rejected, not all rejected)
+                const allSuggestions = JSON.parse(originalRow[`${system}_suggestions`]);
+                const hasPrimaryDecision = !!decision.primary;
+                const isPrimaryRejected = (decision.rejected_suggestions || []).some(r => r.isPrimary);
+                const allRejected = Array.isArray(allSuggestions) && allSuggestions.length > 0 && ((decision.rejected_suggestions || []).length === allSuggestions.length);
+                if (!hasPrimaryDecision && !isPrimaryRejected && !allRejected) {
+                    issues.push({ icdName, system, message: `A primary decision is required (or reject all suggestions).` });
+                }
+            }
+        }
     }
 
     if (issues.length > 0) {

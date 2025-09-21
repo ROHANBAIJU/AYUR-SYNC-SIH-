@@ -19,16 +19,26 @@ app = FastAPI(
 # --- 2. ADD THIS MIDDLEWARE BLOCK ---
 # This allows your frontend (running in the browser) to communicate with your backend
 
-""""
+"""
 origins = [
     'http://127.0.0.1:5500',  # VS Code Live Server
     'http://localhost:5500',   # Also for Live Server
 ]
 """
 
-origins = [
-    "*"
-]
+# Allow list from env for production (comma-separated). Fallback to dev-friendly defaults.
+_env_origins = os.getenv("ALLOW_ORIGINS")
+if _env_origins:
+    origins = [o.strip() for o in _env_origins.split(',') if o.strip()]
+else:
+    origins = [
+        'http://127.0.0.1:5500',
+        'http://localhost:5500',
+        'http://127.0.0.1:8000',
+        'http://localhost:8000',
+        'http://127.0.0.1:3000',
+        'http://localhost:3000'
+    ]
 
 app.add_middleware(
     CORSMiddleware,
