@@ -538,14 +538,14 @@ def debug_statuses(db: Session = Depends(get_db)):
     print(f"-> Found statuses: {statuses}")
     
     return {"first_10_statuses_in_mappings_table": statuses}
-
-
+##(OGGGGG)
+"""
 def run_reset_process():
-    """
-    DB-DRIVEN RESET (SAFE VERSION): Wipes only the mappings and traditional terms,
-    preserving the master ICD-11 code list. It then runs the discover_ai_mappings
-    script to repopulate the necessary tables from scratch.
-    """
+    
+    #DB-DRIVEN RESET (SAFE VERSION): Wipes only the mappings and traditional terms,
+    #preserving the master ICD-11 code list. It then runs the discover_ai_mappings
+    #script to repopulate the necessary tables from scratch.
+    
     db = SessionLocal()
     try:
         print("\n--- Initiating Curation Reset (Safe Mode) ---")
@@ -576,6 +576,60 @@ def run_reset_process():
         db.rollback()
     finally:
         db.close()
+
+"""
+# Add these imports at the top of the file if they aren't already there
+import os
+from scripts.discover_ai_mappings import discover_ai_mappings
+from scripts.load_suggestions_from_csv import load_suggestions # <-- Add this new import
+
+# ... other code ...
+
+# (Find and replace the existing run_reset_process function with this)
+def run_reset_process():
+    """
+    DB-DRIVEN RESET (ENHANCED): Wipes mappings and terms, then repopulates them.
+    It first checks for a pre-generated CSV in data/source3/ to use as a fast path.
+    If not found, it falls back to running the original discovery script.
+    """
+    db = SessionLocal()
+    try:
+        print("\n--- Initiating Curation Reset (Safe Mode) ---")
+        
+        # 1. Delete all existing mappings.
+        print("Clearing Mappings table...")
+        mappings_deleted = db.query(Mapping).delete(synchronize_session=False)
+        print(f"-> {mappings_deleted} old mappings deleted.")
+        
+        # 2. Delete all existing traditional terms.
+        print("Clearing Traditional Terms table...")
+        terms_deleted = db.query(TraditionalTerm).delete(synchronize_session=False)
+        print(f"-> {terms_deleted} old traditional terms deleted.")
+        
+        db.commit()
+        print("✅ Old curation data cleared successfully.")
+
+        # 3. --- THIS IS YOUR NEW LOGIC ---
+        # Check for the fallback file and decide which ingestion method to use.
+        fallback_csv_path = "data/source3/ai_mapped_suggestions.csv"
+        
+        print(f"\nChecking for fallback file at: {fallback_csv_path}")
+        if os.path.exists(fallback_csv_path):
+            print("✅ Fallback CSV found. Loading suggestions directly from file...")
+            load_suggestions() # Run the new, fast loader script
+        else:
+            print("Fallback CSV not found. Running AI mapping discovery script...")
+            discover_ai_mappings() # Run the original, slower discovery script
+            
+        print("✅ Database repopulation complete.")
+
+    except Exception as e:
+        print(f"❌ An error occurred during the reset process: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
 
         
 # --- Core API Endpoints ---
