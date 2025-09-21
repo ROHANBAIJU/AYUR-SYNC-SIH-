@@ -40,9 +40,15 @@ else:
         'http://localhost:3000'
     ]
 
+# Optional: allow preview branches with dynamic subdomains (e.g., Netlify)
+# Provide a regex via env var ALLOW_ORIGIN_REGEX, e.g.:
+#   ^https://[a-z0-9-]+--ayur-sync-admin-panel\.netlify\.app$
+allow_origin_regex = os.getenv("ALLOW_ORIGIN_REGEX")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=allow_origin_regex,
     allow_credentials=True,
     allow_methods=["*"], # Allows all methods (GET, POST, etc.)
     allow_headers=["*"], # Allows all headers
