@@ -20,6 +20,16 @@
   const methodSel = qs('method');
   const endpointInp = qs('endpoint');
   const bodyInp = qs('body');
+  // Added: After Integration + Direct API helpers
+  const integOutput = qs('integration-output');
+  const scenarioLookupBtn = qs('scenario-lookup-dengue');
+  const scenarioTranslateBtn = qs('scenario-translate-sample');
+  const apiSearchInp = qs('api-search');
+  const apiSearchBtn = qs('api-search-btn');
+  const apiLookupResults = qs('api-lookup-results');
+  const apiTranslateOutput = qs('api-translate-output');
+  const apiMappedList = qs('api-mapped-list');
+  const mappedFilterSel = qs('mapped-filter');
   const logoutBtn = qs('logout-button');
 
   // Map DOM
@@ -48,6 +58,13 @@
       window.location.href = 'index.html';
       return null;
     }
+    return res.json();
+  }
+
+  async function fetchPublic(path) {
+    const url = path.startsWith('http') ? path : `${api}${path}`;
+    const res = await fetch(url, { headers: headers() });
+    if (res.status === 401) { window.location.href = 'index.html'; return null; }
     return res.json();
   }
 
@@ -240,9 +257,151 @@
     setTimeout(refreshAll, 500);
   });
 
+  // ----- After Integration Test Area: simple scenarios -----
+  if (scenarioLookupBtn) {
+    scenarioLookupBtn.addEventListener('click', async () => {
+      try {
+        const data = await fetchPublic('/api/public/lookup?query=Dengue');
+        integOutput.textContent = JSON.stringify(data, null, 2);
+      } catch (e) {
+        integOutput.textContent = String(e);
+      }
+    });
+  }
+  if (scenarioTranslateBtn) {
+    scenarioTranslateBtn.addEventListener('click', async () => {
+      try {
+        const data = await fetchPublic('/api/public/translate?system=ayurveda&code=AKK-12&target=icd11');
+        integOutput.textContent = JSON.stringify(data, null, 2);
+      } catch (e) {
+        integOutput.textContent = String(e);
+      }
+    });
+  }
+
+  // ----- Direct API helpers: Lookup + Translate + Mapped list -----
+  async function renderLookup(query) {
+    apiLookupResults.innerHTML = '<div class="text-gray-500">Searching…</div>';
+    try {
+      const data = await fetchPublic(`/api/public/lookup?query=${encodeURIComponent(query)}`);
+      // Render as clickable list: ICD groups with mappings
+      const items = [];
+      (data || []).forEach(g => {
+        const icdName = g.icd_name || g.icdName || 'Unknown';
+        items.push(`<div class="py-1"><button class="text-indigo-700 hover:underline" data-icd-name="${icdName}">${icdName}</button></div>`);
+        ['ayurveda','siddha','unani'].forEach(sys => {
+          const section = g[sys] || {};
+          const primary = section.primary ? [section.primary] : [];
+          const aliases = Array.isArray(section.aliases) ? section.aliases : [];
+          [...primary, ...aliases].forEach(t => {
+            if (!t) return;
+            const code = t.code || '';
+            const label = `${sys.toUpperCase()} • ${t.term || ''}${code ? ' • ' + code : ''}`;
+            items.push(`<div class="pl-3 text-[12px]"><button class="text-gray-700 hover:underline" data-sys="${sys}" data-code="${code}">${label}</button></div>`);
+          });
+        });
+      });
+      apiLookupResults.innerHTML = items.join('') || '<div class="text-gray-500">No results</div>';
+    } catch (e) {
+      apiLookupResults.innerHTML = `<div class="text-red-600 text-xs">${String(e)}</div>`;
+    }
+  }
+
+  async function runTranslateByIcd(icdName) {
+    apiTranslateOutput.textContent = 'Translating…';
+    try {
+      const data = await fetchPublic(`/api/public/translate?icd_name=${encodeURIComponent(icdName)}`);
+      apiTranslateOutput.textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+      apiTranslateOutput.textContent = String(e);
+    }
+  }
+  async function runTranslateByTerm(system, code) {
+    apiTranslateOutput.textContent = 'Translating…';
+    try {
+      const data = await fetchPublic(`/api/public/translate?system=${encodeURIComponent(system)}&code=${encodeURIComponent(code)}&target=icd11`);
+      apiTranslateOutput.textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+      apiTranslateOutput.textContent = String(e);
+    }
+  }
+
+  if (apiSearchBtn && apiSearchInp) {
+    apiSearchBtn.addEventListener('click', () => {
+      const q = apiSearchInp.value.trim(); if (!q) return;
+      renderLookup(q);
+    });
+    apiSearchInp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); apiSearchBtn.click(); }
+    });
+    apiLookupResults?.addEventListener('click', (e) => {
+      const tgt = e.target;
+      if (tgt && tgt.dataset && tgt.dataset.icdName) {
+        runTranslateByIcd(tgt.dataset.icdName);
+      } else if (tgt && tgt.dataset && tgt.dataset.sys && tgt.dataset.code) {
+        runTranslateByTerm(tgt.dataset.sys, tgt.dataset.code);
+      }
+    });
+  }
+
+  async function loadMappedList() {
+    if (!apiMappedList) return;
+    apiMappedList.innerHTML = '<div class="text-gray-500 text-xs">Loading…</div>';
+    try {
+      // Reuse admin master map endpoint; includes row_status and per-system JSON strings
+      const data = await fetchJSON('/master-map-data');
+      const entries = [];
+      (data || []).forEach(row => {
+        if (row.row_status !== 'Verified') return; // default to verified only
+        const icd = row.suggested_icd_name;
+        entries.push({ type: 'icd', label: icd, icd });
+        ['ayurveda','siddha','unani'].forEach(sys => {
+          try {
+            const raw = row[`${sys}_mapping`];
+            if (!raw) return;
+            const obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            const primary = obj?.primary ? [obj.primary] : [];
+            const aliases = Array.isArray(obj?.aliases) ? obj.aliases : [];
+            [...primary, ...aliases].forEach(t => {
+              if (!t || !t.term) return;
+              entries.push({ type: sys, label: `${t.term} • ${t.code || ''}`, system: sys, code: t.code || '' });
+            });
+          } catch {}
+        });
+      });
+
+      function render(filter) {
+        const filtered = entries.filter(e => filter === 'all' ? true : (filter === 'icd' ? e.type === 'icd' : e.type === filter));
+        const html = filtered.map(e => {
+          if (e.type === 'icd') {
+            return `<div class="py-1"><button class="text-indigo-700 hover:underline" data-icd-name="${e.icd}">ICD‑11 • ${e.label}</button></div>`;
+          } else {
+            return `<div class="py-1"><button class="text-gray-800 hover:underline" data-sys="${e.system}" data-code="${e.code}">${e.type.toUpperCase()} • ${e.label}</button></div>`;
+          }
+        }).join('');
+        apiMappedList.innerHTML = html || '<div class="text-gray-500 text-xs">No verified mappings.</div>';
+      }
+      render(mappedFilterSel?.value || 'all');
+
+      apiMappedList.addEventListener('click', (e) => {
+        const tgt = e.target;
+        if (tgt && tgt.dataset && tgt.dataset.icdName) {
+          runTranslateByIcd(tgt.dataset.icdName);
+        } else if (tgt && tgt.dataset && tgt.dataset.sys && tgt.dataset.code) {
+          runTranslateByTerm(tgt.dataset.sys, tgt.dataset.code);
+        }
+      });
+      mappedFilterSel?.addEventListener('change', () => render(mappedFilterSel.value));
+    } catch (e) {
+      apiMappedList.innerHTML = `<div class="text-red-600 text-xs">${String(e)}</div>`;
+    }
+  }
+
   // initial load + polling
   refreshAll();
   setInterval(refreshAll, 15000);
   // map init
   initMap();
+  // load mapped list once
+  loadMappedList();
 })();
