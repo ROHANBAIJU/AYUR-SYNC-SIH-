@@ -4,7 +4,9 @@
 /**
  * Calculates a score for a suggestion based on how many systems have mappings.
  * @param {object} suggestion - The suggestion row object.
- * @returns {number} - A score from 0 to 3.
+ * @returns {number} - A scor        const actionBadge = (untouchedAliasCount > 0 && (decisionObj.primary || isPrimaryRejected)) ? `<span class="ml-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">${untouchedAliasCount}</span>` : '';
+        const popoverButtonId = `popover-btn-${safeIcdName}-${system}`;
+        extraContentHtml = `<div class="mt-2 pt-2 border-t"><button id="${popoverButtonId}" onclick="showSuggestionsPopover(this, '${icdName}', '${system}')" class="popover-trigger w-full text-left text-xs font-semibold text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 flex items-center transition-colors"><i class="fa-solid fa-plus mr-2 text-xs"></i>+${otherSuggs.length} More Aliases ${actionBadge}</button></div>`;rom 0 to 3.
  */
 function calculateMappingScore(suggestion) {
     let score = 0;
@@ -278,7 +280,7 @@ function createCurationCell(safeIcdName, icdName, system, row) {
         }).length;
         const actionBadge = (untouchedAliasCount > 0 && (decisionObj.primary || isPrimaryRejected)) ? `<span class="ml-2 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full">${untouchedAliasCount}</span>` : '';
         const popoverButtonId = `popover-btn-${safeIcdName}-${system}`;
-        extraContentHtml = `<div class="mt-2 pt-2 border-t"><button id="${popoverButtonId}" onclick="showSuggestionsPopover(this, '${icdName}', '${system}')" class="popover-trigger w-full text-left text-xs font-semibold text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 flex items-center transition-colors"><i class="fa-solid fa-plus mr-2 text-xs"></i>+${otherSuggs.length} More Suggestion(s) ${actionBadge}</button></div>`;
+        extraContentHtml = `<div class="mt-2 pt-2 border-t"><button id="${popoverButtonId}" onclick="showSuggestionsPopover(this, '${icdName}', '${system}')" class="popover-trigger w-full text-left text-xs font-semibold text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 flex items-center transition-colors"><i class="fa-solid fa-plus mr-2 text-xs"></i>+${otherSuggs.length} More Aliases ${actionBadge}</button></div>`;
     }
     return `<td class="table-cell ${cellClass} text-xs" id="cell-${safeIcdName}-${system}">${primaryHtml}${extraContentHtml}</td>`;
 }
