@@ -581,7 +581,7 @@ def run_reset_process():
 # Add these imports at the top of the file if they aren't already there
 import os
 from scripts.discover_ai_mappings import discover_ai_mappings
-from scripts.load_suggestions_from_csv import load_suggestions # <-- Add this new import
+from scripts.load_suggestions_from_csv import load_suggestions, _resolve_csv_path  # <-- Use robust resolver
 
 # ... other code ...
 
@@ -589,8 +589,8 @@ from scripts.load_suggestions_from_csv import load_suggestions # <-- Add this ne
 def run_reset_process():
     """
     DB-DRIVEN RESET (ENHANCED): Wipes mappings and terms, then repopulates them.
-    It first checks for a pre-generated CSV in data/source3/ to use as a fast path.
-    If not found, it falls back to running the original discovery script.
+    Tries to seed from a pre-generated CSV using the robust resolver; if none found,
+    falls back to running the original discovery script.
     """
     db = SessionLocal()
     try:
@@ -609,17 +609,14 @@ def run_reset_process():
         db.commit()
         print("✅ Old curation data cleared successfully.")
 
-        # 3. --- THIS IS YOUR NEW LOGIC ---
-        # Check for the fallback file and decide which ingestion method to use.
-        fallback_csv_path = "data/source3/ai_mapped_suggestions.csv"
-        
-        print(f"\nChecking for fallback file at: {fallback_csv_path}")
-        if os.path.exists(fallback_csv_path):
-            print("✅ Fallback CSV found. Loading suggestions directly from file...")
-            load_suggestions() # Run the new, fast loader script
+        # 3. Prefer fast-path CSV loader if any known CSV exists.
+        csv_path = _resolve_csv_path()
+        if csv_path:
+            print(f"\n✅ Found suggestions CSV at: {csv_path}. Loading suggestions directly...")
+            load_suggestions()
         else:
-            print("Fallback CSV not found. Running AI mapping discovery script...")
-            discover_ai_mappings() # Run the original, slower discovery script
+            print("\nℹ️ No suggestions CSV found. Running AI mapping discovery script instead...")
+            discover_ai_mappings()
             
         print("✅ Database repopulation complete.")
 

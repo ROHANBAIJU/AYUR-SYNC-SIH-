@@ -38,6 +38,17 @@ def run_ai_discovery():
     skip_flag = os.getenv("SKIP_AI_DISCOVERY", "false").lower()
     if skip_flag in ["1", "true"]:
         print("[SETUP] SKIP_AI_DISCOVERY is set; skipping AI mappings discovery.")
+        # Try fast-path CSV loader instead when discovery is skipped
+        try:
+            from scripts.load_suggestions_from_csv import _resolve_csv_path, load_suggestions
+            csv_path = _resolve_csv_path()
+            if csv_path:
+                print(f"[SETUP] Seeding suggestions from CSV: {csv_path}")
+                load_suggestions()
+            else:
+                print("[SETUP] No suggestions CSV found to seed from.")
+        except Exception as e:
+            print(f"[SETUP] CSV seeding failed: {e}")
         return
 
     script_path = "/app/scripts/discover_ai_mappings.py"

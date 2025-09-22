@@ -7,18 +7,48 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.db.models import ICD11Code, TraditionalTerm, Mapping
 
-# Define the path to your pre-generated file
-SOURCE_CSV_PATH = "data/source3/ai_mapped_suggestions.csv"
+"""
+Robust loader for pre-generated AI suggestions CSV that can be shipped with the image.
+
+Path resolution order (first existing file wins):
+1) Environment variable SUGGESTIONS_CSV_PATH (absolute or relative to /app)
+2) data/source3/ai_mapped_suggestions.csv
+3) data/processed/ai_mapped_suggestions.csv
+4) data/source2/ai_mapped_suggestions.csv
+"""
+
+DEFAULT_CANDIDATE_PATHS = [
+    "data/source3/ai_mapped_suggestions.csv",
+    "data/processed/ai_mapped_suggestions.csv",
+    "data/source2/ai_mapped_suggestions.csv",
+]
+
+def _resolve_csv_path() -> str | None:
+    # 1) Env override
+    env_path = os.getenv("SUGGESTIONS_CSV_PATH")
+    if env_path:
+        if os.path.isabs(env_path) and os.path.exists(env_path):
+            return env_path
+        # Treat as relative to current working directory
+        rel_path = os.path.abspath(env_path)
+        if os.path.exists(rel_path):
+            return rel_path
+    # 2) Fallback candidates
+    for p in DEFAULT_CANDIDATE_PATHS:
+        if os.path.exists(p):
+            return p
+    return None
 
 def load_suggestions():
     """
     Reads the pre-generated CSV, processes its contents, and populates the database.
     """
-    if not os.path.exists(SOURCE_CSV_PATH):
-        print(f"-> Source file not found at {SOURCE_CSV_PATH}. Aborting load.")
+    source_csv_path = _resolve_csv_path()
+    if not source_csv_path:
+        print("-> No suggestions CSV found in any known location. Aborting load.")
         return
 
-    print(f"-> Loading suggestions from {SOURCE_CSV_PATH}...")
+    print(f"-> Loading suggestions from: {source_csv_path}")
     db: Session = SessionLocal()
     
     # Use caches to avoid redundant database queries
@@ -26,7 +56,7 @@ def load_suggestions():
     term_cache = {}
 
     try:
-        df = pd.read_csv(SOURCE_CSV_PATH).fillna('')
+        df = pd.read_csv(source_csv_path).fillna('')
         
         for index, row in df.iterrows():
             icd_name = row.get("suggested_icd_name")
