@@ -39,6 +39,23 @@ def _resolve_csv_path() -> str | None:
             return p
     return None
 
+def _coerce_confidence(val) -> int:
+    """Convert incoming confidence variants (e.g., '85%', '85', 85.0, None) to int.
+    Falls back to 0 if parsing fails."""
+    if val is None:
+        return 0
+    try:
+        if isinstance(val, (int,)):
+            return int(val)
+        s = str(val).strip()
+        if s.endswith('%'):
+            s = s[:-1]
+        # Allow float-like strings
+        return int(float(s))
+    except Exception:
+        print(f"[CSV-LOAD][WARN] Could not parse confidence '{val}', defaulting to 0")
+        return 0
+
 def load_suggestions():
     """
     Reads the pre-generated CSV, processes its contents, and populates the database.
@@ -125,7 +142,7 @@ def load_suggestions():
                             status='suggested',
                             is_primary=False,
                             ai_justification=term_data.get('justification'),
-                            ai_confidence=term_data.get('confidence')
+                            ai_confidence=_coerce_confidence(term_data.get('confidence'))
                         )
                         db.add(new_mapping)
                         row_created_mappings += 1
