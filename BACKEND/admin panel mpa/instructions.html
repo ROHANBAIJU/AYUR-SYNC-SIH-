@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NAMASTE-ICD | Admin Instructions</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="image.png" type="image/png" />
+</head>
+<body class="h-full">
+  <div id="app-screen" class="h-full flex flex-col">
+    <header class="bg-white p-4 border-b border-gray-200 flex justify-between items-center">
+      <h1 class="text-xl font-bold text-gray-800">Ayur Sync Admin Panel · Instructions & Info</h1>
+      <div class="flex items-center gap-3">
+        <a href="https://github.com/ROHANBAIJU/AYUR-SYNC-SIH-" target="_blank" class="inline-flex items-center text-sm font-medium text-gray-700 hover:text-indigo-600" title="GitHub Repository">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="mr-1 opacity-80" aria-hidden="true">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 .5a11.5 11.5 0 0 0-3.64 22.42c.58.11.79-.25.79-.56v-2.17c-3.2.7-3.88-1.37-3.88-1.37-.53-1.35-1.3-1.71-1.3-1.71-1.06-.72.08-.71.08-.71 1.17.08 1.78 1.2 1.78 1.2 1.04 1.78 2.72 1.27 3.39.97.11-.76.41-1.27.75-1.56-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.45.11-3.02 0 0 .98-.31 3.21 1.19a11.2 11.2 0 0 1 5.84 0c2.23-1.5 3.2-1.19 3.2-1.19.64 1.57.24 2.73.12 3.02.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.27 5.68.42.36.8 1.07.8 2.17v3.22c0 .31.2.68.8.56A11.5 11.5 0 0 0 12 .5Z"/>
+          </svg>
+          GitHub Repo
+        </a>
+        <button id="logout-button" class="text-sm font-medium text-gray-700 hover:text-red-600">Logout</button>
+      </div>
+    </header>
+
+    <main class="flex-1 p-6 space-y-6">
+      <div class="bg-white rounded-lg shadow-sm border">
+        <div class="p-4 border-b border-gray-200">
+          <div class="flex border-b border-gray-200">
+            <a href="instructions.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 tab-active">Instructions</a>
+            <a href="analytics.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Analytics</a>
+            <a href="new_suggestions.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">New Suggestions</a>
+            <a href="master_map.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Master Map</a>
+            <a href="rejections.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Rejected Mappings</a>
+            <a href="icd11.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">ICD-11 Disease List</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Warnings -->
+      <section class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <h2 class="text-lg font-semibold text-yellow-800">Important</h2>
+        <ul class="list-disc pl-5 mt-2 text-sm text-yellow-900 space-y-1">
+          <li>Best viewed and used in <strong>Desktop mode</strong> for the full curation experience.</li>
+          <li>Due to <strong>cloud database row limits</strong>, this demo displays approximately <strong>45% of total mappings</strong>. Full dataset is available in offline/local DB or paid tiers.</li>
+        </ul>
+      </section>
+
+      <!-- Team & Problem Statement -->
+      <section class="card p-4">
+        <div class="bg-gradient-to-r from-indigo-50 to-teal-50 -m-4 mb-4 p-4 border-b rounded-t-lg">
+          <h2 class="text-xl font-bold text-gray-800">Team & Problem Statement</h2>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-700">
+          <div>
+            <h3 class="font-semibold text-gray-800">Team Ayur Nexus</h3>
+            <ul class="mt-2 space-y-1">
+              <li><strong>Rohan Baiju</strong> — Team Lead, Backend</li>
+              <li><strong>Dhiya</strong> — Frontend</li>
+              <li><strong>Ananya</strong> — Backend</li>
+              <li><strong>Srijan</strong> — Frontend</li>
+              <li><strong>Sruthi</strong> — Frontend</li>
+              <li><strong>Joel</strong> — Backend</li>
+            </ul>
+          </div>
+          <div>
+            <p><span class="font-semibold">Problem Statement:</span> 25026</p>
+            <p class="mt-1"><span class="font-semibold">Title:</span> Develop API code to integrate NAMASTE and/or the ICD‑11 via TM2 into EMRs compliant with India’s EHR Standards.</p>
+          </div>
+        </div>
+        <details class="mt-4">
+          <summary class="cursor-pointer font-medium text-gray-800">Read full description</summary>
+          <div class="mt-2 text-sm text-gray-700 space-y-3">
+            <p><strong>Background</strong> — India’s Ayush sector is transitioning to interoperable digital systems. This project bridges NAMASTE codes, WHO International Terminologies for Ayurveda, and ICD‑11 TM2/biomedicine in FHIR R4 EMRs with OAuth, consent and audit readiness.</p>
+            <p><strong>Objective</strong> — Provide a lightweight terminology micro‑service or FHIR plugin: CodeSystem for NAMASTE/International Terminologies, ConceptMap for ICD‑11 TM2 & biomedicine, lookup and translate operations, and secure Bundle ingest.</p>
+            <ul class="list-disc pl-5">
+              <li>Ingest NAMASTE CSV; generate FHIR CodeSystem + ConceptMap</li>
+              <li>Fetch TM2/biomed updates from WHO ICD‑API and merge</li>
+              <li>Simple UI/CLI to search, map, and assemble a FHIR ProblemList</li>
+              <li>Versioning and consent metadata aligned with India’s 2016 EHR Standards</li>
+            </ul>
+            <p><strong>Expected Solution</strong> — FHIR R4 compliant micro‑service offering lookup, translate, double coding, and secure ingestion; suitable for EMR integration and analytics.</p>
+            <p><strong>Org</strong>: Ministry of Ayush · <strong>Dept</strong>: AIIA · <strong>Theme</strong>: MedTech / BioTech / HealthTech</p>
+          </div>
+        </details>
+      </section>
+
+      <!-- Interfaces: How to use the Admin Panel -->
+      <section class="card p-4">
+        <div class="bg-gradient-to-r from-indigo-50 to-teal-50 -m-4 mb-4 p-4 border-b rounded-t-lg">
+          <h2 class="text-xl font-bold text-gray-800">Admin Interfaces Overview</h2>
+          <p class="text-sm text-gray-600">This panel enables human‑in‑the‑loop verification of AI‑generated mappings across Ayurveda, Siddha and Unani.</p>
+        </div>
+        <div class="space-y-6 text-sm text-gray-700">
+          <div>
+            <h3 class="font-semibold text-gray-800">Analytics</h3>
+            <p>Visualizes real usage from the API access log: requests over time, top paths, live test calls, and India map of diagnosis events. Use it to validate clinician‑facing endpoints and observe how verified mappings impact results.</p>
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-800">New Suggestions (Curation)</h3>
+            <ul class="list-disc pl-5 space-y-1">
+              <li>Each card groups suggestions by an ICD‑11 disease. You’ll see suggestions per system with AI justification and confidence.</li>
+              <li>Select one <strong>Primary</strong> per system; add optional <strong>Aliases</strong>. You can reject incorrect suggestions with reasons:</li>
+              <li class="ml-5">— <em>Incorrect mapping</em>: term is valid but mapped to wrong ICD → goes to <strong>Correction Queue</strong>.</li>
+              <li class="ml-5">— <em>Orphan</em>: term is invalid/misspelled → goes to <strong>Orphanage</strong>.</li>
+              <li>Click <strong>Save Curation Changes</strong>. Approved items move to <strong>Master Map (Staged)</strong>.</li>
+              <li>Tip: After reset, the panel auto‑polls until fresh suggestions arrive.</li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-800">Master Map</h3>
+            <p>Shows staged mappings ready to be promoted to verified. You can edit the Primary/Aliases per system and then <strong>Commit to Verified DB</strong>. Verified mappings are used by clinician endpoints (<code>/lookup</code> and <code>/translate</code>).</p>
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-800">ICD‑11 Disease List</h3>
+            <p>Maintains the master list of ICD‑11 diseases for curation. Add new entries where needed (e.g., when remapping rejected items to a new disease).</p>
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-800">Rejected Mappings</h3>
+            <ul class="list-disc pl-5 space-y-1">
+              <li><strong>Correction Queue</strong>: terms to be remapped to a different ICD‑11 disease.</li>
+              <li><strong>Orphanage</strong>: invalid or unrecognized terms for later cleanup and analysis.</li>
+              <li>You can <strong>Remap</strong> a rejected term: pick destination ICD or add a new one; AI re‑analysis updates justification/confidence.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Technical Flow -->
+      <section class="card p-4">
+        <div class="bg-gradient-to-r from-indigo-50 to-teal-50 -m-4 mb-4 p-4 border-b rounded-t-lg">
+          <h2 class="text-xl font-bold text-gray-800">Technical Flow · Ayur Sync API Structure</h2>
+          <p class="text-sm text-gray-600">High‑level architecture from AI discovery → curation → verified mappings powering clinician endpoints.</p>
+        </div>
+        <div class="space-y-4">
+          <img src="../FIRST%20INT.jpg" alt="Ayur Sync Technical Flow" class="w-full rounded border" />
+          <p class="text-xs text-gray-500">If the image doesn’t load, ensure the file <code>FIRST INT.jpg</code> exists at the repo root of the backend folder. You can replace it or add another diagram as needed.</p>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="text-xs text-gray-500 text-center py-6">
+        <p>
+          Built by <strong>Team Ayur Nexus</strong> ·
+          <a class="text-indigo-600 hover:underline" href="https://github.com/ROHANBAIJU/AYUR-SYNC-SIH-" target="_blank">GitHub</a>
+        </p>
+      </footer>
+    </main>
+  </div>
+
+  <!-- Optional runtime config & shared auth utilities -->
+  <script src="config.js"></script>
+  <script src="shared.js"></script>
+</body>
+<style>
+  .card { background:#fff; border:1px solid #e5e7eb; border-radius:0.5rem; }
+  .tab-button.tab-active { color:#111827; border-bottom:2px solid #4f46e5; }
+  .tab-button { margin-right:0.25rem; }
+  .tab-button:hover { color:#111827; }
+  body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial; }
+  summary { outline: none; }
+  summary::-webkit-details-marker { display: none; }
+  details > summary { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 6px; background: #f9fafb; }
+  details[open] > summary { background: #eef2ff; border-color: #c7d2fe; }
+  details > summary:after { content: '▸'; font-size: 12px; opacity: .7; }
+  details[open] > summary:after { content: '▾'; }
+  .card p, .card li { line-height: 1.5; }
+  .card code { background:#f9fafb; padding:2px 4px; border:1px solid #e5e7eb; border-radius:4px; }
+  .card img { background:#fff; }
+  .card a { color:#2563eb; }
+</style>
+</html>
