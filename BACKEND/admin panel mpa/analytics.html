@@ -136,24 +136,8 @@ GET /api/fhir/CodeSystem/$lookup?system=ayurveda&amp;code=AKK-12
           <button id="scenario-lookup-dengue" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm">Run: Lookup Dengue</button>
           <button id="scenario-translate-sample" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm">Run: Translate sample NAMASTE code</button>
         </div>
-        <pre id="integration-output" class="mt-2 bg-gray-50 border rounded p-2 overflow-auto max-h-64 text-xs"></pre>
-      </section>
-
-      <!-- Direct API Test Area -->
-      <section class="card p-4">
-        <h3 class="font-semibold mb-3">Direct API Test Area</h3>
-        <!-- Raw request runner (kept from old Live Test Area) -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
-          <select id="method" class="border rounded p-2"><option>GET</option><option>POST</option></select>
-          <input id="endpoint" class="border rounded p-2" placeholder="/api/public/lookup?query=Dengue" />
-          <input id="body" class="border rounded p-2" placeholder='{"foo":"bar"} (for POST)' />
-          <button id="run" class="bg-indigo-600 text-white rounded p-2">Run</button>
-        </div>
-        <div class="text-xs text-gray-600">Latency: <span id="latency">-</span> ms, Status: <span id="status">-</span></div>
-        <pre id="output" class="mt-2 bg-gray-50 border rounded p-2 overflow-auto max-h-64 text-xs"></pre>
-
-        <!-- Lookup + Translate helpers and Mapped list -->
-        <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <!-- Lookup + Translate helpers and Mapped list relocated here -->
+        <div class="mt-2 grid grid-cols-1 lg:grid-cols-3 gap-4">
           <!-- Left: Search + Translate -->
           <div class="lg:col-span-2">
             <div class="mb-2">
@@ -185,6 +169,21 @@ GET /api/fhir/CodeSystem/$lookup?system=ayurveda&amp;code=AKK-12
             <div id="api-mapped-list" class="bg-white border rounded p-2 max-h-80 overflow-auto text-sm"></div>
           </div>
         </div>
+        <pre id="integration-output" class="mt-2 bg-gray-50 border rounded p-2 overflow-auto max-h-64 text-xs"></pre>
+      </section>
+
+      <!-- Direct API Test Area -->
+      <section class="card p-4">
+        <h3 class="font-semibold mb-3">Direct API Test Area</h3>
+        <!-- Raw request runner (kept from old Live Test Area) -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-3">
+          <select id="method" class="border rounded p-2"><option>GET</option><option>POST</option></select>
+          <input id="endpoint" class="border rounded p-2" placeholder="/api/public/lookup?query=Dengue" />
+          <input id="body" class="border rounded p-2" placeholder='{"foo":"bar"} (for POST)' />
+          <button id="run" class="bg-indigo-600 text-white rounded p-2">Run</button>
+        </div>
+        <div class="text-xs text-gray-600">Latency: <span id="latency">-</span> ms, Status: <span id="status">-</span></div>
+        <pre id="output" class="mt-2 bg-gray-50 border rounded p-2 overflow-auto max-h-64 text-xs"></pre>
       </section>
       <section class="card p-4">
         <h3 class="font-semibold mb-3">Recent requests</h3>
