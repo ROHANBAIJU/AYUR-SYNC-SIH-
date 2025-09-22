@@ -235,7 +235,12 @@
         const counts = ts.map(b => b.count);
         const avgs = ts.map(b => Math.round(b.avg_latency_ms || 0));
         const ctx = document.getElementById('tsChart');
-        if (tsChart) tsChart.destroy();
+        // Destroy any existing chart bound to this canvas (defensive against double init)
+        try {
+          const existing = (window.Chart && Chart.getChart) ? (Chart.getChart(ctx) || Chart.getChart('tsChart')) : null;
+          if (existing) existing.destroy();
+        } catch {}
+        if (tsChart) { try { tsChart.destroy(); } catch {} }
         tsChart = new Chart(ctx, {
           type: 'line',
           data: { labels, datasets: [
@@ -533,6 +538,10 @@
 
       function initMap() {
         if (!mapEl || typeof L === 'undefined') return;
+        if (map) return; // already initialized
+        const el = document.getElementById('india-map');
+        if (!el) return;
+        if (el._leaflet_id) return; // guard against duplicate Leaflet init
         map = L.map('india-map');
         map.setView([22.3511148, 78.6677428], 5);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
@@ -546,10 +555,10 @@
       }
 
       // initial load + polling
-      refreshAll();
-      setInterval(refreshAll, 15000);
-      initMap();
-      loadMappedList();
+      try { refreshAll(); } catch (e) { console.warn('refreshAll failed (initial)', e); }
+      try { setInterval(refreshAll, 15000); } catch {}
+      try { initMap(); } catch (e) { console.warn('initMap failed', e); }
+      try { loadMappedList(); } catch (e) { console.warn('loadMappedList failed', e); }
     })();
 
       function render(filter) {
