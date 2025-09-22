@@ -54,11 +54,16 @@ def load_suggestions():
     # Use caches to avoid redundant database queries
     icd_cache = {}
     term_cache = {}
+    total_rows = 0
+    total_mappings_created = 0
+    total_terms_created = 0
+    commit_every = int(os.getenv("CSV_COMMIT_EVERY", "50"))
 
     try:
         df = pd.read_csv(source_csv_path).fillna('')
         
         for index, row in df.iterrows():
+            total_rows += 1
             icd_name = row.get("suggested_icd_name")
             if not icd_name:
                 continue
@@ -74,6 +79,8 @@ def load_suggestions():
             icd_obj = icd_cache[icd_name]
 
             # --- Process each system's suggestions ---
+            row_created_mappings = 0
+            row_created_terms = 0
             for system in ['ayurveda', 'siddha', 'unani']:
                 suggestions_str = row.get(f"{system}_suggestions", "[]")
                 if not suggestions_str or suggestions_str == "[]":
@@ -105,6 +112,8 @@ def load_suggestions():
                                 )
                                 db.add(term_obj)
                                 db.flush() # Flush to get new ID
+                                row_created_terms += 1
+                                total_terms_created += 1
                             term_cache[term_key] = term_obj
                         term_obj = term_cache[term_key]
 
@@ -119,13 +128,27 @@ def load_suggestions():
                             ai_confidence=term_data.get('confidence')
                         )
                         db.add(new_mapping)
+                        row_created_mappings += 1
+                        total_mappings_created += 1
 
                 except json.JSONDecodeError:
-                    print(f"Warning: Could not parse JSON for {icd_name} in {system} system.")
+                    print(f"[CSV-LOAD][WARN] JSON parse error for ICD='{icd_name}', system='{system}'. Skipping that system.")
                     continue
+
+            # Per-row progress log for Render
+            print(
+                f"[CSV-LOAD] Seeded ICD='{icd_name}': +{row_created_mappings} mappings, +{row_created_terms} new terms (row {index+1}/{len(df)})"
+            )
+
+            # Periodic commit to flush progress and reduce transaction size
+            if commit_every > 0 and ((index + 1) % commit_every == 0):
+                db.commit()
+                print(f"[CSV-LOAD] Progress checkpoint: committed up to row {index+1}.")
         
         db.commit()
-        print(f"✅ Successfully loaded {len(df)} rows from CSV into the database.")
+        print(
+            f"✅ CSV load complete: {total_rows} rows processed, {total_mappings_created} mappings created, {total_terms_created} new terms."
+        )
 
     except Exception as e:
         print(f"❌ An error occurred during CSV loading: {e}")
