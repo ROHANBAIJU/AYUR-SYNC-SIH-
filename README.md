@@ -108,4 +108,14 @@ flowchart TD
     style E fill:#2496ED,stroke:#000,stroke-width:2px,color:#fff
     style F fill:#8E44AD,stroke:#000,stroke-width:2px,color:#fff
     style G fill:#3776AB,stroke:#000,stroke-width:2px,color:#fff
+```
+
+## WorkFlow
+
+* **Subheadings (Login To Admin Pannel):** 
+![Image](https://github.com/user-attachments/assets/ba1f692e-75e5-4405-adcd-4db102816ba1)
+
+* **Subheadings (Mapping and Linking the disease  ):**
+
+
 
