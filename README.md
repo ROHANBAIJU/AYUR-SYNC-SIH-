@@ -112,10 +112,10 @@ flowchart TD
 
 ## WorkFlow
 
-* **Subheadings (Login To Admin Pannel):** 
+* **(Login To Admin Pannel):** 
 ![Image](https://github.com/user-attachments/assets/ba1f692e-75e5-4405-adcd-4db102816ba1)
 
-* **Subheadings (Mapping and Linking the disease  ):**
+* **(Mapping and Linking the disease  ):**
 
 
 
