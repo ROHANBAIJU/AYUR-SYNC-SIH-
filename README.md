@@ -109,3 +109,99 @@ flowchart TD
     style F fill:#8E44AD,stroke:#000,stroke-width:2px,color:#fff
     style G fill:#3776AB,stroke:#000,stroke-width:2px,color:#fff
 
+
+---
+
+## 🗂 ConceptMap Versioning (Hackathon Snapshot)
+
+We create an immutable snapshot of all VERIFIED mappings at startup (version `v1-submission`).
+
+Endpoints:
+- `GET /api/v1/admin/conceptmap/releases` – list releases
+- `GET /api/v1/admin/conceptmap/releases/latest` – current active snapshot
+- `GET /api/v1/admin/conceptmap/releases/{version}/elements?icd_name=...` – slice elements
+- `GET /api/v1/admin/conceptmap/releases/{version}/diff?from=...` – diff stub (structure ready)
+
+Verification writes an audit row (`mapping_audit`), enabling provenance expansion.
+
+Response augmentation:
+- Public `/translate` now returns: `release_version`, `direction`, enriched WHO MMS/TM2 context (when available).
+- Reverse translation endpoint: `/translate/reverse?icd_name=...`.
+
+---
+
+## 🧬 FHIR Alignment (Current Surface)
+
+| FHIR Artifact / Operation | Status | Notes |
+|---------------------------|--------|-------|
+| CapabilityStatement `/fhir/metadata` | Implemented | Lists CodeSystem, ValueSet, ConceptMap operations |
+| CodeSystem read `/fhir/CodeSystem/{system}` | Implemented | not-present content mode |
+| CodeSystem `$lookup` | Implemented | Returns Parameters / OperationOutcome on not-found |
+| ValueSet `$expand` | Implemented | Basic filtering, count limit |
+| ConceptMap `$translate` | Implemented | Primary NAMASTE → ICD (Parameters / OperationOutcome) |
+| Reverse translate (public) | Implemented | `/public/translate/reverse` includes version |
+| Bundle ingest | Prototype | `/fhir/Bundle` classification (valid/mismatch/unknown) |
+| OperationOutcome standardization | Basic | Unified helper used for errors |
+
+Roadmap (after submission): real diff engine, ConceptMap history, full patient-level consent, SNOMED/LOINC bridging.
+
+---
+
+## 📦 Bundle Ingest Prototype
+
+POST `/fhir/Bundle` accepts a simplified Condition collection and returns:
+```json
+{
+  "summary": {"resourceType": "OperationOutcome", "issue": [...]},
+  "details": [
+    {"status": "valid", "namaste_code": "AYU-123", "icd": "1A23.4"},
+    {"status": "mismatch", "namaste_code": "AYU-987", "provided_icd": "ZZ99", "expected_icd": "1B45"}
+  ]
+}
+```
+Use this to demo dual-coding validation + future curation feedback loop.
+
+---
+
+## 🔍 Status & Observability
+
+- `GET /api/v1/status` → { total_mappings, verified_mappings, verified_pct, current_release, release_elements, audit_events }
+- `GET /api/v1/public/translate/cache/stats` → in-memory translation cache metrics.
+
+Cache entry key pattern: `<release>|<direction>|<identifier>` with TTL 1h.
+
+---
+
+## 🔐 Security & Consent (Seed Stage)
+
+Stub consent table + global active row (ready for per-patient in next phase). JWT includes future field for scopes (planned). OperationOutcome responses unify error semantics for FHIR-like endpoints.
+
+---
+
+## 🧪 Demo Script (Judge-Friendly)
+1. Hit `/api/v1/status` – show snapshot + release.
+2. Call `/api/v1/public/translate?icd_name=...` – see `release_version`.
+3. Call `/api/v1/public/translate/reverse?icd_name=...` – reverse mapping with same version.
+4. List releases `/api/v1/admin/conceptmap/releases` – show `v1-submission`.
+5. Show diff stub `/api/v1/admin/conceptmap/releases/v1-submission/diff` – structural readiness.
+6. Ingest sample Bundle – mismatch classification.
+7. Show cache stats before/after multiple translate calls.
+8. Display audit entries (verify a mapping via `/api/v1/admin/verify`).
+
+---
+
+## 🗺 Roadmap (Post-Submission)
+| Area | Next Step | Expansion |
+|------|-----------|-----------|
+| Versioning | Real diff + hash | Release history & rollback |
+| FHIR | Bundle persistence | Observation linking & analytics |
+| Security | Scoped tokens | ABHA OAuth2 + patient consent engine |
+| TM2 | Full sync job | Deprecation impact alerts |
+| Semantics | SNOMED/LOINC crosswalk | CDS and lab interoperability |
+| Provenance | Hash chain audit | Signed releases & integrity verification |
+
+---
+
+## ⚡ Performance Notes
+Initial translation responses cached (hit ratio metrics). TM2 + WHO calls (future) planned for local snapshot to reduce latency.
+

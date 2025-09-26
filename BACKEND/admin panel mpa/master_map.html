@@ -12,12 +12,17 @@
 </head>
 <body class="h-full">
 
-    <div id="app-screen" class="hidden h-full flex flex-col">
+    <div id="app-screen" class="hidden h-full flex-col">
+        <div id="admin-nav"></div>
         <header class="bg-white p-4 border-b border-gray-200 flex justify-between items-center">
             <h1 class="text-xl font-bold text-gray-800">NAMASTE-ICD Curation Platform</h1>
             <div class="flex items-center">
-                <button id="reset-button" class="text-sm font-medium text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-md mr-4 flex items-center">
+                <button id="reset-button" class="text-sm font-medium text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-md mr-2 flex items-center">
                     <span class="btn-text">Reset Curation</span>
+                    <div class="loader hidden ml-2"></div>
+                </button>
+                <button id="deep-reset-button" class="text-sm font-medium text-white bg-red-700 hover:bg-red-800 px-4 py-2 rounded-md mr-4 flex items-center" title="Overall Reset: full wipe & re-discover">
+                    <span class="btn-text">Overall Reset</span>
                     <div class="loader hidden ml-2"></div>
                 </button>
                 <button id="logout-button" class="text-sm font-medium text-gray-700 hover:text-red-600">Logout</button>
@@ -36,16 +41,6 @@
             </div>
             
             <div class="bg-white rounded-lg shadow-sm border">
-                <div class="p-4 border-b border-gray-200">
-                    <div class="flex border-b border-gray-200">
-                        <a href="instructions.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Instructions</a>
-                        <a href="analytics.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Analytics</a>
-                        <a href="new_suggestions.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">New Suggestions</a>
-                        <a href="master_map.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 tab-active">Master Map</a>
-                        <a href="rejections.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Rejected Mappings</a>
-                        <a href="icd11.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">ICD-11 Disease List</a>
-                    </div>
-                </div>
                 <div id="main-loader" class="p-16 flex justify-center"><div class="loader" style="width: 48px; height: 48px;"></div></div>
                 <div id="content-area"></div>
             </div>
@@ -59,7 +54,7 @@
         </div>
     </div>
     
-    <div id="mapping-editor-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center hidden modal-backdrop">
+    <div id="mapping-editor-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden modal-backdrop items-center justify-center">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
             <div class="p-4 border-b"><h3 id="editor-title" class="text-lg font-bold text-gray-800">Edit Mapping</h3></div>
             <div class="p-6 overflow-y-auto space-y-6">
@@ -105,6 +100,7 @@
     
     <!-- Optional runtime config: create config.js next to this file; it's ignored if missing. -->
     <script src="config.js"></script>
+    <script src="admin_nav.js"></script>
     <script src="shared.js"></script>
     <script src="master_map.js"></script>
 </body>

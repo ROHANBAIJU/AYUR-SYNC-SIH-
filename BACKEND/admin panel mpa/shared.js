@@ -76,6 +76,8 @@ async function initializeApp() {
     // Attach common event listeners
     if (dom.logoutButton) dom.logoutButton.addEventListener('click', handleLogout);
     if (dom.resetButton) dom.resetButton.addEventListener('click', () => handleResetCuration(dom.resetButton));
+    const deepResetBtn = document.getElementById('deep-reset-button');
+    if (deepResetBtn) deepResetBtn.addEventListener('click', () => openDeepResetModal(deepResetBtn));
     
     // Add scroll listener for popover positioning if it exists
     const mainContentArea = document.querySelector('main');
@@ -115,8 +117,10 @@ function handleLogout() {
     window.location.href = 'index.html';
 }
 
+/* Legacy reset handler kept for reference (old double-click + embedded deep reset code). */
+
 /*
-async function handleResetCuration(button) {
+async function handleResetCuration_OLD(button) {
     if (!confirm("This will delete all curated data and regenerate suggestions. This may take a moment. Continue?")) return;
     
      // --- ADD THIS LINE ---
@@ -138,7 +142,6 @@ async function handleResetCuration(button) {
     } finally {
         toggleButtonLoading(button, false, 'Reset Curation');
     }
-}
 */
 
 // Replace the old handleResetCuration function in shared.js
@@ -190,6 +193,133 @@ function updateStats() {
     if (dom.statTwoSystems && state.stats.completeness) dom.statTwoSystems.textContent = state.stats.completeness.two_systems ?? 0;
     if (dom.statOneSystem && state.stats.completeness) dom.statOneSystem.textContent = state.stats.completeness.one_system ?? 0;
 }
+
+// ================================
+// Deep Reset (Overall Reset) New Implementation
+// ================================
+function openDeepResetModal(triggerBtn) {
+    let modal = document.getElementById('deep-reset-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'deep-reset-modal';
+        modal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50';
+        modal.innerHTML = `
+          <div class="bg-white w-full max-w-md rounded-lg shadow-xl p-6 relative">
+             <h3 class="text-lg font-bold text-red-700 mb-3">Confirm Deep Reset</h3>
+             <p class="text-sm text-gray-700 mb-4">This will <span class="font-semibold">WIPE ALL</span> ICD codes, traditional terms, mappings, audits and regenerate everything from the discovery pipeline. This action cannot be undone.</p>
+             <div class="bg-red-50 border border-red-200 p-3 rounded text-xs text-red-800 mb-4">Expect several steps: truncation, cleanup, discovery, validation. You can monitor progress live at the bottom of the screen once started.</div>
+             <label class="block text-xs font-medium text-gray-600 mb-1">Type <span class="font-mono bg-gray-100 px-1 py-0.5 rounded">RESET ALL</span> to enable the button:</label>
+             <input id="deep-reset-confirm-input" type="text" class="w-full border rounded px-3 py-2 text-sm mb-5 focus:outline-none focus:ring-2 focus:ring-red-400" placeholder="RESET ALL" />
+             <div class="flex justify-end space-x-3">
+                <button id="deep-reset-cancel" class="text-sm px-4 py-2 rounded-md border hover:bg-gray-100">Cancel</button>
+                <button id="deep-reset-confirm" disabled class="text-sm px-4 py-2 rounded-md bg-red-600 text-white opacity-60 cursor-not-allowed flex items-center">
+                    <span class="btn-text">Start Deep Reset</span>
+                    <div class="loader hidden ml-2"></div>
+                </button>
+             </div>
+          </div>`;
+        document.body.appendChild(modal);
+        // Wiring
+        modal.querySelector('#deep-reset-cancel').addEventListener('click', () => modal.remove());
+        const input = modal.querySelector('#deep-reset-confirm-input');
+        const confirmBtn = modal.querySelector('#deep-reset-confirm');
+        input.addEventListener('input', () => {
+            if (input.value.trim().toUpperCase() === 'RESET ALL') {
+                confirmBtn.disabled = false;
+                confirmBtn.classList.remove('opacity-60','cursor-not-allowed');
+            } else {
+                confirmBtn.disabled = true;
+                confirmBtn.classList.add('opacity-60','cursor-not-allowed');
+            }
+        });
+        confirmBtn.addEventListener('click', async () => {
+            if (confirmBtn.disabled) return;
+            await handleDeepReset(confirmBtn, modal, triggerBtn);
+        });
+    }
+}
+
+async function handleDeepReset(workingBtn, modal, triggerBtn) {
+    toggleButtonLoading(workingBtn, true, 'Starting...');
+    try {
+        const resp = await fetchAPI('/admin/deep-reset', 'POST');
+        if (resp.status !== 'accepted') throw new Error('Unexpected response starting deep reset');
+        alert('Deep reset started. Progress will appear at the bottom. You can keep browsing.');
+        if (modal) modal.remove();
+        if (triggerBtn) triggerBtn.disabled = true;
+        startDeepResetPolling(triggerBtn || workingBtn);
+    } catch (e) {
+        alert('Failed to start deep reset: ' + e.message);
+        toggleButtonLoading(workingBtn, false, 'Start Deep Reset');
+    }
+}
+
+function startDeepResetPolling(button) {
+    const statusBar = ensureDeepResetStatusBar();
+    const pollInterval = 2500;
+    (async function poll(){
+        try {
+            const data = await fetchAPI('/admin/deep-reset-status');
+            updateDeepResetStatus(statusBar, data);
+            if (data.state === 'completed') {
+                toggleButtonLoading(button, false, 'Overall Reset');
+                button.disabled = false;
+                setTimeout(()=> window.location.href='new_suggestions.html', 1200);
+                return;
+            } else if (data.state === 'error') {
+                toggleButtonLoading(button, false, 'Overall Reset');
+                alert('Deep reset error: ' + (data.error || 'Unknown'));
+                button.disabled = false;
+                return;
+            }
+        } catch (err) {
+            console.error('Deep reset poll failed', err);
+        }
+        setTimeout(poll, pollInterval);
+    })();
+}
+
+function ensureDeepResetStatusBar() {
+    let bar = document.getElementById('deep-reset-status-bar');
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'deep-reset-status-bar';
+        bar.className = 'fixed bottom-2 left-1/2 -translate-x-1/2 bg-white shadow-lg border rounded px-4 py-3 z-50 w-[90%] max-w-3xl';
+        bar.innerHTML = `
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="font-semibold text-gray-800 text-sm">Overall Reset Progress</h4>
+              <button class="text-xs text-gray-500 hover:text-gray-700" onclick="document.getElementById('deep-reset-status-bar').remove()">Hide</button>
+            </div>
+            <div class="w-full bg-gray-200 h-2 rounded overflow-hidden mb-2">
+              <div class="h-2 bg-gradient-to-r from-red-500 to-orange-400 transition-all" style="width:0%" id="deep-reset-progress"></div>
+            </div>
+            <div id="deep-reset-steps" class="text-[11px] leading-snug font-mono max-h-40 overflow-y-auto bg-gray-50 border rounded p-2"></div>`;
+        document.body.appendChild(bar);
+    }
+    return bar;
+}
+
+function updateDeepResetStatus(bar, status) {
+    const progEl = document.getElementById('deep-reset-progress');
+    if (progEl) progEl.style.width = `${Math.min(100,(status.progress||0)*100)}%`;
+    const stepsEl = document.getElementById('deep-reset-steps');
+    if (stepsEl && Array.isArray(status.steps)) {
+        stepsEl.innerHTML = status.steps.map(s=>`<div>${escapeHtml((s.ts||'').split('T')[1]||'') } - ${escapeHtml(s.msg)}</div>`).join('');
+        stepsEl.scrollTop = stepsEl.scrollHeight;
+    }
+    if (status.state === 'completed') {
+        stepsEl.innerHTML += '<div class="text-green-700 font-semibold mt-1">DONE ✅</div>';
+    } else if (status.state === 'error') {
+        stepsEl.innerHTML += `<div class="text-red-600 font-semibold mt-1">ERROR: ${escapeHtml(status.error || 'Unknown')}</div>`;
+    }
+}
+
+function escapeHtml(str){
+    return String(str||'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\'':'&#39;','"':'&quot;'}[c]));
+}
+
+// Expose (if other modules need)
+window.openDeepResetModal = openDeepResetModal;
 
 
 function getSuggestionId(suggestion) {

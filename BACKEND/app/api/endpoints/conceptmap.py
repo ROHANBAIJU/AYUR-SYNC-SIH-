@@ -1,0 +1,124 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from sqlalchemy import select, func
+from typing import List, Optional
+from app.db.session import get_db
+from app.db import models
+
+router = APIRouter(prefix="/conceptmap", tags=["conceptmap"])
+
+@router.get("/releases")
+def list_releases(db: Session = Depends(get_db)):
+    q = db.execute(select(models.ConceptMapRelease).order_by(models.ConceptMapRelease.created_at.desc()))
+    releases = []
+    for r in q.scalars().all():
+        # Proper COUNT aggregate instead of calling .count() on ScalarResult
+        count = db.execute(
+            select(func.count(models.ConceptMapElement.id)).where(models.ConceptMapElement.release_id == r.id)
+        ).scalar_one()
+        releases.append({
+            "version": r.version,
+            "created_at": str(r.created_at),
+            "published_at": str(r.published_at) if r.published_at else None,
+            "elements": count,
+            "notes": r.notes,
+        })
+    return {"releases": releases}
+
+@router.get("/releases/latest")
+def latest_release(db: Session = Depends(get_db)):
+    r = db.execute(select(models.ConceptMapRelease).order_by(models.ConceptMapRelease.created_at.desc())).scalars().first()
+    if not r:
+        raise HTTPException(404, "No releases found")
+    return {"version": r.version, "created_at": str(r.created_at), "published_at": str(r.published_at), "notes": r.notes}
+
+@router.get("/releases/{version}/elements")
+def elements(version: str, icd_name: Optional[str] = None, system: Optional[str] = None, db: Session = Depends(get_db)):
+    rel = db.execute(select(models.ConceptMapRelease).where(models.ConceptMapRelease.version == version)).scalar_one_or_none()
+    if not rel:
+        raise HTTPException(404, "Release not found")
+    stmt = select(models.ConceptMapElement).where(models.ConceptMapElement.release_id == rel.id)
+    if icd_name:
+        # Case-insensitive match on ICD name while preserving stored casing in output
+        stmt = stmt.where(func.lower(models.ConceptMapElement.icd_name) == icd_name.lower())
+    if system:
+        stmt = stmt.where(models.ConceptMapElement.system == system)
+    rows = db.execute(stmt).scalars().all()
+    return {"version": version, "count": len(rows), "elements": [
+        {
+            "icd_name": e.icd_name,
+            "icd_code": e.icd_code,
+            "system": e.system,
+            "term": e.term,
+            "equivalence": e.equivalence,
+            "is_primary": e.is_primary,
+            "active": e.active
+        } for e in rows
+    ]}
+
+@router.get("/releases/{version}/diff")
+def diff_release(version: str, from_version: Optional[str] = None, db: Session = Depends(get_db)):
+    """Stub diff endpoint: returns empty change set for now.
+    Judges can see structure; future will compute real differences.
+    """
+    target = db.execute(select(models.ConceptMapRelease).where(models.ConceptMapRelease.version == version)).scalar_one_or_none()
+    if not target:
+        raise HTTPException(404, "Target release not found")
+    if from_version:
+        baseline = db.execute(select(models.ConceptMapRelease).where(models.ConceptMapRelease.version == from_version)).scalar_one_or_none()
+        if not baseline:
+            raise HTTPException(404, "Baseline release not found")
+    return {
+        "from": from_version or None,
+        "to": version,
+        "added": [],
+        "removed": [],
+        "changed": [],
+        "summary": {"added": 0, "removed": 0, "changed": 0}
+    }
+
+@router.post("/releases/{version}/refresh")
+def refresh_release(version: str, db: Session = Depends(get_db)):
+    """Rebuild (or create) a ConceptMap release snapshot from current verified mappings.
+
+    Steps:
+      1. Find (or create) the release row.
+      2. Delete existing ConceptMapElement rows for that release.
+      3. Query all verified mappings (primary + aliases) and insert as elements.
+      4. Return summary counts.
+
+    This lets you verify mappings via /api/admin/verify then call this endpoint
+    without restarting the server to expose them to FHIR $translate and provenance.
+    """
+    # 1. Find or create release
+    rel = db.execute(select(models.ConceptMapRelease).where(models.ConceptMapRelease.version == version)).scalar_one_or_none()
+    if not rel:
+        rel = models.ConceptMapRelease(version=version, notes="Auto-created via refresh endpoint")
+        db.add(rel)
+        db.flush()
+
+    # 2. Delete existing elements
+    db.query(models.ConceptMapElement).filter(models.ConceptMapElement.release_id == rel.id).delete()
+
+    # 3. Gather verified mappings (include both primary & alias entries for transparency)
+    mappings = db.query(models.Mapping) \
+        .join(models.TraditionalTerm) \
+        .join(models.ICD11Code) \
+        .filter(models.Mapping.status == 'verified') \
+        .all()
+
+    inserted = 0
+    for m in mappings:
+        db.add(models.ConceptMapElement(
+            release_id=rel.id,
+            icd_name=m.icd11_code.icd_name,
+            icd_code=m.icd11_code.icd_code or None,
+            system=m.traditional_term.system,
+            term=m.traditional_term.term,
+            equivalence='equivalent',
+            is_primary=m.is_primary
+        ))
+        inserted += 1
+
+    db.commit()
+    return {"version": version, "elements": inserted, "status": "refreshed"}

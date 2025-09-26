@@ -11,9 +11,10 @@ body { font-family: 'Inter', sans-serif; }
 .cell-review { background-color: #ffedd5 !important; }
 .alias-approved { background-color: #e0e7ff !important; }
 .alias-rejected { background-color: #fee2e2 !important; }
+.auto-promote-pending { box-shadow: 0 0 0 2px #fcd34d inset; }
 .floating-actions { transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out; transform: translateY(10px); opacity: 0; pointer-events: none; }
 .floating-actions.active { transform: translateY(0); opacity: 1; pointer-events: auto; }
-.modal-backdrop { transition: opacity 0.2s ease-in-out; z-index: 60; }
+.modal-backdrop { transition: opacity 0.2s ease-in-out; z-index: 60; display:flex; align-items:center; justify-content:center; padding:1rem; }
 .suggestions-popover {
     position: absolute;
     z-index: 50;

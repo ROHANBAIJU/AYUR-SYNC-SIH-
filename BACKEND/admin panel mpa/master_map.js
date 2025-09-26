@@ -305,7 +305,7 @@ async function handleRunAiSurety(button, isPrimary) {
     else if (system === 'unani') itemToVerify.arabic = vernacularValue;
     
     try {
-        const result = await fetchAPI('/admin/verify-mapping-with-ai', 'POST', { icd_name: icdName, mapping: { primary: itemToVerify } });
+    const result = await fetchAPI('/admin/verify-mapping-with-ai', 'POST', { icd_name: icdName, system: system, mapping: { primary: itemToVerify } });
         const feedbackContainer = rootElement.querySelector('.ai-feedback-container');
         feedbackContainer.querySelector('.editor-justification').textContent = result.justification;
         feedbackContainer.querySelector('.editor-confidence').textContent = `${result.confidence}%`;
@@ -462,4 +462,13 @@ function renderMasterAliasPopover() {
     } catch (e) {
         hideSuggestionsPopover();
     }
+}
+
+// Add normalization + wrapper for verification (placed near bottom of file)
+async function normalizeAndVerifyMapping(icdName, system, primaryTermObj) {
+    // Normalize ICD casing: find matching row ignoring case
+    const row = state.data.master.find(r => r.suggested_icd_name.toLowerCase() === icdName.toLowerCase());
+    const canonicalName = row ? row.suggested_icd_name : icdName;
+    const payload = { icd_name: canonicalName, system: system, mapping: { primary: primaryTermObj } };
+    return fetchAPI('/admin/verify-mapping-with-ai', 'POST', payload);
 }

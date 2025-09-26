@@ -25,33 +25,21 @@
 </head>
 <body class="h-full">
   <div id="app-screen" class="h-full flex flex-col">
-    <header class="bg-white p-4 border-b border-gray-200 flex justify-between items-center">
-      <h1 class="text-xl font-bold text-gray-800">Analytics Dashboard</h1>
+    <div id="admin-nav"></div>
+    <header class="w-full bg-white border-b px-5 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <h1 class="text-2xl font-bold tracking-tight text-slate-800">Analytics Dashboard</h1>
+      </div>
       <div class="flex items-center gap-4">
-        <a href="new_suggestions.html" class="text-sm text-gray-700 hover:text-indigo-600"></a>
         <button id="logout-button" class="text-sm font-medium text-gray-700 hover:text-red-600">Logout</button>
       </div>
     </header>
-    <main class="flex-1 p-6 space-y-6">
-      <div class="bg-white rounded-lg shadow-sm border">
-        <div class="p-4 border-b border-gray-200">
-          <div class="flex border-b border-gray-200">
-            <a href="instructions.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Instructions</a>
-            <a href="analytics.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 tab-active">Analytics</a>
-            <a href="new_suggestions.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">New Suggestions</a>
-            <a href="master_map.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Master Map</a>
-            <a href="rejections.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Rejected Mappings</a>
-            <a href="icd11.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">ICD-11 Disease List</a>
-          </div>
-        </div>
-      </div>
+    <main class="flex-1 max-w-7xl mx-auto px-5 py-6 space-y-6 w-full">
 
       <!-- Instructions Section -->
-      <section class="card p-4">
-        <div class="bg-gradient-to-r from-indigo-50 to-teal-50 -m-4 mb-4 p-4 border-b rounded-t-lg">
-          <h2 class="text-xl font-bold text-gray-800">How this works + Live Test</h2>
-          <p class="text-sm text-gray-700 mt-1">Real API telemetry from your backend. The middleware logs every request to JSONL; this dashboard aggregates it. Use the Live Test to call endpoints and watch charts update in near‑real time.</p>
-        </div>
+      <section class="card p-5">
+        <h2 class="text-lg font-semibold text-slate-800 mb-2">How this works + Live Test</h2>
+        <p class="text-sm text-slate-600 mb-5">Real API telemetry from your backend. The middleware logs every request to JSONL; this dashboard aggregates it. Use the Live Test to call endpoints and watch charts update in near‑real time. For the full endpoint catalog see the <a href="docs.html" class="text-indigo-600 hover:underline font-medium">Docs</a> page.</p>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <!-- Live Test Instructions -->
@@ -93,24 +81,7 @@ GET /api/fhir/CodeSystem/$lookup?system=ayurveda&amp;code=AKK-12
           </div>
         </div>
 
-        <!-- Endpoints Catalog -->
-        <div class="mt-6 grid grid-cols-1 gap-6">
-          <div>
-            <h3 class="font-semibold mb-2">Public clinician endpoints</h3>
-            <ul class="text-sm text-gray-700 space-y-2">
-              <li class="flex items-start gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">GET</span><span><code>/api/public/lookup?query=...</code> — unified lookup for ICD/TM names or codes; returns verified mappings.</span></li>
-              <li class="flex items-start gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">GET</span><span><code>/api/public/translate?system=ayurveda|siddha|unani&amp;code=...&amp;icd_name=...&amp;target=icd11</code> — translate NAMASTE ↔ ICD11.</span></li>
-            </ul>
-            <h3 class="font-semibold mt-3 mb-2">FHIR endpoints (R4 semantics)</h3>
-            <ul class="text-sm text-gray-700 space-y-2">
-              <li class="flex items-start gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">GET</span><span><code>/api/fhir/metadata</code> — CapabilityStatement.</span></li>
-              <li class="flex items-start gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">GET</span><span><code>/api/fhir/CodeSystem/{system}</code> — CodeSystem read for ayurveda/siddha/unani.</span></li>
-              <li class="flex items-start gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">GET</span><span><code>/api/fhir/CodeSystem/$lookup?system=...&amp;code=...</code> — concept details.</span></li>
-              <li class="flex items-start gap-2"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">GET</span><span><code>/api/fhir/ConceptMap/$translate?system=...&amp;code=...&amp;target=icd11</code> — mapping to ICD‑11.</span></li>
-              <li class="flex items-start gap-2 text-gray-500"><span class="inline-block px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700 border border-gray-200">GET</span><span><code>/api/fhir/ValueSet/$expand?system=...&amp;icdName=...</code> — optional; unified lookup covers this in clinician flows.</span></li>
-            </ul>
-          </div>
-        </div>
+        <!-- Endpoint catalog removed (now on Docs page) to avoid duplication -->
       </section>
       <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="card p-4"><p class="text-sm text-gray-500">Total Requests</p><p id="stat-total" class="text-2xl font-semibold">0</p></div>
@@ -118,14 +89,28 @@ GET /api/fhir/CodeSystem/$lookup?system=ayurveda&amp;code=AKK-12
         <div class="card p-4"><p class="text-sm text-gray-500">2xx</p><p id="stat-2xx" class="text-2xl font-semibold">0</p></div>
         <div class="card p-4"><p class="text-sm text-gray-500">4xx/5xx</p><p id="stat-err" class="text-2xl font-semibold">0</p></div>
       </section>
+      <!-- Timeseries + Top Paths (equal height) -->
       <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="card p-4">
-          <h3 class="font-semibold mb-2">Requests over time</h3>
-          <canvas id="tsChart" height="140"></canvas>
+        <!-- Requests over time card -->
+        <div class="card p-4 flex flex-col h-[420px]">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="font-semibold">Requests over time</h3>
+            <button id="ts-refresh" class="text-xs px-2 py-1 rounded border hover:bg-gray-50 dark-mode:hover:bg-slate-700">Refresh</button>
+          </div>
+          <div class="flex-1 min-h-0">
+            <canvas id="tsChart" class="w-full h-full"></canvas>
+          </div>
         </div>
-        <div class="card p-4">
-          <h3 class="font-semibold mb-2">Top paths</h3>
-          <div id="paths-table" class="text-sm"></div>
+        <!-- Top paths card -->
+        <div class="card p-4 flex flex-col h-[420px]">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-semibold">Top paths</h3>
+              <div class="flex items-center gap-2 text-[11px]">
+                <label class="flex items-center gap-1"><input id="paths-limit" type="number" min="5" max="200" value="25" class="w-14 border rounded p-0.5 text-xs" /> <span>limit</span></label>
+                <button id="paths-refresh" class="text-xs px-2 py-1 rounded border hover:bg-gray-50">Reload</button>
+              </div>
+            </div>
+            <div id="paths-table" class="text-sm flex-1 overflow-auto min-h-0 custom-scroll"></div>
         </div>
       </section>
       <!-- After Integration Test Area -->
@@ -225,7 +210,8 @@ GET /api/fhir/CodeSystem/$lookup?system=ayurveda&amp;code=AKK-12
   </div>
       <!-- Optional runtime config: create config.js next to this file; it's ignored if missing. -->
       <script src="config.js"></script>
-      <script src="shared.js"></script>
+  <script src="admin_nav.js"></script>
+  <script src="shared.js"></script>
   <script src="analytics.js"></script>
 </body>
 </html>

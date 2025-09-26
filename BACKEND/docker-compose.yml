@@ -5,6 +5,7 @@ services:
     image: ayur-sync-api:latest
     container_name: ayur-sync-api
     ports:
+      # HostPort:ContainerPort (uvicorn now runs on 8000 per entrypoint.sh)
       - "8000:8000"
     volumes:
       # This syncs your local code for live reloading

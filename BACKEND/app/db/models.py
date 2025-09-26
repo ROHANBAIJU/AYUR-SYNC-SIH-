@@ -66,3 +66,50 @@ class DiagnosisEvent(Base):
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+# --- New Tables for Hackathon Versioning & Governance Layer ---
+
+class ConceptMapRelease(Base):
+    """Immutable snapshot of verified mappings at a point in time."""
+    __tablename__ = "concept_map_releases"
+    id = Column(Integer, primary_key=True)
+    name = Column(String(100), nullable=False, index=True, default="namaste-to-icd11")
+    version = Column(String(50), nullable=False, unique=True, index=True)  # e.g. v1-submission
+    notes = Column(Text)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    published_at = Column(TIMESTAMP(timezone=True))  # optional publish marker
+
+class ConceptMapElement(Base):
+    """Individual mapping element captured inside a release."""
+    __tablename__ = "concept_map_elements"
+    id = Column(Integer, primary_key=True)
+    release_id = Column(Integer, ForeignKey("concept_map_releases.id", ondelete="CASCADE"), index=True, nullable=False)
+    icd_name = Column(String(255), index=True, nullable=False)
+    icd_code = Column(String(50))
+    system = Column(String(50), nullable=False)  # ayurveda|siddha|unani
+    term = Column(String(255), nullable=False)
+    equivalence = Column(String(30), nullable=False, server_default='equivalent')
+    is_primary = Column(Boolean, nullable=False, server_default='f')
+    active = Column(Boolean, nullable=False, server_default='t')
+    # future: justification, provenance link
+
+class MappingAudit(Base):
+    """Simple audit trail for curation actions."""
+    __tablename__ = "mapping_audit"
+    id = Column(Integer, primary_key=True)
+    mapping_id = Column(Integer, ForeignKey("mappings.id", ondelete="CASCADE"), index=True)
+    action = Column(String(50), nullable=False)  # verify|reject|modify
+    actor = Column(String(100))
+    reason = Column(Text)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+class Consent(Base):
+    """Consent stub (global or subject-specific)."""
+    __tablename__ = "consents"
+    id = Column(Integer, primary_key=True)
+    subject_hash = Column(String(128), index=True)  # '*' for global
+    purpose = Column(String(50), nullable=False, default='translation')
+    status = Column(String(30), nullable=False, default='active')  # active|revoked|expired
+    valid_from = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    valid_to = Column(TIMESTAMP(timezone=True))
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())

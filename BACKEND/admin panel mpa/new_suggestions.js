@@ -271,7 +271,7 @@ function createCurationCell(safeIcdName, icdName, system, row) {
     const primaryHtml = renderSuggestion(primarySugg, icdName, system, 'primary');
     let extraContentHtml = '';
 
-    if (otherSuggs.length > 0) {
+    if (otherSuggs.length > 0) {
         const untouchedAliasCount = otherSuggs.filter(s => {
             const sId = getSuggestionId(s);
             const isLinked = (decisionObj.aliases || []).includes(sId);
@@ -282,7 +282,20 @@ function createCurationCell(safeIcdName, icdName, system, row) {
         const popoverButtonId = `popover-btn-${safeIcdName}-${system}`;
         extraContentHtml = `<div class="mt-2 pt-2 border-t"><button id="${popoverButtonId}" onclick="showSuggestionsPopover(this, '${icdName}', '${system}')" class="popover-trigger w-full text-left text-xs font-semibold text-blue-600 hover:text-blue-800 p-1 rounded hover:bg-blue-50 flex items-center transition-colors"><i class="fa-solid fa-plus mr-2 text-xs"></i>+${otherSuggs.length} More Aliases ${actionBadge}</button></div>`;
     }
-    return `<td class="table-cell ${cellClass} text-xs" id="cell-${safeIcdName}-${system}">${primaryHtml}${extraContentHtml}</td>`;
+
+    // AUTO-PROMOTION pending badge (visual indicator) if: no explicit primary, at least one alias linked, original primary rejected (or implicitly removed), not all rejected, not review
+    let autopromoteBadge='';
+    try {
+        const allSuggestions=suggestions;
+        const hasPrimary=!!decisionObj.primary;
+        const linkedAliases=(decisionObj.aliases||[]).filter(a=>a!==decisionObj.primary);
+        const isPrimRejected=(decisionObj.rejected_suggestions||[]).some(r=>r.isPrimary);
+        const allRejected = Array.isArray(allSuggestions) && allSuggestions.length>0 && ((decisionObj.rejected_suggestions||[]).length===allSuggestions.length);
+        if(!hasPrimary && linkedAliases.length>0 && (isPrimRejected || !primarySugg) && !decisionObj.review_suggestion && !allRejected){
+            autopromoteBadge = `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-semibold" title="An alias will auto-promote to Primary on save">AUTO-PROMOTE</span>`;
+        }
+    }catch{}
+    return `<td class="table-cell ${cellClass} text-xs" id="cell-${safeIcdName}-${system}">${primaryHtml}${autopromoteBadge}${extraContentHtml}</td>`;
 }
 
 function renderSuggestion(suggestion, icdName, system, type) {
@@ -582,22 +595,34 @@ async function handleSaveCuration() {
         const originalRow = state.allSuggestionsCache.find(r => r.suggested_icd_name === icdName);
         if (!originalRow) continue;
 
-        // Per-system validation (only for systems with some decision touched)
-        for (const system of ['ayurveda', 'siddha', 'unani']) {
-            const hasSuggestions = originalRow[`${system}_suggestions`] && originalRow[`${system}_suggestions`] !== '[]';
-            if (!hasSuggestions) continue;
+        // Determine if at least one system has any meaningful action (used to force validation on untouched systems with suggestions)
+        const anyActionInRow = ['ayurveda','siddha','unani'].some(sys => {
+            const d = systemsForIcd[sys];
+            return d && (d.primary || d.review_suggestion || (d.aliases && d.aliases.length) || (d.rejected_suggestions && d.rejected_suggestions.length));
+        });
 
-            const decision = state.curationDecisions[icdName]?.[system];
-            if (!decision || Object.values(decision).every(val => !val || (Array.isArray(val) && val.length === 0))) {
-                continue;
-            }
-            if (decision.review_suggestion) {
-                issues.push({ icdName, system, message: `Item is marked for review. Please approve or reject.` });
-                continue;
-            }
-            const allSuggestions = JSON.parse(originalRow[`${system}_suggestions`]);
+        // Per-system validation: now also flags untouched systems if any action occurred in another system.
+        for (const system of ['ayurveda', 'siddha', 'unani']) {
+            const hasSuggestions = originalRow[`${system}_suggestions`] && originalRow[`${system}_suggestions`] !== '[]';
+            if (!hasSuggestions) continue;
+
+            const decision = systemsForIcd[system];
+            const decisionIsEmpty = !decision || (!decision.primary && !decision.review_suggestion && (!decision.aliases || decision.aliases.length === 0) && (!decision.rejected_suggestions || decision.rejected_suggestions.length === 0));
+
+            // If system untouched but row has other actions, user must resolve it
+            if (decisionIsEmpty && anyActionInRow) {
+                issues.push({ icdName, system, message: `A primary decision is required (or reject all suggestions).` });
+                continue;
+            }
+            if (!decision || decisionIsEmpty) continue; // nothing else to validate
+
+            if (decision.review_suggestion) {
+                issues.push({ icdName, system, message: `Item is marked for review. Please approve or reject.` });
+                continue;
+            }
+            const allSuggestions = JSON.parse(originalRow[`${system}_suggestions`]);
             const hasPrimaryDecision = !!decision.primary;
-            const isPrimaryRejected = (decision.rejected_suggestions || []).some(r => r.isPrimary);
+            const isPrimaryRejected = (decision.rejected_suggestions || []).some(r => r.isPrimary);
             const allRejected = Array.isArray(allSuggestions) && allSuggestions.length > 0 && ((decision.rejected_suggestions || []).length === allSuggestions.length);
             if (!hasPrimaryDecision && !isPrimaryRejected && !allRejected) {
                 issues.push({ icdName, system, message: `A primary decision is required (or reject all suggestions).` });
@@ -609,32 +634,7 @@ async function handleSaveCuration() {
                     return !(decision.aliases || []).includes(sId) && !(decision.rejected_suggestions || []).some(r => getSuggestionId(r.suggestion) === sId);
                 }).length;
                 if (untouchedCount > 0) {
-                    issues.push({ icdName, system, message: `<span class="font-semibold text-red-600">${untouchedCount} suggestion(s)</span> still require an action (link or reject).` });
-                }
-            }
-        }
-
-        // Row-level completeness rule:
-        // If any system in this row has a chosen primary, then every other system that HAS suggestions
-        // must be resolved too (either primary chosen, or all suggestions explicitly rejected).
-        const anyPrimaryChosenInRow = Object.values(systemsForIcd).some(d => d && d.primary);
-        if (anyPrimaryChosenInRow) {
-            for (const system of ['ayurveda', 'siddha', 'unani']) {
-                const hasSuggestions = originalRow[`${system}_suggestions`] && originalRow[`${system}_suggestions`] !== '[]';
-                if (!hasSuggestions) continue;
-                const decision = systemsForIcd[system];
-                // Empty decision → unresolved
-                if (!decision || (!decision.primary && !decision.review_suggestion && (!decision.aliases || decision.aliases.length === 0) && (!decision.rejected_suggestions || decision.rejected_suggestions.length === 0))) {
-                    issues.push({ icdName, system, message: `A primary decision is required (or reject all suggestions).` });
-                    continue;
-                }
-                // If decision exists but not resolved (no primary, no primary-rejected, not all rejected)
-                const allSuggestions = JSON.parse(originalRow[`${system}_suggestions`]);
-                const hasPrimaryDecision = !!decision.primary;
-                const isPrimaryRejected = (decision.rejected_suggestions || []).some(r => r.isPrimary);
-                const allRejected = Array.isArray(allSuggestions) && allSuggestions.length > 0 && ((decision.rejected_suggestions || []).length === allSuggestions.length);
-                if (!hasPrimaryDecision && !isPrimaryRejected && !allRejected) {
-                    issues.push({ icdName, system, message: `A primary decision is required (or reject all suggestions).` });
+                    issues.push({ icdName, system, message: `<span class=\"font-semibold text-red-600\">${untouchedCount} suggestion(s)</span> still require an action (link or reject).` });
                 }
             }
         }
@@ -645,34 +645,59 @@ async function handleSaveCuration() {
         return;
     }
 
-    const promotionCandidates = [];
-    for (const icdName in state.curationDecisions) {
-        const systemsForIcd = state.curationDecisions[icdName];
-        const isRowEffectivelyEmpty = Object.values(systemsForIcd).every(decision => !decision || (!decision.primary && !decision.review_suggestion && (!decision.aliases || decision.aliases.length === 0) && (!decision.rejected_suggestions || decision.rejected_suggestions.length === 0)));
-        if (isRowEffectivelyEmpty) continue;
+    const promotionCandidates = [];
+    const autoPromotionCases = [];
+    for (const icdName in state.curationDecisions) {
+        const systemsForIcd = state.curationDecisions[icdName];
+        const isRowEffectivelyEmpty = Object.values(systemsForIcd).every(decision => !decision || (!decision.primary && !decision.review_suggestion && (!decision.aliases || decision.aliases.length === 0) && (!decision.rejected_suggestions || decision.rejected_suggestions.length === 0)));
+        if (isRowEffectivelyEmpty) continue;
 
-        let hasApprovedPrimary = false;
-        for (const system in systemsForIcd) {
-            if (systemsForIcd[system].primary) {
-                hasApprovedPrimary = true;
-                break;
-            }
-        }
-        if (!hasApprovedPrimary) {
-             for (const system in systemsForIcd) {
-                const decision = systemsForIcd[system];
-                if (decision.aliases && decision.aliases.length > 0) {
-                    const originalRow = state.allSuggestionsCache.find(r => r.suggested_icd_name === icdName);
-                    const allSuggestions = JSON.parse(originalRow[`${system}_suggestions`]);
-                    const firstAlias = allSuggestions.find(s => getSuggestionId(s) === decision.aliases[0]);
-                    promotionCandidates.push({ icdName, firstAlias, aliasSystem: system });
-                }
-            }
-        }
-    }
+        for (const system in systemsForIcd) {
+            const decision = systemsForIcd[system];
+            if(!decision) continue;
+            const originalRow = state.allSuggestionsCache.find(r => r.suggested_icd_name === icdName);
+            if(!originalRow) continue;
+            const allSuggestions = JSON.parse(originalRow[`${system}_suggestions`]||'[]');
+            if(!allSuggestions.length) continue;
+            const linkedAliases = (decision.aliases||[]).filter(a=>a!==decision.primary);
+            const isPrimaryRejected = (decision.rejected_suggestions||[]).some(r=>r.isPrimary);
+            const allRejected = (decision.rejected_suggestions||[]).length===allSuggestions.length;
+            const hasPrimary = !!decision.primary;
+            const review = !!decision.review_suggestion;
+
+            // Condition for auto-promotion: this system currently has *no* primary mapping chosen, has at least one linked alias, not all rejected, and not in review.
+            if(linkedAliases.length>0 && !hasPrimary && !review && !allRejected){
+                // Determine best alias (highest confidence, tie -> earliest index)
+                let best=null; let bestScore=-1;
+                allSuggestions.forEach((s,idx)=>{
+                    const sid=getSuggestionId(s);
+                    if(linkedAliases.includes(sid)){
+                        const conf=parseInt(s.confidence||0,10); const score=(isNaN(conf)?0:conf)*10000 + (10000-idx);
+                        if(score>bestScore){ bestScore=score; best=s; }
+                    }
+                });
+                if(best){
+                    autoPromotionCases.push({icdName, system, bestAlias: best, aliasSystem: system, reason: isPrimaryRejected? 'primary_rejected_with_alias':'no_primary_alias_linked'});
+                    continue; // already auto case; don't also push manual
+                }
+            }
+            // Manual promotion candidate: if there are aliases but auto-promo condition wasn't met and no primary
+            if(!hasPrimary && !review && linkedAliases.length>0 && !allRejected){
+                const firstAlias = allSuggestions.find(s=> getSuggestionId(s)===linkedAliases[0]);
+                if(firstAlias) promotionCandidates.push({ icdName, firstAlias, aliasSystem: system });
+            }
+        }
+    }
+    console.debug('[Curation][Debug] autoPromotionCases:', autoPromotionCases);
+    console.debug('[Curation][Debug] promotionCandidates:', promotionCandidates);
     
-    if (promotionCandidates.length > 0) {
-        showValidationModal(true, promotionCandidates);
+    if (autoPromotionCases.length > 0) {
+        showValidationModal('auto', autoPromotionCases);
+        return;
+    }
+
+    if (promotionCandidates.length > 0) {
+        showValidationModal('manual', promotionCandidates);
         return;
     }
 
@@ -684,6 +709,7 @@ async function performSave(button = null) {
     toggleButtonLoading(saveButton, true);
     
     const payload = [];
+    const auditEvents = [];
     for (const [icdName, systems] of Object.entries(state.curationDecisions)) {
         if (Object.values(systems).every(dec => !dec || Object.values(dec).every(val => !val || (Array.isArray(val) && val.length === 0)))) continue;
         
@@ -694,6 +720,30 @@ async function performSave(button = null) {
         for (const [system, decision] of Object.entries(systems)) {
             const allSuggestions = JSON.parse(originalRow[`${system}_suggestions`] || '[]');
             const systemStatus = {};
+
+            // Auto-promotion enforcement just before serialization (idempotent if already promoted)
+            if(decision){
+                const hasPrimary = !!decision.primary;
+                const isPrimaryRejected = (decision.rejected_suggestions||[]).some(r=>r.isPrimary);
+                const linkedAliases = (decision.aliases||[]).filter(a=>a!==decision.primary);
+                const allRejected = Array.isArray(allSuggestions) && allSuggestions.length>0 && ((decision.rejected_suggestions||[]).length===allSuggestions.length);
+                if(!hasPrimary && linkedAliases.length>0 && !decision.review_suggestion && !allRejected){
+                    let best=null; let bestScore=-1;
+                    allSuggestions.forEach((s,idx)=>{
+                        const sid=getSuggestionId(s);
+                        if(linkedAliases.includes(sid)){
+                            const conf=parseInt(s.confidence||0,10); const score=(isNaN(conf)?0:conf)*10000 + (10000-idx);
+                            if(score>bestScore){ bestScore=score; best=s; }
+                        }
+                    });
+                    if(best){
+                        const bestId=getSuggestionId(best);
+                        decision.primary=bestId;
+                        decision.aliases=decision.aliases.filter(a=>a!==bestId);
+                        auditEvents.push({type:'auto_promote', icd_name: icdName, system, term: best.term, code: best.code||'', reason: isPrimaryRejected? 'primary_rejected_with_alias':'no_primary_alias_linked'});
+                    }
+                }
+            }
             
             if (decision.primary) {
                 systemStatus.primary = allSuggestions.find(s => getSuggestionId(s) === decision.primary);
@@ -718,13 +768,23 @@ async function performSave(button = null) {
         }
     }
 
+    let auditObject = null;
+    if(auditEvents.length){
+        auditObject = { _audit: true, events: auditEvents, ts: new Date().toISOString() };
+    }
+
     if (payload.length === 0) {
         toggleButtonLoading(saveButton, false);
         return;
     }
     
     try {
+        // Backend /submit-curation expects pure list of {icd_name, statuses}; send audit separately if present
         await fetchAPI('/admin/submit-curation', 'POST', payload);
+        if(auditObject){
+            // TODO: Implement backend endpoint /admin/curation-audit-log to persist these events
+            try { await fetchAPI('/admin/curation-audit-log', 'POST', auditObject); } catch(e){ console.warn('Failed to send audit log', e); }
+        }
         alert("Curation saved successfully!");
         // --- ADD THIS BLOCK ---
         // After a successful save, we MUST clear the cache so that
@@ -739,7 +799,14 @@ async function performSave(button = null) {
         // --- END OF ADDITION ---
         window.location.href = 'master_map.html';
     } catch (error) {
-        alert(`Failed to save curation: ${error.message}`);
+        try {
+            if(error && error.response){
+                const txt = await error.response.text();
+                alert(`Failed to save curation: ${error.message}\nServer: ${txt}`);
+            } else {
+                alert(`Failed to save curation: ${error.message}`);
+            }
+        } catch{ alert(`Failed to save curation: ${error.message}`); }
         window.location.reload(); 
     } finally {
         toggleButtonLoading(saveButton, false);
@@ -747,14 +814,20 @@ async function performSave(button = null) {
 }
 
 
-function showValidationModal(isPromoteMode, data) {
-    if (isPromoteMode) {
-        const promotionListHtml = data.map(candidate => 
-            `<li>For <strong class="text-gray-800">${candidate.icdName}</strong>, will promote <strong class="text-gray-800">'${candidate.firstAlias.term}'</strong> in the <strong class="capitalize">${candidate.aliasSystem}</strong> system.</li>`
-        ).join('');
+function showValidationModal(mode, data) {
+    if (mode === 'manual') {
+        const promotionListHtml = data.map(candidate =>
+            `<li class="mb-1"><strong class=\"text-gray-800\">${candidate.icdName}</strong> • <span class=\"capitalize\">${candidate.aliasSystem}</span>: Alias <strong>'${candidate.firstAlias.term}'</strong> <span class=\"text-indigo-700 font-medium\">needs promotion to Primary</span></li>`
+        ).join('');
 
-        const message = `You have rejected the main suggestions but linked aliases in the following cases: <ul class="list-disc pl-5 mt-2 mb-2">${promotionListHtml}</ul> Do you want to promote these aliases to be the new primary mappings?`;
-        dom.promotionMessage.innerHTML = message;
+        const message = `<p class=\"text-sm text-gray-700 mb-2\">These rows have no active Primary but you linked one or more aliases. Choose which alias becomes the new Primary (or go back and reject them all if none are valid).</p><ul class=\"list-disc pl-5 mt-2 mb-3\">${promotionListHtml}</ul><p class=\"text-[12px] text-gray-500\">If you don't pick manually, the system would auto-promote the highest-confidence alias. Manual selection lets you override that choice.</p>`;
+        dom.promotionMessage.innerHTML = message;
+        try {
+            const heading = dom.validationPromoteView.querySelector('h3');
+            if(heading){ heading.className = 'text-lg font-bold text-indigo-800 mb-4'; heading.innerHTML = '<i class="fa-solid fa-hand-pointer mr-2"></i>Action Needed – Pick a Primary Alias'; }
+            const confirmLabel = dom.confirmPromoteButton.querySelector('.btn-text');
+            if(confirmLabel) confirmLabel.textContent = 'Save After Selecting';
+        } catch{}
 
         dom.confirmPromoteButton.onclick = () => {
             data.forEach(candidate => {
@@ -769,7 +842,36 @@ function showValidationModal(isPromoteMode, data) {
         
         dom.validationErrorView.classList.add('hidden');
         dom.validationPromoteView.classList.remove('hidden');
-    } else {
+    } else if (mode === 'auto') {
+        // Auto-promotion preview list with explicit wording & reason
+        const autoList = data.map(c=>{
+            const reasonLabel = c.reason === 'primary_rejected_with_alias' ? 'primary was rejected' : 'no primary chosen';
+            return `<li class="mb-1"><strong class=\"text-gray-800\">${c.icdName}</strong> • <span class=\"capitalize\">${c.system}</span>: Alias <strong>'${c.bestAlias.term}'</strong> (${c.bestAlias.code||'n/a'}) <span class=\"text-amber-700 font-medium\">will be promoted as Primary</span> <span class=\"text-[11px] text-gray-500\">(${reasonLabel})</span></li>`;
+        }).join('');
+        const message = `<p class="text-sm text-gray-700 mb-2">To prevent data loss, each row below has no active primary but has at least one linked alias. The highlighted alias will be promoted as the new Primary mapping when you continue.</p><ul class="list-disc pl-5 mt-2 mb-3">${autoList}</ul><p class="text-[12px] text-gray-500">Cancel to review manually or Confirm to apply these promotions and save.</p>`;
+        // Adjust heading to warning style instead of question style
+        try {
+            const heading = dom.validationPromoteView.querySelector('h3');
+            if(heading){ heading.className = 'text-lg font-bold text-amber-800 mb-4'; heading.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-2"></i>Action Required – Auto Promotion Pending'; }
+            const confirmLabel = dom.confirmPromoteButton.querySelector('.btn-text');
+            if(confirmLabel) confirmLabel.textContent = 'Confirm & Save';
+        } catch{}
+        dom.promotionMessage.innerHTML = message;
+        dom.confirmPromoteButton.onclick = () => {
+            data.forEach(c => {
+                const decision = state.curationDecisions[c.icdName][c.system];
+                if(decision){
+                    const aliasId = getSuggestionId(c.bestAlias);
+                    decision.primary = aliasId;
+                    decision.aliases = (decision.aliases||[]).filter(a=>a!==aliasId);
+                }
+            });
+            closeValidationModal();
+            performSave(dom.confirmPromoteButton);
+        };
+        dom.validationErrorView.classList.add('hidden');
+        dom.validationPromoteView.classList.remove('hidden');
+    } else {
         dom.validationIssues.innerHTML = data.map(issue => `
             <div class="p-1 bg-white border rounded-md">
                 <p class="font-bold text-gray-800">${issue.icdName}</p>

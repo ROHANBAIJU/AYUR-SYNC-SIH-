@@ -7,7 +7,9 @@ from app.api.router import api_router
 from app.core.config import settings
 import time, json, os
 from app.db.session import engine
-from app.db.models import Base
+from app.db.models import Base, ConceptMapRelease, ConceptMapElement, Mapping, ICD11Code, TraditionalTerm
+from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -28,17 +30,20 @@ origins = [
 
 # Allow list from env for production (comma-separated). Fallback to dev-friendly defaults.
 _env_origins = os.getenv("ALLOW_ORIGINS")
+dev_origins = [
+    'http://127.0.0.1:5500', 'http://localhost:5500',
+    'http://127.0.0.1:8000', 'http://localhost:8000',
+    'http://127.0.0.1:3000', 'http://localhost:3000'
+]
+origins: list[str] = []
 if _env_origins:
-    origins = [o.strip() for o in _env_origins.split(',') if o.strip()]
-else:
-    origins = [
-        'http://127.0.0.1:5500',
-        'http://localhost:5500',
-        'http://127.0.0.1:8000',
-        'http://localhost:8000',
-        'http://127.0.0.1:3000',
-        'http://localhost:3000'
-    ]
+    origins.extend([o.strip() for o in _env_origins.split(',') if o.strip()])
+# Always append dev origins so local workflows keep functioning even in prod
+origins.extend(dev_origins)
+# Deduplicate while preserving order
+seen = set()
+origins = [o for o in origins if not (o in seen or seen.add(o))]
+print(f"[CORS] Final allowed origins: {origins}")
 
 # Optional: allow preview branches with dynamic subdomains (e.g., Netlify)
 # Provide a regex via env var ALLOW_ORIGIN_REGEX, e.g.:
@@ -66,6 +71,34 @@ def ensure_tables_exist_on_startup():
             print(f"[STARTUP] Failed to ensure tables: {e}", flush=True)
         except Exception:
             pass
+    # Create initial ConceptMap release if none exists
+    try:
+        with Session(bind=engine) as db:
+            existing = db.execute(select(ConceptMapRelease).limit(1)).scalar_one_or_none()
+            if not existing:
+                release = ConceptMapRelease(version="v1-submission", notes="Auto-created on startup")
+                db.add(release)
+                db.flush()
+                # Build elements from verified mappings
+                mappings = db.query(Mapping).join(ICD11Code).join(TraditionalTerm).filter(Mapping.status == 'verified').all()
+                count = 0
+                for m in mappings:
+                    db.add(ConceptMapElement(
+                        release_id=release.id,
+                        icd_name=m.icd11_code.icd_name,
+                        icd_code=m.icd11_code.icd_code,
+                        system=m.traditional_term.system,
+                        term=m.traditional_term.term,
+                        equivalence='equivalent',
+                        is_primary=m.is_primary
+                    ))
+                    count += 1
+                db.commit()
+                print(f"[STARTUP] Created initial ConceptMap release v1-submission with {count} elements", flush=True)
+            else:
+                print("[STARTUP] ConceptMap release already exists", flush=True)
+    except Exception as e:
+        print(f"[STARTUP] Failed to create initial ConceptMap release: {e}", flush=True)
 
 
 @app.middleware("http")

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NAMASTE-ICD | API Docs</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="image.png" type="image/png" />
+  <style>
+    .card { background:#fff; border:1px solid #e5e7eb; border-radius:0.5rem; }
+    .endpoint-group code { background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:12px; }
+    .http-get { color:#059669; font-weight:600; }
+    .http-post { color:#2563eb; font-weight:600; }
+    .http-put { color:#d97706; font-weight:600; }
+    .http-delete { color:#dc2626; font-weight:600; }
+    .badge { font-size:10px; line-height:1; padding:3px 6px; border-radius:9999px; background:#e0e7ff; color:#4338ca; }
+    .dark-mode .endpoint-group code { background:#132033; border:1px solid #2b3a52; }
+  </style>
+</head>
+<body class="h-full">
+  <div id="app-screen" class="h-full flex flex-col">
+    <div id="admin-nav"></div>
+    <header class="bg-white p-4 border-b border-gray-200 flex justify-between items-center">
+      <h1 class="text-xl font-bold text-gray-800">API & System Documentation</h1>
+      <div class="flex items-center gap-3">
+        <button id="logout-button" class="text-sm font-medium text-gray-700 hover:text-red-600">Logout</button>
+      </div>
+    </header>
+    <main class="flex-1 p-6 space-y-8 max-w-7xl mx-auto w-full">
+
+      <!-- Architecture / Flowchart -->
+      <section class="card p-4" id="architecture">
+        <div class="bg-gradient-to-r from-indigo-50 to-teal-50 -m-4 mb-4 p-4 border-b rounded-t-lg">
+          <h2 class="text-xl font-bold text-gray-800">High‑Level Flow & Components</h2>
+          <p class="text-sm text-gray-600">Concept discovery → curation → verification → clinician usage & analytics.</p>
+        </div>
+        <div class="space-y-4">
+          <img src="image.png" alt="System Flowchart" class="block mx-auto rounded border" style="width:70%;height:auto;" />
+          <ul class="text-sm text-gray-700 list-disc pl-5 space-y-1">
+            <li><strong>Ingestion</strong>: Raw AYUSH morbidity CSVs parsed → staging tables.</li>
+            <li><strong>AI Discovery</strong>: Suggests primary + alias candidates per ICD with justification & confidence.</li>
+            <li><strong>Curation</strong>: Admin resolves suggestions (primary / alias / reject).</li>
+            <li><strong>Master Map (Staged → Verified)</strong>: Promotion exposes mappings to public & FHIR endpoints.</li>
+            <li><strong>Clinician APIs</strong>: Lookup / Translate unify ICD ↔ TM systems.</li>
+            <li><strong>FHIR APIs</strong>: CodeSystem / ConceptMap / ValueSet / $operations.</li>
+            <li><strong>Analytics</strong>: Access log aggregation + geospatial clustering.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Authentication -->
+      <section class="card p-4" id="auth">
+        <h2 class="text-lg font-semibold mb-3 text-gray-800">Authentication</h2>
+        <p class="text-sm text-gray-600 mb-3">Bearer token required for all <code>/api/admin/*</code> endpoints and protected FHIR authoring operations.</p>
+        <ul class="text-sm text-gray-700 space-y-2 endpoint-group">
+          <li><span class="http-post">POST</span> <code>/api/auth/token</code> <span class="badge">Auth</span> — form body: <code>username</code>, <code>password</code>; returns <code>access_token</code>.</li>
+          <li><span class="http-post">POST</span> <code>/api/auth/logout</code> (optional — client can drop token).</li>
+        </ul>
+      </section>
+
+      <!-- Public Clinician Endpoints -->
+      <section class="card p-4" id="clinician">
+        <h2 class="text-lg font-semibold mb-3 text-gray-800">Clinician / Public Endpoints</h2>
+        <ul class="text-sm text-gray-700 space-y-2 endpoint-group">
+          <li><span class="http-get">GET</span> <code>/api/public/lookup?query=&lt;text&gt;</code> — Unified search across verified mappings.</li>
+          <li><span class="http-get">GET</span> <code>/api/public/translate?icd_name=&lt;ICD&gt;</code> — Forward translate (ICD → TM systems).</li>
+          <li><span class="http-get">GET</span> <code>/api/public/translate?system=&lt;sys&gt;&code=&lt;code|term&gt;&target=icd11</code> — Reverse translate / single concept.</li>
+          <li><span class="http-get">GET</span> <code>/api/public/verified-icd</code> — List of all verified ICD names.</li>
+          <li><span class="http-get">GET</span> <code>/api/public/mapping-search?q=&lt;frag&gt;</code> — Fast suggestion search across mappings.</li>
+          <li><span class="http-get">GET</span> <code>/api/public/translate/cache/stats</code> — Translation layer cache stats.</li>
+        </ul>
+      </section>
+
+      <!-- FHIR Endpoints -->
+      <section class="card p-4" id="fhir">
+        <h2 class="text-lg font-semibold mb-3 text-gray-800">FHIR Terminology Endpoints</h2>
+        <p class="text-sm text-gray-600 mb-2">Implements a narrowed terminology service with R4 semantics.</p>
+        <ul class="text-sm text-gray-700 space-y-2 endpoint-group">
+          <li><span class="http-get">GET</span> <code>/api/fhir/metadata</code> — CapabilityStatement.</li>
+          <li><span class="http-get">GET</span> <code>/api/fhir/CodeSystem/{system}</code> — CodeSystem read (ayurveda, siddha, unani).</li>
+          <li><span class="http-get">GET</span> <code>/api/fhir/CodeSystem/$lookup?system=&lt;sys&gt;&code=&lt;code&gt;</code> — Concept details.</li>
+          <li><span class="http-get">GET</span> <code>/api/fhir/ValueSet/$expand?system=&lt;sys&gt;</code> — Verified codes for a system.</li>
+          <li><span class="http-get">GET</span> <code>/api/fhir/ConceptMap/$translate?system=&lt;sys&gt;&code=&lt;code&gt;</code> — Map to ICD‑11.</li>
+          <li><span class="http-get">GET</span> <code>/api/fhir/provenance/conceptmap?icd_name=&lt;ICD&gt;</code> — Curation provenance for an ICD concept.</li>
+        </ul>
+      </section>
+
+      <!-- Admin / Curation -->
+      <section class="card p-4" id="admin">
+        <h2 class="text-lg font-semibold mb-3 text-gray-800">Admin / Curation Endpoints</h2>
+        <ul class="text-sm text-gray-700 space-y-2 endpoint-group">
+          <li><span class="http-get">GET</span> <code>/api/admin/all-suggestions</code> — All AI suggested mappings grouped by ICD.</li>
+          <li><span class="http-post">POST</span> <code>/api/admin/submit-curation</code> — Persist curated decisions (suggested → staged or rejected).</li>
+          <li><span class="http-post">POST</span> <code>/api/admin/curation-audit-log</code> — (Best‑effort) record auto / bulk UI actions.</li>
+          <li><span class="http-get">GET</span> <code>/api/admin/master-map-data</code> — Aggregated staged + verified (primary + aliases) rows.</li>
+          <li><span class="http-post">POST</span> <code>/api/admin/commit-to-master</code> — Promote all staged mappings → verified.</li>
+          <li><span class="http-post">POST</span> <code>/api/admin/update-master-mapping</code> — Edit a single ICD/system curated mapping (primary + aliases upsert/delete).</li>
+          <li><span class="http-post">POST</span> <code>/api/admin/verify-mapping-with-ai</code> — Run AI justification & directly verify a primary.</li>
+          <li><span class="http-post">POST</span> <code>/api/admin/verify</code> / <code>/api/admin/force-verify</code> — Lightweight verify flows.</li>
+          <li><span class="http-post">POST</span> <code>/api/admin/undo-verification</code> — Revert verified → staged for an ICD.</li>
+          <li><span class="http-get">GET</span> <code>/api/admin/rejected-mappings</code> — Rejected pools (correction / orphanage).</li>
+          <li><span class="http-post">POST</span> <code>/api/admin/remap-rejected-term</code> — Move a rejected term to a new / existing ICD with AI re‑analysis.</li>
+          <li><span class="http-post">POST</span> <code>/api/admin/reset-curation</code> — Wipe mappings & rediscover suggestions.</li>
+          <li><span class="http-get">GET</span> <code>/api/admin/stats</code> — High‑level counts (suggested / staged / verified / rejected).</li>
+          <li><span class="http-get">GET</span> <code>/api/admin/completeness-stats</code> — Multi‑system coverage distribution.</li>
+          <li><span class="http-get">GET</span> <code>/api/admin/debug/icd-mappings?icd_name=...</code> — Raw mappings per ICD (debug aid).</li>
+        </ul>
+      </section>
+
+      <!-- Releases / Versioning (ConceptMap) -->
+      <section class="card p-4" id="releases">
+        <h2 class="text-lg font-semibold mb-3 text-gray-800">ConceptMap Releases</h2>
+        <ul class="text-sm text-gray-700 space-y-2 endpoint-group">
+          <li><span class="http-get">GET</span> <code>/api/admin/conceptmap/releases</code> — List releases.</li>
+          <li><span class="http-post">POST</span> <code>/api/admin/conceptmap/releases/{version}/refresh</code> — Rebuild release snapshot.</li>
+        </ul>
+      </section>
+
+      <!-- Analytics Endpoints -->
+      <section class="card p-4" id="analytics">
+        <h2 class="text-lg font-semibold mb-3 text-gray-800">Analytics Endpoints</h2>
+        <ul class="text-sm text-gray-700 space-y-2 endpoint-group">
+          <li><span class="http-get">GET</span> <code>/api/admin/analytics/summary</code> — Totals + status buckets + latency.</li>
+          <li><span class="http-get">GET</span> <code>/api/admin/analytics/timeseries?bucket=minute|hour&limit=60</code> — Time buckets.</li>
+          <li><span class="http-get">GET</span> <code>/api/admin/analytics/paths?limit=50</code> — Top paths with latency & status breakdown.</li>
+          <li><span class="http-get">GET</span> <code>/api/admin/analytics/recent?limit=100</code> — Most recent requests (raw log entries).</li>
+          <li><span class="http-get">GET</span> <code>/api/admin/analytics/map/clusters?bbox=..&zoom=..</code> — Spatial clusters.</li>
+          <li><span class="http-get">GET</span> <code>/api/admin/analytics/map/details?lat=..&lng=..</code> — Detail for cluster area.</li>
+        </ul>
+      </section>
+
+      <!-- Error Format -->
+      <section class="card p-4" id="errors">
+        <h2 class="text-lg font-semibold mb-3 text-gray-800">Error Model</h2>
+        <p class="text-sm text-gray-700 mb-2">Errors follow a JSON envelope:</p>
+<pre class="text-xs bg-gray-50 border rounded p-3 overflow-auto">{
+  "detail": "Human readable message",
+  "code": "optional_error_code"
+}</pre>
+      </section>
+
+      <!-- Rate Limits / Performance -->
+      <section class="card p-4" id="perf">
+        <h2 class="text-lg font-semibold mb-3 text-gray-800">Performance Notes</h2>
+        <ul class="text-sm text-gray-700 list-disc pl-5 space-y-1">
+          <li>Caching layer speeds repeat translations; view with <code>/api/public/translate/cache/stats</code>.</li>
+          <li>Bulk curation operations are async-safe; front-end debounces writes.</li>
+          <li>Geospatial clustering uses bounding-box + zoom heuristics for efficiency.</li>
+        </ul>
+      </section>
+
+    </main>
+  </div>
+  <script src="config.js"></script>
+  <script src="admin_nav.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', ()=>{
+      const token = localStorage.getItem('accessToken');
+      if(!token) window.location.href='index.html';
+      const logout = document.getElementById('logout-button');
+      if(logout) logout.addEventListener('click', ()=>{ localStorage.removeItem('accessToken'); window.location.href='index.html'; });
+    });
+  </script>
+</body>
+</html>

@@ -14,6 +14,7 @@
 </head>
 <body class="h-full">
   <div id="app-screen" class="h-full flex flex-col">
+    <div id="admin-nav"></div>
     <header class="bg-white p-4 border-b border-gray-200 flex justify-between items-center">
       <h1 class="text-xl font-bold text-gray-800">Ayur Sync Admin Panel · Instructions & Info</h1>
       <div class="flex items-center gap-3">
@@ -28,18 +29,6 @@
     </header>
 
     <main class="flex-1 p-6 space-y-6">
-      <div class="bg-white rounded-lg shadow-sm border">
-        <div class="p-4 border-b border-gray-200">
-          <div class="flex border-b border-gray-200">
-            <a href="instructions.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 tab-active">Instructions</a>
-            <a href="analytics.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Analytics</a>
-            <a href="new_suggestions.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">New Suggestions</a>
-            <a href="master_map.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Master Map</a>
-            <a href="rejections.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">Rejected Mappings</a>
-            <a href="icd11.html" class="tab-button px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">ICD-11 Disease List</a>
-          </div>
-        </div>
-      </div>
 
       <!-- Warnings -->
       <section class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -130,17 +119,7 @@
         </div>
       </section>
 
-      <!-- Technical Flow -->
-      <section class="card p-4">
-        <div class="bg-gradient-to-r from-indigo-50 to-teal-50 -m-4 mb-4 p-4 border-b rounded-t-lg">
-          <h2 class="text-xl font-bold text-gray-800">Technical Flow · Ayur Sync API Structure</h2>
-          <p class="text-sm text-gray-600">High‑level architecture from AI discovery → curation → verified mappings powering clinician endpoints.</p>
-        </div>
-        <div class="space-y-4">
-          <img src="image.png" alt="Ayur Sync Technical Flow" class="block mx-auto rounded border" style="width: 60%; height: auto;" />
-          <p class="text-xs text-gray-500">If the image doesn’t load, ensure the file <code>FIRST INT.jpg</code> exists at the repo root of the backend folder. You can replace it or add another diagram as needed.</p>
-        </div>
-      </section>
+      
 
       <!-- Footer -->
       <footer class="text-xs text-gray-500 text-center py-6">
@@ -161,13 +140,11 @@
 
   <!-- Optional runtime config & shared auth utilities -->
   <script src="config.js"></script>
+  <script src="admin_nav.js"></script>
   <script src="shared.js"></script>
 </body>
 <style>
   .card { background:#fff; border:1px solid #e5e7eb; border-radius:0.5rem; }
-  .tab-button.tab-active { color:#111827; border-bottom:2px solid #4f46e5; }
-  .tab-button { margin-right:0.25rem; }
-  .tab-button:hover { color:#111827; }
   body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Ubuntu, Cantarell, Helvetica Neue, Arial; }
   summary { outline: none; }
   summary::-webkit-details-marker { display: none; }

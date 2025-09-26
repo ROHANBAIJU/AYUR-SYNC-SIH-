@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8" />
+  <title>Guided Mapping Flow | NAMASTE-ICD</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="image.png" type="image/png" />
+  <style>
+    .btn-base{ position:relative;display:inline-flex;align-items:center;justify-content:center;border-radius:0.375rem;font-size:0.75rem;line-height:1rem;font-weight:500;padding:0.5rem 0.75rem;transition:background-color .15s,opacity .15s; }
+    .btn-base:disabled{ opacity:.6;cursor:not-allowed; }
+    .btn-spinner{ width:14px;height:14px;border:2px solid rgba(255,255,255,0.6);border-top-color:transparent;border-radius:9999px;animation:spin .7s linear infinite; }
+    @keyframes spin{ to{ transform:rotate(360deg);} }
+    .step-collapsed .step-body{ display:none; }
+  /* Nav styling comes from global admin_nav.js + style.css */
+  </style>
+</head>
+<body class="h-full flex flex-col min-h-screen">
+  <div id="global-loading" class="fixed inset-0 z-50 bg-white/60 backdrop-blur-sm hidden items-center justify-center">
+    <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+  </div>
+  <div id="admin-nav"></div>
+  <header class="w-full bg-white border-b px-5 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <h1 class="text-2xl font-bold tracking-tight text-slate-800">Guided Mapping Flow</h1>
+      <span id="api-base-pill" class="text-[11px] px-2 py-1 rounded bg-indigo-100 text-indigo-700"></span>
+    </div>
+    <div class="flex items-center gap-2">
+      <input id="token-input" type="text" placeholder="Token (after login)" class="w-64 text-xs px-2 py-1 border rounded" />
+      <button id="save-token-btn" class="btn-base bg-indigo-600 text-white hover:bg-indigo-700">Set</button>
+      <button id="clear-log-btn" class="btn-base bg-slate-200 text-slate-800 hover:bg-slate-300">Clear Log</button>
+    </div>
+  </header>
+  <div class="bg-white rounded-lg shadow-sm border mt-2 max-w-7xl mx-auto w-full">
+    <div class="px-5 pb-4 pt-4">
+      <div class="w-full bg-slate-200 h-2 rounded overflow-hidden">
+        <div id="progress-bar" class="h-full w-0 bg-gradient-to-r from-indigo-500 via-sky-500 to-teal-500 transition-all"></div>
+      </div>
+      <p class="text-[11px] text-slate-500 mt-1">Progress across 9 validation steps.</p>
+    </div>
+  </div>
+  <main class="flex-1 max-w-7xl mx-auto w-full px-5 py-6 flex flex-col lg:flex-row gap-6">
+    <!-- Steps Column -->
+    <div class="flex-1 space-y-4" id="steps-column">
+      <!-- STEP TEMPLATE (repeat) -->
+      <section class="step bg-white border rounded shadow-sm" data-step="1">
+        <header class="flex items-center justify-between px-4 py-3 cursor-pointer step-header">
+          <div>
+            <h2 class="font-semibold text-sm text-slate-800">Step 1. Admin Login</h2>
+            <p class="text-[11px] text-slate-500">Obtain a bearer token for protected operations.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="status-1" class="text-[10px] px-2 py-1 rounded bg-slate-200 text-slate-600">PENDING</span>
+            <svg class="w-4 h-4 text-slate-400 transition-transform" data-chevron viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+          </div>
+        </header>
+        <div class="step-body border-t px-4 pb-4 pt-3 space-y-3">
+          <div class="flex gap-2 flex-wrap text-xs">
+            <button id="login-btn" class="btn-base bg-indigo-600 text-white hover:bg-indigo-700" data-loading="Login"> <span class="btn-label">Login (admin)</span></button>
+            <button id="logout-btn" class="btn-base bg-slate-600 text-white hover:bg-slate-700" data-loading="Logout"><span class="btn-label">Logout</span></button>
+          </div>
+          <p class="text-[11px] text-slate-500">After successful login token auto-fills above.</p>
+        </div>
+      </section>
+
+      <section class="step bg-white border rounded shadow-sm step-collapsed" data-step="2">
+        <header class="flex items-center justify-between px-4 py-3 cursor-pointer step-header">
+          <div>
+            <h2 class="font-semibold text-sm text-slate-800">Step 2. Load & Curate Verified Mapping</h2>
+            <p class="text-[11px] text-slate-500">Fetch verified ICD list or search terms, then prep translation input.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="status-2" class="text-[10px] px-2 py-1 rounded bg-slate-200 text-slate-600">LOCKED</span>
+            <svg class="w-4 h-4 text-slate-400 transition-transform" data-chevron viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+          </div>
+        </header>
+        <div class="step-body border-t px-4 pb-4 pt-4 space-y-4">
+          <div class="flex flex-wrap gap-2 text-xs">
+            <button id="load-verified-btn" class="btn-base bg-emerald-600 text-white hover:bg-emerald-700" data-loading="Loading"><span class="btn-label">Load Verified ICD List</span></button>
+            <button id="refresh-release-btn" class="btn-base bg-amber-600 text-white hover:bg-amber-700" data-loading="Refreshing"><span class="btn-label">Refresh Release Snapshot</span></button>
+          </div>
+          <div class="grid md:grid-cols-5 gap-4 text-xs">
+            <div class="md:col-span-2">
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">Verified ICD Diseases</label>
+              <select id="verified-icd-select" size="7" class="w-full border rounded p-2 text-[11px] focus:outline-none focus:ring"></select>
+            </div>
+            <div class="md:col-span-3 flex flex-col gap-2">
+              <label class="block text-[11px] font-medium text-slate-600">Search Verified Mappings
+                <input id="search-box" type="text" placeholder="Type term or ICD fragment..." class="mt-1 w-full border rounded px-2 py-1 text-xs" />
+              </label>
+              <div id="search-suggestions" class="border rounded bg-slate-50 p-2 h-40 overflow-auto text-[11px] space-y-1"></div>
+            </div>
+          </div>
+          <p class="text-[10px] text-slate-500">Select an ICD OR click a suggestion to auto-fill translation inputs below.</p>
+        </div>
+      </section>
+
+      <section class="step bg-white border rounded shadow-sm step-collapsed" data-step="3">
+        <header class="flex items-center justify-between px-4 py-3 cursor-pointer step-header">
+          <div>
+            <h2 class="font-semibold text-sm text-slate-800">Step 3. Forward Translate (Public)</h2>
+            <p class="text-[11px] text-slate-500">Aggregate systems + ICD enrichment (WHO when available).</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="status-3" class="text-[10px] px-2 py-1 rounded bg-slate-200 text-slate-600">LOCKED</span>
+            <svg class="w-4 h-4 text-slate-400 transition-transform" data-chevron viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+          </div>
+        </header>
+        <div class="step-body border-t px-4 pb-4 pt-4 space-y-4">
+          <div class="grid md:grid-cols-5 gap-4 text-xs">
+            <div class="md:col-span-2">
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">ICD Name
+                <input id="icd-name" type="text" class="mt-1 w-full border rounded px-2 py-1 text-xs" placeholder="ICD name (auto or manual)" />
+              </label>
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">System
+                <select id="map-system" class="mt-1 w-full border rounded px-2 py-1 text-xs">
+                  <option value="ayurveda">Ayurveda</option>
+                  <option value="siddha">Siddha</option>
+                  <option value="unani">Unani</option>
+                </select>
+              </label>
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-1">Term / Code
+                <input id="source-code" type="text" class="mt-1 w-full border rounded px-2 py-1 text-xs" placeholder="Term or code" />
+              </label>
+            </div>
+            <div class="flex items-end">
+              <button id="forward-translate-btn" class="btn-base w-full bg-teal-600 text-white hover:bg-teal-700" data-loading="Translating"><span class="btn-label">Forward Translate</span></button>
+            </div>
+          </div>
+          <p class="text-[10px] text-slate-500">Forward translation populates all verified system mappings for this ICD entry.</p>
+        </div>
+      </section>
+
+      <section class="step bg-white border rounded shadow-sm step-collapsed" data-step="4">
+        <header class="flex items-center justify-between px-4 py-3 cursor-pointer step-header">
+          <div>
+            <h2 class="font-semibold text-sm text-slate-800">Step 4. Reverse Translate (Public)</h2>
+            <p class="text-[11px] text-slate-500">Show traditional systems for ICD (lightweight form).</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="status-4" class="text-[10px] px-2 py-1 rounded bg-slate-200 text-slate-600">LOCKED</span>
+            <svg class="w-4 h-4 text-slate-400 transition-transform" data-chevron viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+          </div>
+        </header>
+        <div class="step-body border-t px-4 pb-4 pt-4">
+          <button id="reverse-translate-btn" class="btn-base bg-teal-600 text-white hover:bg-teal-700" data-loading="Translating"><span class="btn-label">Reverse Translate</span></button>
+        </div>
+      </section>
+
+      <section class="step bg-white border rounded shadow-sm step-collapsed" data-step="5">
+        <header class="flex items-center justify-between px-4 py-3 cursor-pointer step-header">
+          <div>
+            <h2 class="font-semibold text-sm text-slate-800">Step 5. FHIR CodeSystem & $lookup</h2>
+            <p class="text-[11px] text-slate-500">Validate system resource & concept properties.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="status-5" class="text-[10px] px-2 py-1 rounded bg-slate-200 text-slate-600">LOCKED</span>
+            <svg class="w-4 h-4 text-slate-400 transition-transform" data-chevron viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+          </div>
+        </header>
+        <div class="step-body border-t px-4 pb-4 pt-4 flex flex-wrap gap-3">
+          <button id="codesystem-btn" class="btn-base bg-sky-600 text-white hover:bg-sky-700" data-loading="Reading"><span class="btn-label">CodeSystem Read</span></button>
+          <button id="lookup-btn" class="btn-base bg-sky-600 text-white hover:bg-sky-700" data-loading="Lookup"><span class="btn-label">FHIR $lookup</span></button>
+        </div>
+      </section>
+
+      <section class="step bg-white border rounded shadow-sm step-collapsed" data-step="6">
+        <header class="flex items-center justify-between px-4 py-3 cursor-pointer step-header">
+          <div>
+            <h2 class="font-semibold text-sm text-slate-800">Step 6. FHIR ValueSet $expand</h2>
+            <p class="text-[11px] text-slate-500">Enumerate verified codes for the system.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="status-6" class="text-[10px] px-2 py-1 rounded bg-slate-200 text-slate-600">LOCKED</span>
+            <svg class="w-4 h-4 text-slate-400 transition-transform" data-chevron viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+          </div>
+        </header>
+        <div class="step-body border-t px-4 pb-4 pt-4">
+          <button id="expand-btn" class="btn-base bg-fuchsia-600 text-white hover:bg-fuchsia-700" data-loading="Expanding"><span class="btn-label">ValueSet $expand</span></button>
+        </div>
+      </section>
+
+      <section class="step bg-white border rounded shadow-sm step-collapsed" data-step="7">
+        <header class="flex items-center justify-between px-4 py-3 cursor-pointer step-header">
+          <div>
+            <h2 class="font-semibold text-sm text-slate-800">Step 7. FHIR ConceptMap $translate</h2>
+            <p class="text-[11px] text-slate-500">Validate concept mapping (fallback if no primary).</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="status-7" class="text-[10px] px-2 py-1 rounded bg-slate-200 text-slate-600">LOCKED</span>
+            <svg class="w-4 h-4 text-slate-400 transition-transform" data-chevron viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+          </div>
+        </header>
+        <div class="step-body border-t px-4 pb-4 pt-4">
+          <button id="concept-translate-btn" class="btn-base bg-violet-600 text-white hover:bg-violet-700" data-loading="Translating"><span class="btn-label">ConceptMap $translate</span></button>
+        </div>
+      </section>
+
+      <section class="step bg-white border rounded shadow-sm step-collapsed" data-step="8">
+        <header class="flex items-center justify-between px-4 py-3 cursor-pointer step-header">
+          <div>
+            <h2 class="font-semibold text-sm text-slate-800">Step 8. Provenance & Capability</h2>
+            <p class="text-[11px] text-slate-500">Show curator trace & FHIR server capabilities.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="status-8" class="text-[10px] px-2 py-1 rounded bg-slate-200 text-slate-600">LOCKED</span>
+            <svg class="w-4 h-4 text-slate-400 transition-transform" data-chevron viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+          </div>
+        </header>
+        <div class="step-body border-t px-4 pb-4 pt-4 flex flex-wrap gap-3">
+          <button id="provenance-btn" class="btn-base bg-stone-700 text-white hover:bg-stone-800" data-loading="Fetching"><span class="btn-label">Provenance</span></button>
+          <button id="capability-btn" class="btn-base bg-indigo-600 text-white hover:bg-indigo-700" data-loading="Loading"><span class="btn-label">FHIR Capability</span></button>
+        </div>
+      </section>
+
+      <section class="step bg-white border rounded shadow-sm step-collapsed" data-step="9">
+        <header class="flex items-center justify-between px-4 py-3 cursor-pointer step-header">
+          <div>
+            <h2 class="font-semibold text-sm text-slate-800">Step 9. Cache & Diagnostics</h2>
+            <p class="text-[11px] text-slate-500">Inspect translation cache statistics.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="status-9" class="text-[10px] px-2 py-1 rounded bg-slate-200 text-slate-600">LOCKED</span>
+            <svg class="w-4 h-4 text-slate-400 transition-transform" data-chevron viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd"/></svg>
+          </div>
+        </header>
+        <div class="step-body border-t px-4 pb-4 pt-4">
+          <button id="cache-btn" class="btn-base bg-slate-600 text-white hover:bg-slate-700" data-loading="Fetching"><span class="btn-label">Cache Stats</span></button>
+        </div>
+      </section>
+    </div>
+
+    <!-- LOG COLUMN -->
+    <aside class="w-full lg:w-96 flex flex-col h-[calc(100vh-210px)] lg:sticky top-24">
+      <div class="bg-white border rounded shadow-sm flex flex-col flex-1">
+        <div class="px-4 py-3 border-b flex items-center justify-between">
+          <h2 class="font-semibold text-sm text-slate-800">Step Output</h2>
+          <button id="clear-log-btn" class="text-[10px] px-2 py-0.5 rounded bg-slate-200 hover:bg-slate-300 text-slate-700">Clear</button>
+        </div>
+        <div id="step-output-wrapper" class="flex-1 overflow-auto bg-slate-50 p-0">
+          <!-- Per-step panels injected here -->
+        </div>
+      </div>
+      <p class="text-[10px] text-slate-500 mt-2 leading-relaxed">Click a step's "Show Output" after completion to view its latest response. Starting a new request replaces that step's stored output.</p>
+    </aside>
+  </main>
+  <script src="config.js"></script>
+  <script src="admin_nav.js"></script>
+  <script src="overall_tester.js"></script>
+</body>
+</html>

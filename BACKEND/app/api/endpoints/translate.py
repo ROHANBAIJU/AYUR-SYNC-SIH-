@@ -3,10 +3,13 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_
 from app.db.session import get_db
 from app.core.security import get_current_principal
-from app.db.models import Mapping, TraditionalTerm, ICD11Code
+from app.db.models import Mapping, TraditionalTerm, ICD11Code, ConceptMapRelease
+from app.util.fhir_outcome import outcome_not_found, outcome_validation
+from app.services.cache_service import translation_cache
 from app.services import who_api_client
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
+from sqlalchemy import or_, func
 
 # --- Pydantic Response Models ---
 
@@ -34,10 +37,61 @@ class TranslateResult(BaseModel):
     unani: Optional[SystemMappingEntry] = None
     icd: Optional[ICDEntry] = None
     tm2: Optional[ICDEntry] = None
+    release_version: Optional[str] = None
+    direction: Optional[str] = None  # 'forward' or 'reverse'
 
 # --- Router Definition ---
 
 router = APIRouter()
+
+def _latest_release_version(db: Session) -> Optional[str]:
+    rel = db.query(ConceptMapRelease).order_by(ConceptMapRelease.created_at.desc()).first()
+    return rel.version if rel else None
+
+
+def _to_fhir_parameters(result: TranslateResult) -> dict:
+    """Convert internal TranslateResult into a FHIR Parameters resource."""
+    params = {
+        "resourceType": "Parameters",
+        "parameter": [
+            {"name": "result", "valueBoolean": True},
+            {"name": "releaseVersion", "valueString": result.release_version or "unknown"},
+            {"name": "direction", "valueString": result.direction or "forward"},
+        ]
+    }
+    # ICD target
+    if result.icd:
+        params["parameter"].append({
+            "name": "icd",
+            "part": [
+                {"name": "code", "valueString": result.icd.code or result.icd.name},
+                {"name": "display", "valueString": result.icd.name or ""}
+            ]
+        })
+    # TM2 (optional)
+    if result.tm2:
+        params["parameter"].append({
+            "name": "tm2",
+            "part": [
+                {"name": "code", "valueString": result.tm2.code or result.tm2.name},
+                {"name": "display", "valueString": result.tm2.name or ""}
+            ]
+        })
+    # Systems
+    for sys_name in ("ayurveda", "siddha", "unani"):
+        entry: SystemMappingEntry | None = getattr(result, sys_name)
+        if not entry: continue
+        if entry.primary:
+            params["parameter"].append({
+                "name": sys_name,
+                "part": [
+                    {"name": "primaryTerm", "valueString": entry.primary.name or ""},
+                    {"name": "primaryCode", "valueString": entry.primary.code or ""},
+                    {"name": "aliasesCount", "valueInteger": len(entry.aliases)}
+                ]
+            })
+    return params
+
 
 @router.get("/translate", response_model=TranslateResult)
 async def translate_code(
@@ -45,6 +99,7 @@ async def translate_code(
     code: Optional[str] = Query(None, description="The source NAMASTE code (e.g., 'AKK-12')."),
     icd_name: Optional[str] = Query(None, description="ICD-11 disease name to enrich via WHO; preferred for WHO lookups."),
     release: Optional[str] = Query(None, description="ICD-11 linearization release to target (e.g., '2025-01')."),
+    fhir: bool = Query(False, description="If true, wrap successful response as FHIR Parameters resource."),
     db: Session = Depends(get_db),
     principal = Depends(get_current_principal)
 ):
@@ -58,20 +113,25 @@ async def translate_code(
     In all cases, WHO is queried with the ICD disease name, not the NAMASTE code.
     """
     icd_code: Optional[ICD11Code] = None
+    mapping: Optional[Mapping] = None
+    cache_id_parts: list[str] = []
 
     if icd_name:
+        # Lookup by ICD name (disease-centric request)
         icd_code = db.query(ICD11Code).filter(ICD11Code.icd_name == icd_name).first()
         if not icd_code:
-            raise HTTPException(status_code=404, detail="ICD name not found.")
-        # Ensure it's verified
+            return outcome_not_found("ICD name not found")
         has_verified = db.query(Mapping).filter(
-            Mapping.icd11_code_id == icd_code.id, Mapping.status == 'verified'
+            Mapping.icd11_code_id == icd_code.id,
+            Mapping.status == 'verified'
         ).first() is not None
         if not has_verified:
-            raise HTTPException(status_code=400, detail="Disease not verified.")
+            return outcome_validation("Disease not verified")
+        cache_id_parts.append(icd_name)
     else:
+        # Lookup by (system, code)
         if not (system and code):
-            raise HTTPException(status_code=400, detail="Provide either icd_name or (system and code).")
+            return outcome_validation("Provide either icd_name or (system and code)")
         mapping = (
             db.query(Mapping)
             .join(TraditionalTerm)
@@ -85,8 +145,20 @@ async def translate_code(
             .first()
         )
         if not mapping:
-            raise HTTPException(status_code=404, detail="No verified primary mapping found for the given NAMASTE code.")
+            return outcome_not_found("No verified primary mapping found for the given NAMASTE code")
         icd_code = mapping.icd11_code
+        cache_id_parts.append(f"{system}:{code}")
+
+    if not icd_code:
+        return outcome_not_found("ICD context not resolved")
+
+    # Cache lookup (forward direction)
+    cache_key = "|".join(cache_id_parts)
+    cached = translation_cache.get(_latest_release_version(db), 'forward', cache_key)
+    if cached:
+        if fhir and hasattr(cached, 'release_version'):
+            return _to_fhir_parameters(cached)  # type: ignore
+        return cached
 
     # 2. For the mapped ICD, pull the verified terms for each system (primary + aliases)
     verified_mappings = (
@@ -275,10 +347,118 @@ async def translate_code(
                     )
 
     # 5. Assemble the final response
-    return TranslateResult(
+    result = TranslateResult(
         ayurveda=sys_map.get('ayurveda'),
         siddha=sys_map.get('siddha'),
         unani=sys_map.get('unani'),
         icd=icd_entry,
-        tm2=tm2_entry
+        tm2=tm2_entry,
+        release_version=_latest_release_version(db),
+        direction='forward'
     )
+    translation_cache.set(result.release_version, 'forward', cache_key, result)
+    return _to_fhir_parameters(result) if fhir else result
+
+
+@router.get("/translate/reverse", response_model=TranslateResult)
+async def reverse_translate(
+    icd_name: str = Query(..., description="ICD-11 disease name to reverse translate into traditional systems."),
+    release: Optional[str] = Query(None, description="Reserved: specific release version (ignored for now)."),
+    fhir: bool = Query(False, description="If true, wrap successful response as FHIR Parameters resource."),
+    db: Session = Depends(get_db),
+    principal = Depends(get_current_principal)
+):
+    cache_key = icd_name
+    latest_rel = _latest_release_version(db)
+    cached = translation_cache.get(latest_rel, 'reverse', cache_key)
+    if cached:
+        if fhir and hasattr(cached, 'release_version'):
+            return _to_fhir_parameters(cached)  # type: ignore
+        return cached
+
+    icd_obj = db.query(ICD11Code).filter(ICD11Code.icd_name == icd_name).first()
+    if not icd_obj:
+        return outcome_not_found("ICD name not found")
+    verified = db.query(Mapping).join(TraditionalTerm).filter(
+        Mapping.icd11_code_id == icd_obj.id,
+        Mapping.status == 'verified'
+    ).all()
+    if not verified:
+        return outcome_validation("Disease not verified")
+
+    sys_map: Dict[str, SystemMappingEntry] = {}
+    for m in verified:
+        t = m.traditional_term
+        if t.system not in sys_map:
+            sys_map[t.system] = SystemMappingEntry(primary=None, aliases=[])
+        term_obj = SystemTerm(
+            name=t.term,
+            code=t.code,
+            description=t.source_description,
+            vernacular=t.devanagari or t.tamil or t.arabic,
+            extra={"source_row": t.source_row}
+        )
+        if m.is_primary and sys_map[t.system].primary is None:
+            sys_map[t.system].primary = term_obj
+        else:
+            sys_map[t.system].aliases.append(term_obj)
+
+    result = TranslateResult(
+        ayurveda=sys_map.get('ayurveda'),
+        siddha=sys_map.get('siddha'),
+        unani=sys_map.get('unani'),
+        icd=None,  # Reverse minimal payload (ICD/tm2 enrichment optional)
+        tm2=None,
+        release_version=latest_rel,
+        direction='reverse'
+    )
+    translation_cache.set(result.release_version, 'reverse', cache_key, result)
+    return _to_fhir_parameters(result) if fhir else result
+
+@router.get("/translate/cache/stats")
+def translation_cache_stats(db: Session = Depends(get_db)):
+    return translation_cache.stats()
+
+# --- NEW: Public helper endpoints for UI search flow ---
+
+@router.get("/verified-icd")
+def list_verified_icd(db: Session = Depends(get_db)):
+    """Return distinct ICD names that have at least one verified mapping."""
+    rows = (
+        db.query(ICD11Code.icd_name)
+        .join(Mapping, Mapping.icd11_code_id == ICD11Code.id)
+        .filter(Mapping.status == 'verified')
+        .distinct()
+        .order_by(ICD11Code.icd_name.asc())
+        .all()
+    )
+    return {"icd_names": [r[0] for r in rows]}
+
+@router.get("/mapping-search")
+def mapping_search(
+    q: str = Query(..., description="Free text fragment to search traditional term or ICD name (verified only)."),
+    limit: int = Query(25, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    like = f"%{q.lower()}%"
+    results = (
+        db.query(Mapping, TraditionalTerm, ICD11Code)
+        .join(TraditionalTerm, Mapping.traditional_term_id == TraditionalTerm.id)
+        .join(ICD11Code, Mapping.icd11_code_id == ICD11Code.id)
+        .filter(
+            Mapping.status == 'verified',
+            or_(func.lower(TraditionalTerm.term).like(like), func.lower(ICD11Code.icd_name).like(like))
+        )
+        .limit(limit)
+        .all()
+    )
+    suggestions = []
+    for m, t, icd in results:
+        suggestions.append({
+            "icd_name": icd.icd_name,
+            "system": t.system,
+            "term": t.term,
+            "code": t.code,
+            "is_primary": bool(m.is_primary)
+        })
+    return {"query": q, "count": len(suggestions), "suggestions": suggestions}

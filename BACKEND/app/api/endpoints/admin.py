@@ -12,15 +12,17 @@ import pandas as pd
 import json
 from dotenv import load_dotenv
 import google.generativeai as genai
+import threading
+from datetime import datetime, timezone
 
 from app.core.security import get_current_user
 from app.services import who_api_client
 from scripts.discover_ai_mappings import discover_ai_mappings
 import re # Make sure to import 're' at the top of admin.py
 from app.db.session import get_db
-from app.db.models import ICD11Code, TraditionalTerm, Mapping, DiagnosisEvent
+from app.db.models import ICD11Code, TraditionalTerm, Mapping, DiagnosisEvent, MappingAudit, ConceptMapElement, ConceptMapRelease
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func, case, cast, String, and_
+from sqlalchemy import func, case, cast, String, and_, text
 #from sqlalchemy.dialects.postgresql import json_agg
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -35,6 +37,10 @@ WHO_API_BASE_URL = os.getenv("WHO_API_BASE_URL")
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY not found in .env file")
 genai.configure(api_key=GEMINI_API_KEY)
+
+# NOTE: router must be defined BEFORE any @router.<method> decorators are evaluated.
+# The previous file version declared it much later, causing NameError at import time.
+router = APIRouter()
 
 # --- Pydantic Models ---
 class CurationPayload(BaseModel):
@@ -61,10 +67,120 @@ class MasterUpdatePayload(BaseModel):
 
 class AIVerifyPayload(BaseModel):
     icd_name: str
+    system: str  # ayurveda | siddha | unani
     mapping: Dict[str, Any]
 
 class RevertPayload(BaseModel):
     icd_name: str
+
+class VerifyPayload(BaseModel):
+    icd_name: str
+    system: str
+    code: str | None = None
+    term: str | None = None
+    reason: str | None = None
+
+@router.post("/verify")
+def verify_mapping(payload: VerifyPayload, db: Session = Depends(get_db), user: Any = Depends(get_current_user)):
+    """Mark a mapping as verified and log audit.
+
+    Lookup precedence: code if provided else term.
+    """
+    system = payload.system.lower()
+    icd_obj = db.query(ICD11Code).filter(ICD11Code.icd_name == payload.icd_name).first()
+    if not icd_obj:
+        raise HTTPException(404, "ICD name not found")
+    q = db.query(Mapping).join(TraditionalTerm).filter(
+        Mapping.icd11_code_id == icd_obj.id,
+        TraditionalTerm.system == system
+    )
+    if payload.code:
+        q = q.filter(TraditionalTerm.code == payload.code)
+    elif payload.term:
+        q = q.filter(TraditionalTerm.term == payload.term)
+    else:
+        raise HTTPException(400, "Provide code or term")
+    mapping = q.first()
+    if not mapping:
+        raise HTTPException(404, "Mapping term not found for system")
+    mapping.status = 'verified'
+    db.add(MappingAudit(mapping_id=mapping.id, action='verify', actor=getattr(user, 'username', 'admin'), reason=payload.reason))
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(500, f"Failed to verify mapping: {e}")
+    return {"status": "success", "icd_name": payload.icd_name, "system": system, "code": payload.code, "term": payload.term}
+
+@router.post("/force-verify")
+def force_verify(payload: VerifyPayload, db: Session = Depends(get_db), user: Any = Depends(get_current_user)):
+    """Force-create (or upgrade) a mapping directly to verified.
+
+    Use this when the AI verify flow hasn't produced a DB row yet. If the ICD or term
+    does not exist they are created. Primary selection: first verified mapping per
+    ICD/system becomes primary, others become aliases.
+    """
+    system = payload.system.lower()
+    if not payload.term and not payload.code:
+        raise HTTPException(400, "Provide at least term or code")
+
+    icd = db.query(ICD11Code).filter(ICD11Code.icd_name == payload.icd_name).first()
+    if not icd:
+        icd = ICD11Code(icd_name=payload.icd_name, description="Created via force-verify")
+        db.add(icd); db.flush()
+
+    term_q = db.query(TraditionalTerm).filter(TraditionalTerm.system == system)
+    if payload.code:
+        term_q = term_q.filter(TraditionalTerm.code == payload.code)
+    else:
+        term_q = term_q.filter(TraditionalTerm.term == payload.term)
+    term_obj = term_q.first()
+    if not term_obj:
+        term_obj = TraditionalTerm(system=system, term=payload.term or payload.code, code=payload.code, source_description=payload.reason)
+        db.add(term_obj); db.flush()
+
+    mapping = db.query(Mapping).filter(Mapping.icd11_code_id == icd.id, Mapping.traditional_term_id == term_obj.id).first()
+    if not mapping:
+        mapping = Mapping(icd11_code_id=icd.id, traditional_term_id=term_obj.id)
+        db.add(mapping)
+
+    # Decide primary
+    existing_primary = db.query(Mapping).join(TraditionalTerm).filter(
+        Mapping.icd11_code_id == icd.id,
+        Mapping.status == 'verified',
+        Mapping.is_primary == True,
+        TraditionalTerm.system == system
+    ).first()
+    mapping.is_primary = existing_primary is None
+    mapping.status = 'verified'
+    db.flush()  # ensure mapping has id
+    db.add(MappingAudit(mapping_id=mapping.id, action='verify', actor=getattr(user,'username','admin'), reason=payload.reason or 'force'))
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback(); raise HTTPException(500, f"Failed to force verify: {e}")
+    return {"status":"success","icd_name":payload.icd_name,"system":system,"code":term_obj.code,"term":term_obj.term,"is_primary":mapping.is_primary}
+
+@router.get("/debug/icd-mappings")
+def debug_icd_mappings(icd_name: str, db: Session = Depends(get_db)):
+    """Return all mappings (any status) for an ICD, grouped by system for debugging."""
+    icd = db.query(ICD11Code).filter(ICD11Code.icd_name == icd_name).first()
+    if not icd:
+        return {"icd_name": icd_name, "mappings": []}
+    rows = db.query(Mapping).join(TraditionalTerm).filter(Mapping.icd11_code_id == icd.id).all()
+    out = []
+    for m in rows:
+        t = m.traditional_term
+        out.append({
+            "mapping_id": m.id,
+            "system": t.system,
+            "code": t.code,
+            "term": t.term,
+            "status": m.status,
+            "is_primary": m.is_primary,
+            "ai_confidence": m.ai_confidence,
+        })
+    return {"icd_name": icd_name, "mappings": out}
 
 class ICDAddPayload(BaseModel):
     icd_name: str
@@ -128,8 +244,6 @@ REJECTED_HEADERS = ["original_icd_name","system","code","term","source_descripti
 NO_MAPPING_HEADERS = REJECTED_HEADERS
 REVIEW_HEADERS = REJECTED_HEADERS
 ICD_MASTER_HEADERS = ["icd_name", "description", "status", "who_description", "ai_description", "ai_confidence"]
-
-router = APIRouter()
 
 # --- Helper Functions & Startup ---
 
@@ -431,7 +545,24 @@ def analytics_map_details(
     return {"doctors": list(by_doctor.values()), "topDiagnoses": top_diags, "total": len(rows)}
 
 def get_gemini_verification(icd_name: str, mapping_data: Dict) -> Dict:
-    model = genai.GenerativeModel('gemini-1.5-pro-latest')
+    # Updated model selection: previous 'gemini-1.5-pro-latest' caused 404 publisher model errors
+    # Working lightweight model discovered at runtime: 'models/gemini-1.5-flash-8b'
+    # We attempt primary, then fallback chain.
+    primary_models = ['models/gemini-1.5-flash-8b', 'models/gemini-1.5-flash-8b-latest', 'models/gemini-1.5-flash']
+    model = None
+    last_err = None
+    for m in primary_models:
+        try:
+            model = genai.GenerativeModel(m)
+            # quick dry run to validate permission
+            _r = model.generate_content('Return token OK').text
+            break
+        except Exception as e:
+            last_err = e
+            model = None
+            continue
+    if not model:
+        raise HTTPException(status_code=503, detail=f"All Gemini model fallbacks failed: {last_err}")
     term = mapping_data.get("primary", {}).get("term", "N/A")
     desc = mapping_data.get("primary", {}).get("source_description", "N/A")
     if term == "N/A" or desc == "N/A":
@@ -1269,6 +1400,52 @@ def submit_curation(curation_data: List[CurationPayload], db: Session = Depends(
     db.commit()
     return {"status": "success", "message": "Curation saved to database successfully."}
 
+# --- Lightweight Audit Log Receiver (auto-promotion etc.) ---
+class CurationAuditEvent(BaseModel):
+    type: str
+    icd_name: str
+    system: str
+    term: str | None = None
+    code: str | None = None
+    reason: str | None = None
+
+class CurationAuditPayload(BaseModel):
+    _audit: bool | None = None
+    events: List[CurationAuditEvent]
+    ts: str | None = None
+
+@router.post("/curation-audit-log")
+def curation_audit_log(payload: CurationAuditPayload, db: Session = Depends(get_db), user: Any = Depends(get_current_user)):
+    """Persist lightweight audit events related to curation UI automation.
+
+    Currently stores each event as a MappingAudit row if a concrete mapping can
+    be resolved. Non-resolvable events are ignored (best-effort) to avoid 422
+    failures impacting user workflow.
+    """
+    saved = 0
+    for evt in payload.events:
+        # Try to locate mapping for icd_name + term/code + system
+        q = db.query(Mapping).join(TraditionalTerm).join(ICD11Code).filter(
+            ICD11Code.icd_name == evt.icd_name,
+            TraditionalTerm.system == evt.system
+        )
+        if evt.code:
+            q = q.filter(TraditionalTerm.code == evt.code)
+        elif evt.term:
+            q = q.filter(TraditionalTerm.term == evt.term)
+        mapping_obj = q.first()
+        if not mapping_obj:
+            continue
+        db.add(MappingAudit(mapping_id=mapping_obj.id, action=evt.type, actor=getattr(user,'username','admin'), reason=evt.reason))
+        saved += 1
+    if saved:
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise HTTPException(500, "Failed to persist audit events")
+    return {"status": "ok", "saved": saved}
+
 """
 @router.get("/master-map-data")
 def get_master_map_data(user: Any = Depends(get_current_user)): return read_csv_data(CURATION_IN_PROGRESS_FILE)
@@ -1759,9 +1936,119 @@ def update_master_mapping(payload: MasterUpdatePayload, db: Session = Depends(ge
 
 
 @router.post("/verify-mapping-with-ai")
-async def verify_mapping_with_ai(payload: AIVerifyPayload, user: Any = Depends(get_current_user)):
-    try: return get_gemini_verification(payload.icd_name, payload.mapping)
-    except Exception as e: raise HTTPException(status_code=500, detail=f"AI verification failed: {e}")
+async def verify_mapping_with_ai(payload: AIVerifyPayload, db: Session = Depends(get_db), user: Any = Depends(get_current_user)):
+    """Runs AI justification AND persists the verified primary mapping to the database.
+
+    Frontend sends: { icd_name, system, mapping: { primary: {...}, aliases?: [...] } }
+    We:
+      1. Run get_gemini_verification for justification/confidence.
+      2. Upsert ICD11Code (must already exist normally; create if missing for safety).
+      3. Upsert TraditionalTerm for the primary (match on system+code if code given, else system+term).
+      4. Create/Update Mapping row -> status='verified', determine is_primary.
+      5. Log MappingAudit action 'verify'.
+    """
+    system = payload.system.lower().strip()
+    if system not in ("ayurveda", "siddha", "unani"):
+        raise HTTPException(400, "Invalid system; expected ayurveda|siddha|unani")
+    primary = (payload.mapping or {}).get("primary") or {}
+    # Auto-generate a stable placeholder code if none provided so FHIR $translate can work.
+    # Uses uppercase term with non-alphanumerics replaced, truncated to 24 chars.
+    if primary.get("code") in (None, ""):
+        import re as _re
+        base = primary.get("term", "")[:50]
+        slug = _re.sub(r"[^A-Za-z0-9]+", "-", base).strip('-').upper() or "TERM"
+        primary["code"] = f"TMP-{slug[:20]}"
+    if not primary.get("term") and not primary.get("code"):
+        raise HTTPException(400, "Primary term or code required")
+
+    # 1. AI justification
+    try:
+        ai_result = get_gemini_verification(payload.icd_name, payload.mapping)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI verification failed: {e}")
+
+    # 2. ICD record
+    icd_obj = db.query(ICD11Code).filter(ICD11Code.icd_name == payload.icd_name).first()
+    if not icd_obj:
+        icd_obj = ICD11Code(icd_name=payload.icd_name, description="Added via AI verify")
+        db.add(icd_obj)
+        db.flush()
+
+    # 3. TraditionalTerm upsert
+    term_q = db.query(TraditionalTerm).filter(TraditionalTerm.system == system)
+    # Prefer locating by code (we may have just auto-generated one)
+    term_q = term_q.filter(TraditionalTerm.code == primary.get("code"))
+    term_obj = term_q.first()
+    creating = False
+    if not term_obj:
+        creating = True
+        term_obj = TraditionalTerm(
+            system=system,
+            term=primary.get("term"),
+            code=primary.get("code"),
+            source_description=primary.get("source_description"),
+            source_short_definition=primary.get("source_short_definition"),
+            source_long_definition=primary.get("source_long_definition"),
+        )
+        # attach vernacular fields if present
+        if system == 'ayurveda':
+            term_obj.devanagari = primary.get('devanagari')
+        elif system == 'siddha':
+            term_obj.tamil = primary.get('tamil')
+        elif system == 'unani':
+            term_obj.arabic = primary.get('arabic')
+        db.add(term_obj)
+        db.flush()
+    else:
+        # Update descriptive fields in case user edited them
+        for f in ["term","code","source_description","source_short_definition","source_long_definition"]:
+            val = primary.get(f)
+            if val:
+                setattr(term_obj, f, val)
+        if system == 'ayurveda' and primary.get('devanagari'): term_obj.devanagari = primary.get('devanagari')
+        if system == 'siddha' and primary.get('tamil'): term_obj.tamil = primary.get('tamil')
+        if system == 'unani' and primary.get('arabic'): term_obj.arabic = primary.get('arabic')
+
+    # 4. Mapping upsert (link term to icd)
+    mapping_obj = db.query(Mapping).filter(
+        Mapping.icd11_code_id == icd_obj.id,
+        Mapping.traditional_term_id == term_obj.id
+    ).first()
+    if not mapping_obj:
+        mapping_obj = Mapping(icd11_code_id=icd_obj.id, traditional_term_id=term_obj.id)
+        db.add(mapping_obj)
+
+    # Determine primary: if no other verified primary for this ICD/system -> primary
+    existing_primary = db.query(Mapping).join(TraditionalTerm).filter(
+        Mapping.icd11_code_id == icd_obj.id,
+        Mapping.status == 'verified',
+        Mapping.is_primary == True,
+        TraditionalTerm.system == system
+    ).first()
+    mapping_obj.is_primary = existing_primary is None
+    mapping_obj.status = 'verified'
+    mapping_obj.ai_justification = ai_result.get('justification')
+    mapping_obj.ai_confidence = ai_result.get('confidence')
+
+    db.add(MappingAudit(mapping_id=mapping_obj.id if mapping_obj.id else None, action='verify', actor=getattr(user,'username','admin'), reason='AI verify'))
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(500, f"Failed to persist verification: {e}")
+
+    return {
+        "status": "success",
+        "icd_name": payload.icd_name,
+        "system": system,
+        "term": term_obj.term,
+        "code": term_obj.code,
+        "mapping_id": mapping_obj.id,
+        "is_primary": mapping_obj.is_primary,
+        "justification": mapping_obj.ai_justification,
+        "confidence": mapping_obj.ai_confidence,
+        "created": creating
+    }
 
 
 """
@@ -2047,39 +2334,33 @@ def enrich_icd_from_who(payload: EnrichICDPayload, db: Session = Depends(get_db)
 
 
 @router.post("/add-icd-code")
-def add_icd_code(payload: ICDAddPayload, user: Any = Depends(get_current_user)):
-    icd_list = read_csv_data(ICD_MASTER_LIST_FILE)
-    if any(item['icd_name'].lower() == payload.icd_name.lower() for item in icd_list):
-        raise HTTPException(status_code=400, detail="ICD-11 Name already exists.")
-    icd_list.append({"icd_name": payload.icd_name, "description": payload.description, "status": "Orphaned"})
-    write_csv_data(ICD_MASTER_LIST_FILE, icd_list, ICD_MASTER_HEADERS)
-    return {"status": "success"}
+def add_icd_code(payload: ICDAddPayload, db: Session = Depends(get_db), user: Any = Depends(get_current_user)):
+    """Create a new ICD-11 entry (DB authoritative).
 
-
-
-
-# In app/api/endpoints/admin.py
-
-@router.post("/add-icd-code")
-def add_icd_code(payload: ICDAddPayload, db: Session = Depends(get_db)):
+    Fixes prior duplicate route conflict where a CSV-only version swallowed the
+    request so new codes failed to appear in the DB-driven master list.
     """
-    DB-DRIVEN: Adds a new ICD-11 code to the database.
-    """
-    # Check if a code with the same name already exists (case-insensitive)
     existing_code = db.query(ICD11Code).filter(func.lower(ICD11Code.icd_name) == func.lower(payload.icd_name)).first()
     if existing_code:
         raise HTTPException(status_code=400, detail="ICD-11 Name already exists.")
-    
-    # Create the new record
+
     new_code = ICD11Code(
-        icd_name=payload.icd_name,
-        description=payload.description,
-        status="Orphaned" # New codes are always orphaned by default
+        icd_name=payload.icd_name.strip(),
+        description=payload.description.strip(),
+        status="Orphaned"
     )
     db.add(new_code)
-    db.commit()
-    
-    return {"status": "success"}
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to add ICD code: {e}")
+    return {
+        "status": "success",
+        "icd_name": new_code.icd_name,
+        "description": new_code.description,
+        "status_flag": new_code.status
+    }
 
 
 
@@ -2115,7 +2396,19 @@ def fetch_who_description(payload: DescriptionFetchPayload, user: Any = Depends(
 
 @router.post("/fetch-ai-description")
 def fetch_ai_description(payload: AIFetchPayload, user: Any = Depends(get_current_user)):
-    model = genai.GenerativeModel('gemini-1.5-pro-latest')
+    primary_models = ['models/gemini-1.5-flash-8b', 'models/gemini-1.5-flash-8b-latest', 'models/gemini-1.5-flash']
+    model = None
+    last_err = None
+    for m in primary_models:
+        try:
+            model = genai.GenerativeModel(m)
+            _r = model.generate_content('Return token OK').text
+            break
+        except Exception as e:
+            last_err = e
+            model = None
+    if not model:
+        raise HTTPException(status_code=503, detail=f"All Gemini model fallbacks failed: {last_err}")
     prompt = f"""
     Based on the following official ICD-11 medical term and its WHO description, provide a very concise, one-sentence summary and a confidence score from 0-100 indicating how well-defined and unambiguous this medical term is.
     Medical Term: "{payload.icd_name}"
@@ -2268,3 +2561,121 @@ def debug_mappings(db: Session = Depends(get_db)):
         "loose_query_found_whitespace_or_case_issue": loose_count,
         "all_distinct_statuses_in_table": all_statuses
     }
+
+@router.get("/debug-routes")
+def list_admin_routes():
+    """TEMP: List registered admin router paths & methods to diagnose missing endpoints."""
+    out = []
+    for r in router.routes:
+        try:
+            out.append({"path": r.path, "methods": list(getattr(r, 'methods', []))})
+        except Exception:
+            continue
+    return out
+
+# =============================
+# Deep Reset (Overall System)
+# =============================
+# Selections interpreted from user instructions:
+# 1b: Wipe & reseed ICD list (truncate icd11_codes)
+# 2b: Purge traditional terms (implicit in truncate)
+# 3 yes: Provide status endpoint
+# 4 double click: Frontend will enforce double click UX; backend just provides endpoint
+
+_DEEP_RESET_LOCK = threading.Lock()
+DEEP_RESET_STATUS: dict[str, any] = {
+    "state": "idle",  # idle|running|completed|error
+    "started_at": None,
+    "ended_at": None,
+    "steps": [],
+    "error": None,
+    "progress": 0.0
+}
+DEEP_RESET_TOTAL_STEPS = 6
+
+def _dr_log(msg: str):
+    DEEP_RESET_STATUS["steps"].append({
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "msg": msg
+    })
+    if len(DEEP_RESET_STATUS["steps"]) > 200:
+        DEEP_RESET_STATUS["steps"] = DEEP_RESET_STATUS["steps"][-200:]
+
+def _set_progress(idx: int):
+    DEEP_RESET_STATUS["progress"] = round(idx / DEEP_RESET_TOTAL_STEPS, 3)
+
+def _deep_reset_job():
+    from app.db.session import SessionLocal as _SessionLocal
+    db = _SessionLocal()
+    try:
+        _dr_log("[1/6] Deep reset started")
+        _set_progress(1)
+        # 1. Truncate core tables (CASCADE) & restart identity sequences
+        _dr_log("[2/6] Truncating tables")
+        truncate_sql = text(
+            "TRUNCATE TABLE mapping_audit, concept_map_elements, concept_map_releases, "
+            "diagnosis_events, mappings, traditional_terms, icd11_codes RESTART IDENTITY CASCADE"
+        )
+        db.execute(truncate_sql)
+        db.commit()
+        _set_progress(2)
+
+        # 2. Remove legacy CSV artifacts (best effort)
+        _dr_log("[3/6] Removing legacy CSV artifacts")
+        for legacy in [AI_SUGGESTIONS_FILE, CURATION_IN_PROGRESS_FILE, REJECTED_MAPPINGS_FILE,
+                       VERIFIED_MAPPINGS_FILE, NO_MAPPING_FILE, REVIEW_NEEDED_FILE]:
+            if os.path.exists(legacy):
+                try: os.remove(legacy)
+                except OSError: pass
+        _set_progress(3)
+
+        # 3. Run discovery script to repopulate (ICDs, terms, mappings)
+        _dr_log("[4/6] Running discovery script to repopulate database")
+        discover_ai_mappings()
+        _set_progress(4)
+
+        # 4. Sanity checks
+        _dr_log("[5/6] Performing sanity checks")
+        icd_count = db.query(ICD11Code).count()
+        term_count = db.query(TraditionalTerm).count()
+        mapping_count = db.query(Mapping).count()
+        if icd_count == 0 or mapping_count == 0:
+            raise RuntimeError("Population validation failed (zero icd or mapping records)")
+        _dr_log(f"Sanity OK: icd={icd_count}, terms={term_count}, mappings={mapping_count}")
+        _set_progress(5)
+
+        # 5. Completed
+        _dr_log("[6/6] Deep reset completed successfully")
+        _set_progress(6)
+        DEEP_RESET_STATUS["state"] = "completed"
+        DEEP_RESET_STATUS["ended_at"] = datetime.now(timezone.utc).isoformat()
+    except Exception as e:
+        db.rollback()
+        DEEP_RESET_STATUS["state"] = "error"
+        DEEP_RESET_STATUS["error"] = str(e)
+        DEEP_RESET_STATUS["ended_at"] = datetime.now(timezone.utc).isoformat()
+        _dr_log(f"ERROR: {e}")
+    finally:
+        db.close()
+
+@router.post("/deep-reset")
+def deep_reset(background_tasks: BackgroundTasks, user: Any = Depends(get_current_user)):
+    """Trigger the overall destructive deep reset. Returns 409 if already running."""
+    with _DEEP_RESET_LOCK:
+        if DEEP_RESET_STATUS["state"] == "running":
+            raise HTTPException(status_code=409, detail="Deep reset already in progress")
+        DEEP_RESET_STATUS.update({
+            "state": "running",
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "ended_at": None,
+            "steps": [],
+            "error": None,
+            "progress": 0.0
+        })
+        _dr_log("Deep reset accepted; scheduling background task")
+        background_tasks.add_task(_deep_reset_job)
+    return {"status": "accepted", "state": DEEP_RESET_STATUS["state"]}
+
+@router.get("/deep-reset-status")
+def deep_reset_status():
+    return {k: (v[:] if k == "steps" else v) for k, v in DEEP_RESET_STATUS.items()}
