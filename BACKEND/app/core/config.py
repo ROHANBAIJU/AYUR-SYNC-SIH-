@@ -30,6 +30,13 @@ class Settings(BaseSettings):
     WHO_TOKEN_URL: str
     WHO_API_BASE_URL: str
 
+    # Feature flags / compliance toggles
+    CONSENT_ENFORCEMENT: bool = False  # When true, certain operations require active consent
+    ABHA_VALIDATION_MODE: str = "mock"  # mock|hmac (future: jwks)
+    ABHA_HMAC_SECRET: str = "change_me"  # used when ABHA_VALIDATION_MODE=hmac
+    ENABLE_WHO_SYNC: bool = False  # background WHO sync scheduler
+    WHO_SYNC_INTERVAL_MINUTES: int = 180  # every 3 hours by default
+
 
     class Config:
         case_sensitive = True

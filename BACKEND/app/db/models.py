@@ -13,6 +13,10 @@ class ICD11Code(Base):
     # WHO linearized ICD code (e.g., ME01). Nullable until enriched via WHO.
     icd_code = Column(String(50))
     description = Column(Text)
+    # --- New TM2 enrichment fields (optional, populated when TM2 data discovered) ---
+    tm2_code = Column(String(50))
+    tm2_title = Column(Text)
+    tm2_definition = Column(Text)
     status = Column(String(50), nullable=False, server_default='Orphaned')
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     mappings = relationship("Mapping", back_populates="icd11_code")
@@ -60,6 +64,13 @@ class DiagnosisEvent(Base):
     term_name = Column(String(255))
     # ICD disease name associated with the action
     icd_name = Column(String(255), nullable=False)
+    # ICD code actually used (after WHO enrichment) and optional TM2 code captured for analytics
+    icd_code_used = Column(String(50))
+    tm2_code = Column(String(50))
+    # Optional patient identifier (hashed / pseudonymous acceptable)
+    patient_id = Column(String(100))
+    # Release version (ConceptMapRelease.version) used at time of capture for reproducibility
+    release_version = Column(String(50))
     # Optional locality metadata
     city = Column(String(100))
     state = Column(String(100))
@@ -108,8 +119,23 @@ class Consent(Base):
     __tablename__ = "consents"
     id = Column(Integer, primary_key=True)
     subject_hash = Column(String(128), index=True)  # '*' for global
-    purpose = Column(String(50), nullable=False, default='translation')
+    # Scope/purpose fields extended for finer grained enforcement
+    purpose = Column(String(50), nullable=False, default='translation')  # legacy field (kept)
+    scope = Column(String(100), nullable=False, server_default='terminology')  # e.g., terminology, bundle.ingest
     status = Column(String(30), nullable=False, default='active')  # active|revoked|expired
     valid_from = Column(TIMESTAMP(timezone=True), server_default=func.now())
     valid_to = Column(TIMESTAMP(timezone=True))
+    patient_id = Column(String(100), index=True)  # explicit patient reference if available
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
+class ExternalCodeLink(Base):
+    """Minimal external semantic linkage (e.g., SNOMED / LOINC placeholder)."""
+    __tablename__ = 'external_code_links'
+    id = Column(Integer, primary_key=True)
+    system = Column(String(50), nullable=False)  # snomed|loinc
+    source_type = Column(String(50), nullable=False)  # icd11|namaste
+    source_code = Column(String(100), nullable=False, index=True)
+    external_code = Column(String(100), nullable=False)
+    display = Column(String(255))
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())

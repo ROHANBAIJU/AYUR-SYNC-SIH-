@@ -7,10 +7,16 @@
   let token = localStorage.getItem('accessToken') || '';
   let searchTimer = null;
   const totalSteps = 9;
+  const OPEN_STATE_KEY = 'guided_open_step_v1';
   const progressBar = () => document.getElementById('progress-bar');
   const globalOverlay = () => document.getElementById('global-loading');
   const stepStatus = (n)=> document.getElementById(`status-${n}`);
   let completed = 0;
+  // track done states
+  const stepDone = {}; // step -> boolean
+  // Step 2 readiness + search abort control
+  let step2Ready = false;
+  let mappingSearchAbort = null;
 
   // --- Helpers ---
   function escapeHtml(str){ return String(str).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
@@ -148,10 +154,28 @@
     }else{
       badge.textContent='PENDING'; badge.className='text-[10px] px-2 py-1 rounded bg-slate-200 text-slate-600';
     }
+    syncDotState(n, state);
+  }
+  function setStepInteractivity(step, enabled){
+    const section = document.querySelector(`.step[data-step='${step}']`); if(!section) return;
+    section.querySelectorAll('button, select, input, textarea').forEach(el=>{
+      if(el.id === 'login-btn' || el.id === 'logout-btn'){
+        // Step 1 always active when its state is active
+      }
+      if(el.closest('header')) return; // don't disable header toggle
+      el.disabled = !enabled;
+      if(!enabled) el.setAttribute('data-locked','true'); else el.removeAttribute('data-locked');
+    });
+    if(!enabled) section.classList.add('step-locked'); else section.classList.remove('step-locked');
+  }
+  function canRun(step){
+    if(step===1) return true;
+    return !!stepDone[step-1];
   }
   function advanceStep(current){
-    if(stepStatus(current).textContent!=='DONE'){ completed++; markStep(current,'done'); setProgress(); }
-    const next = current+1; if(stepStatus(next)) markStep(next,'active');
+    if(!stepDone[current]){ completed++; markStep(current,'done'); stepDone[current]=true; setProgress(); }
+    const next = current+1; if(stepStatus(next)){ markStep(next,'active'); setStepInteractivity(next,true); }
+    updateDotsActive();
   }
 
   function withButtonLoading(btn, fn){
@@ -284,28 +308,41 @@
       }
     }
     const sel = document.getElementById('verified-icd-select'); sel.innerHTML='';
-    (list.icd_names||[]).forEach(name => {
-      const opt = document.createElement('option'); opt.value=opt.textContent=name; sel.appendChild(opt);
-    });
-    log('Loaded verified ICD list', { count: (list.icd_names||[]).length },2);
-    advanceStep(2);
+    const names = (list.icd_names||[]);
+    names.forEach(name => { const opt=document.createElement('option'); opt.value=opt.textContent=name; sel.appendChild(opt); });
+    const alertBox = document.getElementById('no-verified-alert');
+    if(names.length===0){
+      if(alertBox){ alertBox.classList.remove('hidden'); alertBox.classList.add('flex'); }
+      log('No verified mappings present. Need at least one verified row.', { count:0 },2);
+      // DO NOT mark step done; remains locked until at least one verified mapping exists
+    } else {
+      if(alertBox){ alertBox.classList.add('hidden'); alertBox.classList.remove('flex'); }
+      log('Loaded verified ICD list', { count: names.length },2);
+      // Step 2 considered complete only after user selects ICD or applies suggestion
+    }
   }
 
   // --- Search suggestions --- (new endpoint under /public)
   async function runSearch(q){
     if(!q){ document.getElementById('search-suggestions').innerHTML=''; return; }
+    // Abort any in-flight
+    if(mappingSearchAbort){ mappingSearchAbort.abort(); }
+    mappingSearchAbort = new AbortController();
+    const signal = mappingSearchAbort.signal;
     let res;
     try {
-      res = await api(`/public/mapping-search?q=${encodeURIComponent(q)}`, { step:2 });
+      res = await api(`/public/mapping-search?q=${encodeURIComponent(q)}`, { step:2, signal });
     } catch(e){
+      if(e.name === 'AbortError') return; // ignore
       try {
-        // Possible alternate path if router prefix mismatch
-        res = await api(`/mapping-search?q=${encodeURIComponent(q)}`, { step:2 });
+        res = await api(`/mapping-search?q=${encodeURIComponent(q)}`, { step:2, signal });
       } catch(inner){
+        if(inner.name === 'AbortError') return;
         log('Mapping search endpoint not found. Ensure translate router mounted under /public.', { attempted: q },2);
         return;
       }
     }
+    if(signal.aborted) return; // stale result
     const box = document.getElementById('search-suggestions'); box.innerHTML='';
     (res.suggestions||[]).forEach(s => {
       const div = document.createElement('div');
@@ -319,39 +356,128 @@
       box.appendChild(div);
     });
     log('Search results', { query: q, count: res.count },2);
+    return res.suggestions || [];
   }
 
+  function checkStep2Completion(){
+    const icd = grab('icd-name');
+    const sys = grab('map-system');
+    const term = grab('source-code');
+    const indicator = document.getElementById('step2-complete-indicator');
+    const ready = !!icd && !!sys && !!term;
+    if(ready){
+      if(!stepDone[2]){
+        advanceStep(2);
+        log('Step 2 completed (ICD + system + term ready).', { icd, system: sys, term },2);
+      }
+      step2Ready = true;
+      if(indicator) indicator.classList.remove('hidden');
+      enableForwardTranslate();
+    } else {
+      step2Ready = false;
+      if(indicator) indicator.classList.add('hidden');
+      disableForwardTranslate();
+    }
+  }
   function applySuggestion(el){
     const icd = el.dataset.icd; const system = el.dataset.system; const term = el.dataset.code || el.dataset.term;
+    const searchBox = document.getElementById('search-box');
+    // For suggestions, surface the system term (Ayurveda/Siddha/Unani) to demonstrate reverse path
+    if(searchBox) searchBox.value = term;
     document.getElementById('icd-name').value = icd;
     document.getElementById('map-system').value = system;
     document.getElementById('source-code').value = term;
     log('Suggestion applied', { icd, system, term },2);
+    checkStep2Completion();
   }
 
   // --- Translation / FHIR Ops ---
-  async function forwardTranslate(){ const icd = grab('icd-name'); if(!icd){ log('Need ICD name',{},3); return; } const r= await api(`/public/translate?icd_name=${encodeURIComponent(icd)}`, { step:3 }); advanceStep(3); return r; }
-  async function reverseTranslate(){ const icd = grab('icd-name'); if(!icd){ log('Need ICD name',{},4); return; } const r=await api(`/public/translate/reverse?icd_name=${encodeURIComponent(icd)}`, { step:4 }); advanceStep(4); return r; }
-  async function codesystem(){ const sys = grab('map-system'); const r=await api(`/fhir/CodeSystem/${sys}`, { step:5 }); advanceStep(5); return r; }
-  async function lookup(){ const sys=grab('map-system'); const code=grab('source-code'); if(!code){ log('Need code/term',{},5); return; } const r=await api(`/fhir/CodeSystem/$lookup?system=${sys}&code=${encodeURIComponent(code)}`, { step:5 }); advanceStep(5); return r; }
-  async function expand(){ const sys=grab('map-system'); const r=await api(`/fhir/ValueSet/$expand?system=${sys}&count=10`, { step:6 }); advanceStep(6); return r; }
-  async function conceptTranslate(){ const sys=grab('map-system'); const code=grab('source-code'); if(!code){ log('Need code/term',{},7); return; } const r=await api(`/fhir/ConceptMap/$translate?system=${sys}&code=${encodeURIComponent(code)}`, { step:7 }); advanceStep(7); return r; }
-  async function provenance(){ const icd=grab('icd-name'); if(!icd){ log('Need ICD name',{},8); return; } const r=await api(`/fhir/provenance/conceptmap?icd_name=${encodeURIComponent(icd)}`, { step:8 }); advanceStep(8); return r; }
-  async function capability(){ const r=await api('/fhir/metadata', { step:8 }); advanceStep(8); return r; }
-  async function cacheStats(){ const r=await api('/public/translate/cache/stats', { step:9 }); advanceStep(9); return r; }
+  function guard(step){
+    if(!canRun(step)) { log('Step locked. Complete previous step first.', { step }, step); return false; }
+    return true;
+  }
+  async function forwardTranslate(){ if(!guard(3)) return; const icd = grab('icd-name'); if(!icd){ log('Need ICD name',{},3); return; } const r= await api(`/public/translate?icd_name=${encodeURIComponent(icd)}`, { step:3 }); advanceStep(3); return r; }
+  async function reverseTranslate(){ if(!guard(4)) return; const icd = grab('icd-name'); if(!icd){ log('Need ICD name',{},4); return; } const r=await api(`/public/translate/reverse?icd_name=${encodeURIComponent(icd)}`, { step:4 }); advanceStep(4); return r; }
+  async function codesystem(){ if(!guard(5)) return; const sys = grab('map-system'); const r=await api(`/fhir/CodeSystem/${sys}`, { step:5 }); advanceStep(5); return r; }
+  async function lookup(){ if(!guard(5)) return; const sys=grab('map-system'); const code=grab('source-code'); if(!code){ log('Need code/term',{},5); return; } const r=await api(`/fhir/CodeSystem/$lookup?system=${sys}&code=${encodeURIComponent(code)}`, { step:5 }); advanceStep(5); return r; }
+  async function expand(){ if(!guard(6)) return; const sys=grab('map-system'); const r=await api(`/fhir/ValueSet/$expand?system=${sys}&count=10`, { step:6 }); advanceStep(6); return r; }
+  async function conceptTranslate(){ if(!guard(7)) return; const sys=grab('map-system'); const code=grab('source-code'); if(!code){ log('Need code/term',{},7); return; } const r=await api(`/fhir/ConceptMap/$translate?system=${sys}&code=${encodeURIComponent(code)}`, { step:7 }); advanceStep(7); return r; }
+  async function provenance(){ if(!guard(8)) return; const icd=grab('icd-name'); if(!icd){ log('Need ICD name',{},8); return; } const r=await api(`/fhir/provenance/conceptmap?icd_name=${encodeURIComponent(icd)}`, { step:8 }); advanceStep(8); return r; }
+  async function capability(){ if(!guard(8)) return; const r=await api('/fhir/metadata', { step:8 }); advanceStep(8); return r; }
+  async function cacheStats(){ if(!guard(9)) return; const r=await api('/public/translate/cache/stats', { step:9 }); advanceStep(9); return r; }
 
   function hookButton(id, handler){ const btn=document.getElementById(id); if(!btn) return; btn.addEventListener('click', ()=> withButtonLoading(btn, handler)); }
 
   function initCollapsibles(){
-    document.querySelectorAll('.step').forEach(stepEl => {
+    const steps = Array.from(document.querySelectorAll('.step'));
+    steps.forEach(stepEl => {
       const header = stepEl.querySelector('.step-header');
-      header.addEventListener('click', ()=>{
-        stepEl.classList.toggle('step-collapsed');
-        const chev = header.querySelector('[data-chevron]');
-        if(chev){ chev.style.transform = stepEl.classList.contains('step-collapsed')? 'rotate(-90deg)':'rotate(0deg)'; }
+      const body = stepEl.querySelector('.step-body');
+      // initialize collapsed heights
+      if(stepEl.classList.contains('step-collapsed')){
+        body.style.maxHeight = '0px';
+      } else {
+        body.style.maxHeight = body.scrollHeight + 'px';
+      }
+      header.addEventListener('click', (e)=>{
+        // prevent toggling if clicking buttons inside header (future proof)
+        if(e.target.closest('button')) return;
+        const isCollapsed = stepEl.classList.contains('step-collapsed');
+        if(isCollapsed){
+          // close others (single-open)
+          steps.forEach(other => {
+            if(other!==stepEl && !other.classList.contains('step-collapsed')){
+              const ob = other.querySelector('.step-body');
+              ob.style.maxHeight = ob.scrollHeight + 'px'; // force current height
+              requestAnimationFrame(()=>{
+                ob.style.maxHeight = '0px';
+                other.classList.add('step-collapsed');
+              });
+            }
+          });
+          // open this
+          stepEl.classList.remove('step-collapsed');
+          body.style.maxHeight = body.scrollHeight + 'px';
+          persistOpen(stepEl.dataset.step);
+          autoScrollStep(stepEl);
+        } else {
+          // collapse this
+            body.style.maxHeight = body.scrollHeight + 'px';
+            requestAnimationFrame(()=>{ body.style.maxHeight = '0px'; });
+            stepEl.classList.add('step-collapsed');
+            persistOpen(null);
+        }
+      });
+      // Transition end cleanup to allow dynamic content height recalculation
+      body.addEventListener('transitionend', (ev)=>{
+        if(ev.propertyName==='max-height'){
+          if(stepEl.classList.contains('step-collapsed')){
+            body.style.maxHeight = '0px';
+          } else {
+            body.style.maxHeight = body.scrollHeight + 'px';
+          }
+        }
       });
     });
+    // Recalculate open panel height when window resizes or content changes
+    window.addEventListener('resize', ()=>{
+      document.querySelectorAll('.step:not(.step-collapsed) .step-body').forEach(b=>{ b.style.maxHeight = b.scrollHeight + 'px'; });
+    });
   }
+
+  // --- Auto scroll to opened step ---
+  function autoScrollStep(stepEl){
+    const rect = stepEl.getBoundingClientRect();
+    const offset = window.scrollY + rect.top - 70;
+    window.scrollTo({ top: offset, behavior: 'smooth' });
+  }
+  function persistOpen(step){ if(step) localStorage.setItem(OPEN_STATE_KEY, step); else localStorage.removeItem(OPEN_STATE_KEY); }
+  function loadOpen(){ return localStorage.getItem(OPEN_STATE_KEY); }
+  // Mini map dots
+  function buildDots(){ const container = document.getElementById('progress-dots'); if(!container) return; container.innerHTML=''; for(let i=1;i<=totalSteps;i++){ const b=document.createElement('button'); b.type='button'; b.dataset.step=i; b.title='Step '+i; b.addEventListener('click', ()=>{ if(i===1 || stepDone[i-1]) openStep(i); }); container.appendChild(b);} updateDotsActive(); }
+  function syncDotState(step,state){ const cont=document.getElementById('progress-dots'); if(!cont) return; const b=cont.querySelector(`button[data-step='${step}']`); if(!b) return; b.classList.remove('dot-active','dot-done','dot-locked'); if(state==='done') b.classList.add('dot-done'); else if(state==='active') b.classList.add('dot-active'); else if(state==='locked') b.classList.add('dot-locked'); }
+  function updateDotsActive(){ const open=document.querySelector('.step:not(.step-collapsed)'); const openNum=open?open.dataset.step:null; const cont=document.getElementById('progress-dots'); if(!cont) return; cont.querySelectorAll('button').forEach(b=>{ b.classList.remove('dot-active'); if(b.dataset.step===openNum) b.classList.add('dot-active'); }); }
+  function openStep(step){ const el=document.querySelector(`.step[data-step='${step}']`); if(!el) return; if(el.classList.contains('step-collapsed')) el.querySelector('.step-header').click(); else autoScrollStep(el); }
 
   // --- Event binding ---
   function attach(){
@@ -380,13 +506,49 @@
       const version = (rels.releases&&rels.releases[0]&&rels.releases[0].version)||'v1-submission';
       await api(`/admin/conceptmap/releases/${version}/refresh`,{method:'POST'});
     });
-    document.getElementById('verified-icd-select').addEventListener('change', e=>{
-      const val = e.target.value; if(val){ document.getElementById('icd-name').value = val; log('ICD selected', { icd: val },2); }
+    document.getElementById('verified-icd-select').addEventListener('change', async e=>{
+      const val = e.target.value; if(!val) return;
+      document.getElementById('icd-name').value = val;
+      log('ICD selected', { icd: val },2);
+      // Auto-fetch suggestions for this ICD and auto-apply first Ayurveda (or first) to populate system & term
+      const suggestions = await runSearch(val) || [];
+      let pick = suggestions.find(s=> s.system === 'ayurveda') || suggestions[0];
+      if(pick){
+        // Build a temporary element-like object for applySuggestion expectations
+        const temp = document.createElement('div');
+        temp.dataset.icd = pick.icd_name;
+        temp.dataset.system = pick.system;
+        temp.dataset.term = pick.term;
+        temp.dataset.code = pick.code || pick.term;
+        applySuggestion(temp);
+        log('Auto-applied first mapping suggestion for selected ICD', { autoAppliedSystem: pick.system, term: pick.term },2);
+      } else {
+        // No suggestion; place ICD into search box for manual path but do NOT claim completion
+        const searchBox=document.getElementById('search-box'); if(searchBox) searchBox.value = val;
+        log('No suggestions found for ICD selection; awaiting manual system + term input.', { icd: val },2);
+        checkStep2Completion();
+      }
     });
     document.getElementById('search-box').addEventListener('input', e=>{
       const q = e.target.value.trim();
       if(searchTimer) clearTimeout(searchTimer);
-      searchTimer = setTimeout(()=> runSearch(q), 220);
+      if(mappingSearchAbort){ mappingSearchAbort.abort(); }
+      searchTimer = setTimeout(()=> runSearch(q), 320); // extended debounce to reduce network calls
+    });
+    const useTypedBtn = document.getElementById('use-typed-search-btn');
+    if(useTypedBtn){
+      hookButton('use-typed-search-btn', async ()=>{
+        const val = document.getElementById('search-box').value.trim();
+        if(!val){ log('Nothing typed to apply.',{},2); return; }
+        // If matches an ICD in select, treat as ICD; else still allow as ICD name input for testing forward translate
+        document.getElementById('icd-name').value = val;
+        log('Typed value applied as ICD name.', { icd: val },2);
+        checkStep2Completion();
+      });
+    }
+    // Manual edits of fields involved in readiness
+    ['icd-name','map-system','source-code'].forEach(id=>{
+      const el = document.getElementById(id); if(el){ el.addEventListener('input', checkStep2Completion); }
     });
     hookButton('forward-translate-btn', forwardTranslate);
     hookButton('reverse-translate-btn', reverseTranslate);
@@ -399,10 +561,21 @@
     hookButton('cache-btn', cacheStats);
     initCollapsibles();
     // initial step states
-    markStep(1,'active'); for(let i=2;i<=totalSteps;i++) markStep(i,'locked'); setProgress();
+  markStep(1,'active');
+    for(let i=2;i<=totalSteps;i++){ markStep(i,'locked'); setStepInteractivity(i,false); }
+    setStepInteractivity(1,true);
+    setProgress();
     log('Guided mapping flow ready. Start with Step 1 (Login).', {}, 1);
+    const firstBody = document.querySelector('.step[data-step="1"] .step-body');
+    if(firstBody){ firstBody.style.maxHeight = firstBody.scrollHeight + 'px'; }
+    buildDots();
+    const lastOpen = loadOpen();
+    if(lastOpen && lastOpen!=='1'){ const idx=parseInt(lastOpen,10); if(idx===1 || stepDone[idx-1]) openStep(idx); }
     // Global theme handled elsewhere
+    disableForwardTranslate();
   }
 
   document.addEventListener('DOMContentLoaded', attach);
+  function disableForwardTranslate(){ const btn=document.getElementById('forward-translate-btn'); if(btn){ btn.disabled=true; btn.classList.add('opacity-50','cursor-not-allowed','waiting-step2'); } }
+  function enableForwardTranslate(){ if(!step2Ready) return; const btn=document.getElementById('forward-translate-btn'); if(btn){ btn.disabled=false; btn.classList.remove('opacity-50','cursor-not-allowed','waiting-step2'); } }
 })();

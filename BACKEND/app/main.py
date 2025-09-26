@@ -8,6 +8,7 @@ from app.core.config import settings
 import time, json, os
 from app.db.session import engine
 from app.db.models import Base, ConceptMapRelease, ConceptMapElement, Mapping, ICD11Code, TraditionalTerm
+from app.services import who_sync
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -99,6 +100,13 @@ def ensure_tables_exist_on_startup():
                 print("[STARTUP] ConceptMap release already exists", flush=True)
     except Exception as e:
         print(f"[STARTUP] Failed to create initial ConceptMap release: {e}", flush=True)
+    # Start WHO sync scheduler if enabled
+    try:
+        who_sync.start_scheduler()
+        if settings.ENABLE_WHO_SYNC:
+            print("[STARTUP] WHO sync scheduler started", flush=True)
+    except Exception as e:
+        print(f"[STARTUP] WHO sync scheduler failed to start: {e}", flush=True)
 
 
 @app.middleware("http")
@@ -137,4 +145,13 @@ def read_root():
     return {"message": "Welcome to the NAMASTE-ICD API"}
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+# Lightweight WHO sync status / trigger endpoints (under /api)
+@app.get(f"{settings.API_V1_STR}/admin/who-sync/status")
+def who_sync_status():
+    return who_sync.status()
+
+@app.post(f"{settings.API_V1_STR}/admin/who-sync/trigger")
+def who_sync_trigger():
+    return who_sync.trigger_once()
 

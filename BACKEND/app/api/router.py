@@ -3,7 +3,7 @@
 # routers from the 'endpoints' directory into a single APIRouter.
 
 from fastapi import APIRouter
-from app.api.endpoints import token, admin, lookup, translate, fhir, events, conceptmap, status, provenance
+from app.api.endpoints import token, admin, lookup, translate, fhir, events, conceptmap, status, provenance, analytics, external_semantics
 
 # Create the main router instance
 api_router = APIRouter()
@@ -18,3 +18,5 @@ api_router.include_router(events.router, prefix="/public", tags=["Public EMR End
 api_router.include_router(conceptmap.router, prefix="/admin", tags=["ConceptMap"])
 api_router.include_router(status.router, tags=["Status"]) 
 api_router.include_router(provenance.router, prefix="/fhir", tags=["Provenance"]) 
+api_router.include_router(analytics.router, prefix="/admin", tags=["Analytics"]) 
+api_router.include_router(external_semantics.router, prefix="/admin", tags=["External Semantics"]) 

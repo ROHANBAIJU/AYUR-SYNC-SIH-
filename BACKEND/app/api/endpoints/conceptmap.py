@@ -122,3 +122,54 @@ def refresh_release(version: str, db: Session = Depends(get_db)):
 
     db.commit()
     return {"version": version, "elements": inserted, "status": "refreshed"}
+
+
+@router.get("/releases/{version}/fhir")
+def export_fhir_conceptmap(version: str, summary: bool = False, db: Session = Depends(get_db)):
+    """Export a ConceptMap release as a FHIR ConceptMap resource.
+
+    Parameters:
+      version: release version string
+      summary: if true, omit heavy group.element arrays (provides counts only)
+    """
+    rel = db.execute(select(models.ConceptMapRelease).where(models.ConceptMapRelease.version == version)).scalar_one_or_none()
+    if not rel:
+        raise HTTPException(404, "Release not found")
+    # Group elements by traditional system
+    rows = db.execute(select(models.ConceptMapElement).where(models.ConceptMapElement.release_id == rel.id)).scalars().all()
+    groups: dict[str, dict] = {}
+    for e in rows:
+        g = groups.setdefault(e.system, {"source": f"https://ayur-sync.example/fhir/CodeSystem/{e.system}", "target": "http://id.who.int/icd/release/11/mms", "element": []})
+        if not summary:
+            g["element"].append({
+                "code": e.term,
+                "display": e.term,
+                "target": [{
+                    "code": e.icd_code or e.icd_name,
+                    "display": e.icd_name,
+                    "equivalence": e.equivalence
+                }]
+            })
+    resource = {
+        "resourceType": "ConceptMap",
+        "id": f"namaste-to-icd11-{version}",
+        "url": "https://ayur-sync.example/fhir/ConceptMap/namaste-to-icd11",
+        "name": "NamasteToICD11",
+        "title": "NAMASTE to ICD-11 ConceptMap",
+        "status": "active",
+        "version": version,
+        "date": str(rel.created_at) if rel.created_at else None,
+        "group": [
+            {"source": g["source"], "target": g["target"], "element": g.get("element", []) if not summary else [], "extension": [
+                {"url": "https://ayur-sync.example/fhir/StructureDefinition/elementCount", "valueInteger": len(g.get("element", []))}
+            ]} for g in groups.values()
+        ],
+        "extension": [
+            {"url": "https://ayur-sync.example/fhir/StructureDefinition/totalElements", "valueInteger": len(rows)}
+        ]
+    }
+    if summary:
+        # Provide overall counts only
+        for g in resource["group"]:
+            g.pop("element", None)
+    return resource

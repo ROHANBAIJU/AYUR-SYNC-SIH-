@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_
 from app.db.session import get_db
 from app.core.security import get_current_principal
+from app.core.consent import require_consent
 from app.db.models import Mapping, TraditionalTerm, ICD11Code, ConceptMapRelease
 from app.util.fhir_outcome import outcome_not_found, outcome_validation
 from app.services.cache_service import translation_cache
@@ -101,7 +102,8 @@ async def translate_code(
     release: Optional[str] = Query(None, description="ICD-11 linearization release to target (e.g., '2025-01')."),
     fhir: bool = Query(False, description="If true, wrap successful response as FHIR Parameters resource."),
     db: Session = Depends(get_db),
-    principal = Depends(get_current_principal)
+    principal = Depends(get_current_principal),
+    _consent=Depends(require_consent('translation'))
 ):
     """
     Translate endpoint behavior:
@@ -153,8 +155,9 @@ async def translate_code(
         return outcome_not_found("ICD context not resolved")
 
     # Cache lookup (forward direction)
-    cache_key = "|".join(cache_id_parts)
-    cached = translation_cache.get(_latest_release_version(db), 'forward', cache_key)
+    active_release = release or _latest_release_version(db)
+    cache_key = "|".join(cache_id_parts + [active_release or 'latest'])
+    cached = translation_cache.get(active_release, 'forward', cache_key)
     if cached:
         if fhir and hasattr(cached, 'release_version'):
             return _to_fhir_parameters(cached)  # type: ignore
@@ -356,6 +359,7 @@ async def translate_code(
         release_version=_latest_release_version(db),
         direction='forward'
     )
+    result.release_version = active_release
     translation_cache.set(result.release_version, 'forward', cache_key, result)
     return _to_fhir_parameters(result) if fhir else result
 
@@ -366,10 +370,11 @@ async def reverse_translate(
     release: Optional[str] = Query(None, description="Reserved: specific release version (ignored for now)."),
     fhir: bool = Query(False, description="If true, wrap successful response as FHIR Parameters resource."),
     db: Session = Depends(get_db),
-    principal = Depends(get_current_principal)
+    principal = Depends(get_current_principal),
+    _consent=Depends(require_consent('translation'))
 ):
     cache_key = icd_name
-    latest_rel = _latest_release_version(db)
+    latest_rel = release or _latest_release_version(db)
     cached = translation_cache.get(latest_rel, 'reverse', cache_key)
     if cached:
         if fhir and hasattr(cached, 'release_version'):

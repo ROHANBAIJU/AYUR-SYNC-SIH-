@@ -29,6 +29,16 @@ def main():
             conn.execute(text(
                 "ALTER TABLE traditional_terms ADD COLUMN IF NOT EXISTS source_long_definition TEXT"
             ))
+            # TM2 enrichment columns (icd11_codes)
+            conn.execute(text(
+                "ALTER TABLE icd11_codes ADD COLUMN IF NOT EXISTS tm2_code VARCHAR(50)"
+            ))
+            conn.execute(text(
+                "ALTER TABLE icd11_codes ADD COLUMN IF NOT EXISTS tm2_title TEXT"
+            ))
+            conn.execute(text(
+                "ALTER TABLE icd11_codes ADD COLUMN IF NOT EXISTS tm2_definition TEXT"
+            ))
             # Indexes for diagnosis_events to support analytics map queries
             conn.execute(text(
                 "CREATE INDEX IF NOT EXISTS idx_diagnosis_events_created_at ON diagnosis_events (created_at)"
@@ -38,6 +48,7 @@ def main():
             ))
             conn.commit()
             print("Ensured new columns on traditional_terms (source_short_definition, source_long_definition).")
+            print("Ensured TM2 columns on icd11_codes (tm2_code, tm2_title, tm2_definition).")
             print("Ensured indexes on diagnosis_events (created_at, latitude/longitude).")
         except Exception as e:
             print(f"Warning: Could not apply column migrations: {e}")

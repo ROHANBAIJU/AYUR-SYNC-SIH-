@@ -36,6 +36,14 @@ const state = {
     searchTimeout: null
 };
 
+// ================================
+// Persistent Deep Reset (Overall Reset) – localStorage keys
+// ================================
+const DEEP_RESET_STATUS_KEY = 'deepResetStatusLatest';
+const DEEP_RESET_MINIMIZED_KEY = 'deepResetStatusMinimized';
+const DEEP_RESET_SUCCESS_TOAST_KEY = 'deepResetJustCompleted';
+
+
 // Global DOM elements cache
 const dom = {};
 
@@ -86,6 +94,9 @@ async function initializeApp() {
     }
     
     await fetchSharedData();
+
+    // Resume any in‑progress overall reset (deep reset) after stats load so token is confirmed
+    await resumeDeepResetMonitoring();
 
     // Call the specific initializer for the current page (must be defined in the page's JS file)
     if (typeof initializePage === 'function') {
@@ -262,14 +273,25 @@ function startDeepResetPolling(button) {
             const data = await fetchAPI('/admin/deep-reset-status');
             updateDeepResetStatus(statusBar, data);
             if (data.state === 'completed') {
-                toggleButtonLoading(button, false, 'Overall Reset');
-                button.disabled = false;
-                setTimeout(()=> window.location.href='new_suggestions.html', 1200);
+                if (button) { toggleButtonLoading(button, false, 'Overall Reset'); button.disabled = false; }
+                // Set completion toast flag and show toast
+                try {
+                    if (!localStorage.getItem(DEEP_RESET_SUCCESS_TOAST_KEY)) {
+                        showDeepResetSuccessToast();
+                        localStorage.setItem(DEEP_RESET_SUCCESS_TOAST_KEY, '1');
+                    }
+                } catch {}
+                // Immediately clear status-related keys so it won't reappear on navigation
+                try {
+                    localStorage.removeItem(DEEP_RESET_STATUS_KEY);
+                    localStorage.removeItem(DEEP_RESET_MINIMIZED_KEY);
+                } catch {}
+                fadeOutDeepResetUI();
+                setTimeout(()=> window.location.href='new_suggestions.html', 2600);
                 return;
             } else if (data.state === 'error') {
-                toggleButtonLoading(button, false, 'Overall Reset');
+                if (button) { toggleButtonLoading(button, false, 'Overall Reset'); button.disabled = false; }
                 alert('Deep reset error: ' + (data.error || 'Unknown'));
-                button.disabled = false;
                 return;
             }
         } catch (err) {
@@ -282,36 +304,78 @@ function startDeepResetPolling(button) {
 function ensureDeepResetStatusBar() {
     let bar = document.getElementById('deep-reset-status-bar');
     if (!bar) {
-        bar = document.createElement('div');
-        bar.id = 'deep-reset-status-bar';
-        bar.className = 'fixed bottom-2 left-1/2 -translate-x-1/2 bg-white shadow-lg border rounded px-4 py-3 z-50 w-[90%] max-w-3xl';
-        bar.innerHTML = `
-            <div class="flex items-center justify-between mb-2">
-              <h4 class="font-semibold text-gray-800 text-sm">Overall Reset Progress</h4>
-              <button class="text-xs text-gray-500 hover:text-gray-700" onclick="document.getElementById('deep-reset-status-bar').remove()">Hide</button>
-            </div>
-            <div class="w-full bg-gray-200 h-2 rounded overflow-hidden mb-2">
-              <div class="h-2 bg-gradient-to-r from-red-500 to-orange-400 transition-all" style="width:0%" id="deep-reset-progress"></div>
-            </div>
-            <div id="deep-reset-steps" class="text-[11px] leading-snug font-mono max-h-40 overflow-y-auto bg-gray-50 border rounded p-2"></div>`;
-        document.body.appendChild(bar);
+                ensureDeepResetStyles();
+                bar = document.createElement('div');
+                bar.id = 'deep-reset-status-bar';
+                bar.className = 'fixed bottom-2 left-1/2 -translate-x-1/2 bg-white shadow-lg border rounded px-4 pt-3 pb-2 z-50 w-[90%] max-w-3xl transition-all';
+                bar.innerHTML = `
+                        <div class="flex items-center justify-between mb-1">
+                            <div class="flex items-center gap-2">
+                                <h4 class="font-semibold text-gray-800 text-sm">Overall Reset Progress</h4>
+                                <span id="deep-reset-percent" class="text-[11px] text-gray-600 font-mono">0%</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                 <button id="deep-reset-toggle" class="text-xs text-gray-500 hover:text-gray-700">Minimize</button>
+                                 <button id="deep-reset-hide" class="text-xs text-gray-400 hover:text-gray-600">Hide</button>
+                            </div>
+                        </div>
+                        <div class="w-full bg-gray-200 h-2 rounded overflow-hidden mb-2 relative">
+                            <div class="h-2 deep-reset-bar transition-all" style="width:0%" id="deep-reset-progress"></div>
+                        </div>
+                        <div id="deep-reset-phase" class="text-[10px] uppercase tracking-wider font-semibold text-gray-500 mb-1"></div>
+                        <div id="deep-reset-steps" class="text-[11px] leading-snug font-mono max-h-40 overflow-y-auto bg-gray-50 border rounded p-2"></div>`;
+                document.body.appendChild(bar);
+
+                // Wire hide
+                bar.querySelector('#deep-reset-hide').addEventListener('click', () => {
+                        bar.remove();
+                        const badge = document.getElementById('deep-reset-badge');
+                        if (badge) badge.remove();
+                });
+                // Wire minimize toggle
+                const toggleBtn = bar.querySelector('#deep-reset-toggle');
+                toggleBtn.addEventListener('click', () => {
+                        const minimized = !bar.style.display || bar.style.display !== 'none' ? true : false; // toggle notion
+                        setDeepResetMinimized(minimized);
+                });
+                // Initial minimize state from storage
+                try { if (localStorage.getItem(DEEP_RESET_MINIMIZED_KEY) === '1') setDeepResetMinimized(true); } catch {}
     }
     return bar;
 }
 
 function updateDeepResetStatus(bar, status) {
     const progEl = document.getElementById('deep-reset-progress');
-    if (progEl) progEl.style.width = `${Math.min(100,(status.progress||0)*100)}%`;
+    const pct = Math.min(100, (status.progress || 0) * 100);
+    if (progEl) progEl.style.width = `${pct}%`;
+    const pctEl = document.getElementById('deep-reset-percent');
+    if (pctEl) pctEl.textContent = `${pct.toFixed(0)}%`;
+    updateDeepResetBadge(pct);
     const stepsEl = document.getElementById('deep-reset-steps');
     if (stepsEl && Array.isArray(status.steps)) {
         stepsEl.innerHTML = status.steps.map(s=>`<div>${escapeHtml((s.ts||'').split('T')[1]||'') } - ${escapeHtml(s.msg)}</div>`).join('');
         stepsEl.scrollTop = stepsEl.scrollHeight;
     }
+    const phase = inferDeepResetPhase(status);
+    const phaseEl = document.getElementById('deep-reset-phase');
+    if (phaseEl) phaseEl.textContent = phase.label;
+    applyPhaseColor(phase.key);
     if (status.state === 'completed') {
         stepsEl.innerHTML += '<div class="text-green-700 font-semibold mt-1">DONE ✅</div>';
     } else if (status.state === 'error') {
-        stepsEl.innerHTML += `<div class="text-red-600 font-semibold mt-1">ERROR: ${escapeHtml(status.error || 'Unknown')}</div>`;
+        stepsEl.innerHTML += `<div class=\"text-red-600 font-semibold mt-1\">ERROR: ${escapeHtml(status.error || 'Unknown')} <button id=\"deep-reset-retry\" class=\"ml-2 px-2 py-0.5 bg-red-600 text-white rounded text-[10px]\">Retry</button></div>`;
+        const retryBtn = document.getElementById('deep-reset-retry');
+        if (retryBtn) retryBtn.onclick = restartDeepReset;
     }
+
+    // Persist latest (unless finished -> we still store final for one refresh cycle)
+    try {
+        localStorage.setItem(DEEP_RESET_STATUS_KEY, JSON.stringify(status));
+        if (status.state === 'completed' || status.state === 'error') {
+            // Remove after short delay so user can still see on one reload if they refresh immediately
+            setTimeout(()=> localStorage.removeItem(DEEP_RESET_STATUS_KEY), 10_000);
+        }
+    } catch {}
 }
 
 function escapeHtml(str){
@@ -373,20 +437,19 @@ function toggleButtonLoading(button, isLoading, loadingText = '') {
     }
 }
 
+// Text highlighting utility (was removed inadvertently). Wraps search term occurrences in <mark>.
+// Safeguards: only highlight if searchTerm length >= 3.
 function highlightMatches(text, searchTerm) {
-    if (!text || !searchTerm || searchTerm.length < 3) {
+    if (!text || !searchTerm || searchTerm.trim().length < 3) return text || '';
+    try {
+        const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${escaped})`, 'gi');
+        return String(text).replace(regex, '<mark class="bg-yellow-200 px-0.5 rounded-sm">$1</mark>');
+    } catch (e) {
         return text;
     }
-    const regex = new RegExp(`(${searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
-    return text.replace(regex, `<mark class="bg-yellow-200 px-0.5 rounded-sm">$1</mark>`);
 }
-
-// --- POPOVER LOGIC (SHARED) ---
-function updatePopoverPositionOnScroll() {
-    if (dom.suggestionsPopover && !dom.suggestionsPopover.classList.contains('hidden')) {
-        positionPopover();
-    }
-}
+window.highlightMatches = highlightMatches;
 
 function positionPopover() {
     const { button } = state.popoverContext;
@@ -410,6 +473,13 @@ function positionPopover() {
     dom.suggestionsPopover.style.left = `${left}px`;
 }
 
+// Restored helper: keep popover aligned while scrolling (was removed in recent refactor)
+function updatePopoverPositionOnScroll() {
+    if (dom.suggestionsPopover && !dom.suggestionsPopover.classList.contains('hidden')) {
+        positionPopover();
+    }
+}
+
 function hideSuggestionsPopover() {
     if (dom.suggestionsPopover) {
         dom.suggestionsPopover.classList.add('hidden');
@@ -421,3 +491,167 @@ function hideSuggestionsPopover() {
 // Expose a couple of helpers for page modules
 window.fetchSharedData = fetchSharedData;
 window.state = state; // useful for debugging
+
+// ================================
+// Resume deep reset monitoring on page load (for persistence across navigation / refresh)
+// ================================
+async function resumeDeepResetMonitoring() {
+    // If we have a cached status, draw it immediately (optimistic) before first poll
+    try {
+        const cached = localStorage.getItem(DEEP_RESET_STATUS_KEY);
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed && parsed.state && parsed.state !== 'completed' && parsed.state !== 'error') {
+                const bar = ensureDeepResetStatusBar();
+                updateDeepResetStatus(bar, parsed);
+            }
+        }
+    } catch {}
+    // Probe backend for actual current status; if running, start polling
+    try {
+        const data = await fetchAPI('/admin/deep-reset-status');
+        if (['queued','running'].includes(data.state)) {
+            const bar = ensureDeepResetStatusBar();
+            updateDeepResetStatus(bar, data);
+            startDeepResetPolling(null); // pass null so polling just updates UI
+        } else if (data.state === 'completed') {
+            // Only show success toast once; if flag already set, do nothing
+            if (!localStorage.getItem(DEEP_RESET_SUCCESS_TOAST_KEY)) {
+                showDeepResetSuccessToast();
+                try { localStorage.setItem(DEEP_RESET_SUCCESS_TOAST_KEY, '1'); } catch {}
+                // Clear status keys since process fully done
+                try { localStorage.removeItem(DEEP_RESET_STATUS_KEY); localStorage.removeItem(DEEP_RESET_MINIMIZED_KEY); } catch {}
+            }
+        }
+    } catch (err) {
+        // Endpoint might not exist or not authorized on some pages – ignore silently
+        // console.debug('Deep reset status check skipped:', err.message);
+    }
+}
+
+// ================================
+// Deep Reset UI helpers (phase, badge, styles, restart, success toast)
+// ================================
+function inferDeepResetPhase(status) {
+    const steps = status.steps || [];
+    const lastMsg = (steps[steps.length - 1]?.msg || '').toLowerCase();
+    const mapping = [
+        { key: 'truncate', label: 'Truncating', match: /(truncate|wipe|dropp?ing|clearing)/ },
+        { key: 'cleanup', label: 'Cleanup', match: /(cleanup|cleaning|remov(ing|al)|pruning)/ },
+        { key: 'discovery', label: 'Discovery', match: /(discover|harvest|extract|loading source)/ },
+        { key: 'validation', label: 'Validation', match: /(validate|checking|verif(y|ication))/ },
+        { key: 'rebuild', label: 'Rebuild Index', match: /(rebuild|index|snapshot|refresh)/ },
+        { key: 'finalizing', label: 'Finalizing', match: /(finaliz|wrap|complete|finishing)/ },
+    ];
+    for (const m of mapping) { if (m.match.test(lastMsg)) return m; }
+    return { key: 'progress', label: (status.state === 'queued' ? 'Queued' : 'Processing') };
+}
+
+function applyPhaseColor(phaseKey) {
+    const el = document.getElementById('deep-reset-progress');
+    if (!el) return;
+    const palette = {
+        truncate: ['#dc2626', '#f97316'],
+        cleanup: ['#f97316', '#f59e0b'],
+        discovery: ['#6366f1', '#0ea5e9'],
+        validation: ['#16a34a', '#10b981'],
+        rebuild: ['#06b6d4', '#2563eb'],
+        finalizing: ['#7e22ce', '#ec4899'],
+        progress: ['#ef4444', '#fb923c']
+    };
+    const colors = palette[phaseKey] || palette.progress;
+    el.style.backgroundImage = `linear-gradient(100deg, ${colors[0]}, ${colors[1]})`;
+}
+
+function ensureDeepResetStyles() {
+    if (document.getElementById('deep-reset-style')) return;
+    const style = document.createElement('style');
+    style.id = 'deep-reset-style';
+    style.textContent = `
+    @keyframes deepResetShimmer { from { background-position: 0 0; } to { background-position: 60px 0; } }
+    #deep-reset-progress.deep-reset-bar { background-size: 60px 60px; animation: deepResetShimmer 1s linear infinite; }
+    #deep-reset-status-bar.collapsed { opacity:0; pointer-events:none; transform: translate(-50%, 10px); }
+    #deep-reset-badge { box-shadow: 0 4px 12px -2px rgba(0,0,0,0.25); }
+    #deep-reset-badge:hover { transform: scale(1.05); }
+    .deep-reset-fade-out { transition: opacity .5s ease, transform .5s ease; opacity:0; transform: translateY(8px); }
+    .deep-reset-toast { animation: drToastSlide .45s ease; }
+    @keyframes drToastSlide { from { transform: translate(-50%, 20px); opacity:0; } to { transform: translate(-50%,0); opacity:1; } }
+    `;
+    document.head.appendChild(style);
+}
+
+function setDeepResetMinimized(min) {
+    const bar = document.getElementById('deep-reset-status-bar');
+    if (!bar) return;
+    try { localStorage.setItem(DEEP_RESET_MINIMIZED_KEY, min ? '1' : '0'); } catch {}
+    if (min) {
+        bar.style.display = 'none';
+        createDeepResetBadge();
+    } else {
+        bar.style.display = 'block';
+        const badge = document.getElementById('deep-reset-badge');
+        if (badge) badge.remove();
+    }
+    const toggleBtn = bar.querySelector('#deep-reset-toggle');
+    if (toggleBtn) toggleBtn.textContent = min ? 'Expand' : 'Minimize';
+}
+
+function createDeepResetBadge() {
+    let badge = document.getElementById('deep-reset-badge');
+    if (badge) return badge;
+    badge = document.createElement('div');
+    badge.id = 'deep-reset-badge';
+    badge.className = 'fixed bottom-3 right-3 bg-white border border-gray-300 rounded-full px-3 py-1 text-xs font-semibold text-gray-700 cursor-pointer z-50 flex items-center gap-2';
+    badge.innerHTML = `
+       <span class="inline-block w-2.5 h-2.5 rounded-full bg-gradient-to-r from-red-500 to-orange-400 animate-pulse" id="deep-reset-badge-dot"></span>
+       <span id="deep-reset-badge-text">Reset 0%</span>
+    `;
+    badge.addEventListener('mouseenter', () => setDeepResetMinimized(false));
+    badge.addEventListener('click', () => setDeepResetMinimized(false));
+    document.body.appendChild(badge);
+    return badge;
+}
+
+function updateDeepResetBadge(pct) {
+    const badge = document.getElementById('deep-reset-badge');
+    if (!badge) return;
+    const txt = badge.querySelector('#deep-reset-badge-text');
+    if (txt) txt.textContent = `Reset ${pct.toFixed(0)}%`;
+}
+
+async function restartDeepReset() {
+    try {
+        if (!confirm('Restart the deep reset from the beginning?')) return;
+        const btn = document.getElementById('deep-reset-retry');
+        if (btn) { btn.textContent = 'Restarting...'; btn.disabled = true; }
+        const resp = await fetchAPI('/admin/deep-reset', 'POST');
+        if (resp.status !== 'accepted') throw new Error('Unexpected response');
+        const bar = ensureDeepResetStatusBar();
+        setDeepResetMinimized(false);
+        startDeepResetPolling(null);
+    } catch (e) {
+        alert('Failed to restart deep reset: ' + e.message);
+    }
+}
+
+function showDeepResetSuccessToast() {
+    // If already shown (e.g., navigating quickly), skip duplication
+    if (document.getElementById('deep-reset-success-toast')) return;
+    const toast = document.createElement('div');
+    toast.id = 'deep-reset-success-toast';
+    toast.className = 'fixed bottom-6 left-1/2 -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-6 py-3 rounded-lg shadow-xl font-semibold text-sm z-[60] deep-reset-toast';
+    toast.innerHTML = '<span class="mr-2">✅</span> Overall Reset Complete';
+    document.body.appendChild(toast);
+    setTimeout(()=> { toast.classList.add('deep-reset-fade-out'); setTimeout(()=> toast.remove(), 600); }, 2000);
+}
+
+function fadeOutDeepResetUI() {
+    const bar = document.getElementById('deep-reset-status-bar');
+    const badge = document.getElementById('deep-reset-badge');
+    if (bar) { bar.classList.add('deep-reset-fade-out'); setTimeout(()=> bar.remove(), 600); }
+    if (badge) { badge.classList.add('deep-reset-fade-out'); setTimeout(()=> badge.remove(), 600); }
+    try { localStorage.removeItem(DEEP_RESET_MINIMIZED_KEY); } catch {}
+}
+
+// Ensure deep reset styles exist early for any page that loads this script
+ensureDeepResetStyles();

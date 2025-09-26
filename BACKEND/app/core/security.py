@@ -10,6 +10,7 @@ from passlib.context import CryptContext
 from jose import JWTError, jwt
 
 from app.core.config import settings
+import hmac, base64, hashlib, json
 from app.schemas.token import TokenData
 
 # This creates an instance of OAuth2PasswordBearer.
@@ -82,9 +83,32 @@ def get_current_principal(authorization: Optional[str] = Header(default=None)) -
     if not authorization or not authorization.lower().startswith("bearer "):
         raise credentials_exception
     token = authorization.split(" ", 1)[1].strip()
-    # Mock ABHA token path for development/testing
+    # ABHA token handling (mock or hmac)
     if token.startswith("ABHA_"):
-        return {"sub": token, "auth": "abha-mock"}
+        mode = settings.ABHA_VALIDATION_MODE.lower()
+        if mode == 'mock':
+            return {"sub": token, "auth": "abha-mock"}
+        if mode == 'hmac':
+            # Expected format: ABHA_<base64url(payload)>.sig=<hex>
+            try:
+                body_part = token.split('_',1)[1]
+                if '.sig=' not in body_part:
+                    raise ValueError('missing signature segment')
+                payload_b64, sig_hex = body_part.split('.sig=',1)
+                # Normalize padding for base64url
+                padding = '=' * (-len(payload_b64) % 4)
+                raw = base64.urlsafe_b64decode(payload_b64 + padding)
+                expected = hmac.new(settings.ABHA_HMAC_SECRET.encode('utf-8'), raw, hashlib.sha256).hexdigest()
+                if not hmac.compare_digest(expected, sig_hex):
+                    raise ValueError('bad signature')
+                payload = json.loads(raw.decode('utf-8')) if raw else {}
+                sub = payload.get('sub') or payload.get('abha') or 'abha-anon'
+                exp = payload.get('exp')
+                if exp and datetime.fromtimestamp(exp, timezone.utc) < datetime.now(timezone.utc):
+                    raise ValueError('expired')
+                return {"sub": sub, "auth": "abha-hmac", "claims": payload}
+            except Exception:
+                raise credentials_exception
     # Try JWT
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])

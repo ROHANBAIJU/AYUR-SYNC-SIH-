@@ -1,3 +1,29 @@
+# AYUR-SYNC API
+
+## Hackathon Feature Coverage Matrix (Added)
+
+Implemented (Green):
+- Dual coding storage (DiagnosisEvent captures NAMASTE + ICD + TM2 + release)
+- FHIR endpoints: CodeSystem lookup/read, ValueSet $expand, ConceptMap $translate (forward & reverse), ConceptMap release export, Bundle ingest, Provenance (mapping + release bundle)
+- Versioning: ConceptMapRelease + ConceptMapElement snapshots, release-scoped translation/lookups
+- Provenance: per-mapping and release-wide bundle
+- WHO Sync Scheduler: periodic enrichment + optional release creation
+- External Semantics: placeholder SNOMED/LOINC linkage endpoint
+- Security: ABHA token modes (mock / HMAC), JWT fallback
+- Consent Framework: Feature-flagged enforcement for translation + bundle.ingest scopes
+- Analytics: Morbidity top counts, dual-coding coverage
+- TM2 Integration: On-demand WHO TM2 enrichment persisted in ICD11Code fields
+- Caching: Translation cache keyed by release & direction
+
+Partial / Future (Amber):
+- Consent patient-specific scopes (global wildcard implemented; per-patient extension ready)
+- Advanced provenance chain (MappingAudit basis present; future could add entity.agent granularity)
+
+Deferred (Red / Future Roadmap):
+- SNOMED & LOINC full ingestion
+- ABHA production OAuth / JWK verification
+- Formal FHIR Package publication & $validate-code
+
 # 🌿 Ayur Sync – SIH 2025  
 
 A next-gen API-driven platform to **integrate NAMASTE codes, WHO ICD-11 TM2, and Biomedicine** into FHIR-compliant EMR systems.  

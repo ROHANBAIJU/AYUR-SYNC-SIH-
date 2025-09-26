@@ -3,10 +3,11 @@ from typing import Optional, Dict, Any, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 
 from app.db.session import get_db
-from app.db.models import Mapping, TraditionalTerm, ICD11Code
+from app.db.models import Mapping, TraditionalTerm, ICD11Code, DiagnosisEvent, ConceptMapRelease, ConceptMapElement
+from app.core.consent import require_consent
 from app.core.security import get_current_principal
 from app.util.fhir_outcome import outcome_not_found, outcome_validation, outcome_error
 
@@ -57,9 +58,15 @@ def append_audit_log(action: str, principal: Dict[str, Any], detail: Dict[str, A
 
 
 @router.get("/metadata")
-def capability_statement(principal: Dict[str, Any] = Depends(get_current_principal)):
-    """Minimal CapabilityStatement advertising supported interactions."""
+def capability_statement(principal: Dict[str, Any] = Depends(get_current_principal), db: Session = Depends(get_db)):
+    """Enhanced CapabilityStatement advertising full implemented surface."""
     append_audit_log("fhir.metadata", principal, {})
+    latest_release = db.query(ConceptMapRelease).order_by(ConceptMapRelease.created_at.desc()).first()
+    releases = db.query(ConceptMapRelease).order_by(ConceptMapRelease.created_at.desc()).all()
+    current_version = latest_release.version if latest_release else None
+    total_elements = 0
+    if latest_release:
+        total_elements = db.query(ConceptMapElement).filter(ConceptMapElement.release_id == latest_release.id).count()
     return {
         "resourceType": "CapabilityStatement",
         "status": "active",
@@ -67,34 +74,36 @@ def capability_statement(principal: Dict[str, Any] = Depends(get_current_princip
         "kind": "instance",
         "fhirVersion": "4.0.1",
         "format": ["json"],
+        "implementation": {"description": "NAMASTE ↔ ICD-11 Terminology Micro-service"},
+        "extension": [
+            {"url": "https://ayur-sync.example/fhir/StructureDefinition/currentConceptMapRelease", "valueString": current_version or "none"},
+            {"url": "https://ayur-sync.example/fhir/StructureDefinition/supportedReleases", "valueString": ",".join([r.version for r in releases])},
+            {"url": "https://ayur-sync.example/fhir/StructureDefinition/totalConceptMapElements", "valueInteger": total_elements},
+        ],
         "rest": [
             {
                 "mode": "server",
                 "security": {
                     "cors": True,
-                    "service": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/restful-security-service", "code": "OAuth"}], "text": "ABHA OAuth/Bearer"}],
+                    "service": [{"coding": [{"system": "http://terminology.hl7.org/CodeSystem/restful-security-service", "code": "OAuth"}], "text": "ABHA OAuth/Bearer (mock/dev)"}],
                 },
                 "resource": [
-                    {
-                        "type": "CodeSystem",
-                        "interaction": [{"code": "read"}],
-                        "operation": [
-                            {"name": "lookup", "definition": "http://hl7.org/fhir/OperationDefinition/CodeSystem-lookup"}
-                        ],
-                    },
-                    {
-                        "type": "ValueSet",
-                        "operation": [
-                            {"name": "expand", "definition": "http://hl7.org/fhir/OperationDefinition/ValueSet-expand"}
-                        ],
-                    },
-                    {
-                        "type": "ConceptMap",
-                        "operation": [
-                            {"name": "translate", "definition": "http://hl7.org/fhir/OperationDefinition/ConceptMap-translate"}
-                        ],
-                    },
+                    {"type": "CodeSystem", "interaction": [{"code": "read"}], "operation": [{"name": "lookup", "definition": "http://hl7.org/fhir/OperationDefinition/CodeSystem-lookup"}]},
+                    {"type": "ValueSet", "operation": [{"name": "expand", "definition": "http://hl7.org/fhir/OperationDefinition/ValueSet-expand"}]},
+                    {"type": "ConceptMap", "interaction": [{"code": "read"}], "operation": [
+                        {"name": "translate", "definition": "http://hl7.org/fhir/OperationDefinition/ConceptMap-translate"},
+                        {"name": "export", "definition": "https://ayur-sync.example/fhir/OperationDefinition/ConceptMap-export"}
+                    ], "extension": [{"url": "https://ayur-sync.example/fhir/StructureDefinition/reverseTranslateSupported", "valueBoolean": True}]},
+                    {"type": "Bundle", "interaction": [{"code": "create"}]},
+                    {"type": "Provenance", "interaction": [{"code": "read"}], "extension": [
+                        {"url": "https://ayur-sync.example/fhir/StructureDefinition/releaseProvenanceSupported", "valueBoolean": True},
+                        {"url": "https://ayur-sync.example/fhir/StructureDefinition/mappingProvenanceSupported", "valueBoolean": True}
+                    ]},
+                    {"type": "Condition", "interaction": [{"code": "create"}]},
                 ],
+                "operation": [
+                    {"name": "conceptmap-export", "definition": "https://ayur-sync.example/fhir/OperationDefinition/ConceptMap-export"},
+                ]
             }
         ],
     }
@@ -107,17 +116,37 @@ def capability_statement(principal: Dict[str, Any] = Depends(get_current_princip
 def codesystem_lookup(
     system: str = Query(..., description="CodeSystem URL or key (ayurveda|siddha|unani)"),
     code: str = Query(..., description="Code to look up (NAMASTE code)"),
+    release: Optional[str] = Query(None, description="ConceptMap release version to scope (verified mappings snapshot)."),
     db: Session = Depends(get_db),
     principal: Dict[str, Any] = Depends(get_current_principal),
 ):
     key = system_param_to_key(system)
     if key not in {"ayurveda", "siddha", "unani"}:
         return outcome_not_found("Unknown CodeSystem")
-    term = (
-        db.query(TraditionalTerm)
-        .filter(TraditionalTerm.system == key, TraditionalTerm.code == code)
-        .first()
-    )
+    # If release specified restrict to codes that participate in that snapshot
+    if release:
+        rel = db.query(ConceptMapRelease).filter(ConceptMapRelease.version == release).first()
+        if not rel:
+            return outcome_not_found("Unknown release version")
+        term = (
+            db.query(TraditionalTerm)
+            .join(Mapping, Mapping.traditional_term_id == TraditionalTerm.id)
+            .join(ICD11Code, Mapping.icd11_code_id == ICD11Code.id)
+            .join(ConceptMapElement, and_(
+                ConceptMapElement.icd_name == ICD11Code.icd_name,
+                ConceptMapElement.system == TraditionalTerm.system,
+                ConceptMapElement.term == TraditionalTerm.term,
+                ConceptMapElement.release_id == rel.id
+            ))
+            .filter(TraditionalTerm.system == key, TraditionalTerm.code == code)
+            .first()
+        )
+    else:
+        term = (
+            db.query(TraditionalTerm)
+            .filter(TraditionalTerm.system == key, TraditionalTerm.code == code)
+            .first()
+        )
     if not term:
         return outcome_not_found("Concept not found")
     params = {
@@ -196,6 +225,8 @@ def ingest_bundle(
     payload: Dict[str, Any],
     db: Session = Depends(get_db),
     principal: Dict[str, Any] = Depends(get_current_principal),
+    release: Optional[str] = Query(None, description="Optional ConceptMap release version to validate against (defaults to latest)."),
+    _consent=Depends(require_consent('bundle.ingest')),
 ):
     """Prototype Bundle ingest.
 
@@ -214,6 +245,15 @@ def ingest_bundle(
     if payload.get("resourceType") != "Bundle":
         raise HTTPException(400, "Expected Bundle resourceType")
     entries = payload.get("entry") or []
+    # Resolve release version for reproducibility
+    rel_obj = None
+    if release:
+        rel_obj = db.query(ConceptMapRelease).filter(ConceptMapRelease.version == release).first()
+        if not rel_obj:
+            raise HTTPException(400, f"Unknown release version: {release}")
+    else:
+        rel_obj = db.query(ConceptMapRelease).order_by(ConceptMapRelease.created_at.desc()).first()
+    release_version = rel_obj.version if rel_obj else None
     total = 0
     valid = 0
     mismatched = 0
@@ -228,6 +268,13 @@ def ingest_bundle(
         namaste_code = None
         icd_display = None
         icd_code_val = None
+        patient_id = None
+        subject = res.get("subject") or {}
+        if isinstance(subject, dict):
+            ref = subject.get("reference") or ""
+            # Expect something like Patient/123 or just 123
+            if ref:
+                patient_id = ref.split('/')[-1]
         for c in coding:
             sys = c.get("system")
             if not sys: continue
@@ -264,13 +311,30 @@ def ingest_bundle(
                 "expected_icd": expected_code_or_name
             })
             continue
-        # All good
+        # All good -> persist as DiagnosisEvent
         valid += 1
-        details.append({
-            "status": "valid",
-            "namaste_code": namaste_code,
-            "icd": expected_code_or_name
-        })
+        details.append({"status": "valid", "namaste_code": namaste_code, "icd": expected_code_or_name})
+        try:
+            evt = DiagnosisEvent(
+                doctor_id=getattr(principal, 'sub', None) if isinstance(principal, dict) else None,
+                system=mapping.traditional_term.system,
+                code=mapping.traditional_term.code,
+                term_name=mapping.traditional_term.term,
+                icd_name=icd_obj.icd_name,
+                icd_code_used=icd_obj.icd_code or icd_obj.icd_name,
+                tm2_code=getattr(icd_obj, 'tm2_code', None),
+                patient_id=patient_id,
+                release_version=release_version,
+                latitude=0.0,  # placeholder (could be extended from extensions)
+                longitude=0.0,
+            )
+            db.add(evt)
+        except Exception:
+            db.rollback()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
     summary = {
         "resourceType": "OperationOutcome",
         "issue": [
@@ -284,7 +348,7 @@ def ingest_bundle(
             {"url": "details", "valueString": ";".join([d.get('status','') for d in details])}
         ]}]
     }
-    return {"summary": summary, "details": details}
+    return {"summary": summary, "details": details, "releaseVersion": release_version}
 
 
 # ---- ValueSet $expand ----
@@ -295,15 +359,18 @@ def valueset_expand(
     system: str = Query(..., description="CodeSystem URL or key (ayurveda|siddha|unani)"),
     filter: Optional[str] = Query(None, min_length=2, description="Text filter against term/description"),
     count: int = Query(25, ge=1, le=200),
+    release: Optional[str] = Query(None, description="ConceptMap release version to scope expansion."),
     db: Session = Depends(get_db),
     principal: Dict[str, Any] = Depends(get_current_principal),
 ):
     key = system_param_to_key(system)
-    q = (
-        db.query(TraditionalTerm)
-        .join(Mapping)
-        .filter(TraditionalTerm.system == key, Mapping.status == "verified")
-    )
+    q = db.query(TraditionalTerm).join(Mapping).filter(TraditionalTerm.system == key, Mapping.status == "verified")
+    if release:
+        rel = db.query(ConceptMapRelease).filter(ConceptMapRelease.version == release).first()
+        if not rel:
+            return outcome_not_found("Unknown release version")
+        # restrict to terms present in snapshot elements
+        q = q.join(Mapping.icd11_code).join(ConceptMapElement, ConceptMapElement.icd_name == ICD11Code.icd_name).filter(ConceptMapElement.release_id == rel.id)
     if filter:
         from sqlalchemy import or_
 
@@ -350,40 +417,29 @@ def conceptmap_translate(
     system: str = Query(..., description="Source CodeSystem URL or key (ayurveda|siddha|unani)"),
     code: str = Query(..., description="Source code (NAMASTE) OR (fallback) the term itself"),
     target: Optional[str] = Query(None, description="Optional target system URI (defaults to ICD-11 MMS)"),
+    release: Optional[str] = Query(None, description="ConceptMap release version to scope translation."),
     db: Session = Depends(get_db),
     principal: Dict[str, Any] = Depends(get_current_principal),
+    _consent=Depends(require_consent('translation')),
 ):
     key = system_param_to_key(system)
     target_uri = target or ICD11_SYSTEM_URI
     # Find verified primary mapping for given source.
     # Fallback: if no term has that code, allow passing the raw term (useful before codes are curated).
-    mapping = (
-        db.query(Mapping)
-        .join(TraditionalTerm)
-        .options(joinedload(Mapping.icd11_code), joinedload(Mapping.traditional_term))
-        .filter(
-            TraditionalTerm.system == key,
-            Mapping.status == "verified",
-            Mapping.is_primary == True,
-            or_(TraditionalTerm.code == code, TraditionalTerm.term == code)
-        )
-        .first()
-    )
+    base_q = db.query(Mapping).join(TraditionalTerm).options(joinedload(Mapping.icd11_code), joinedload(Mapping.traditional_term)).filter(TraditionalTerm.system == key, Mapping.status == "verified", Mapping.is_primary == True, or_(TraditionalTerm.code == code, TraditionalTerm.term == code))
+    if release:
+        rel = db.query(ConceptMapRelease).filter(ConceptMapRelease.version == release).first()
+        if not rel:
+            return outcome_not_found("Unknown release version")
+        base_q = base_q.join(Mapping.icd11_code).join(ConceptMapElement, ConceptMapElement.icd_name == ICD11Code.icd_name).filter(ConceptMapElement.release_id == rel.id)
+    mapping = base_q.first()
     fallback_used = False
     if not mapping:
         # Option C: fallback to ANY verified mapping (prefer primary if one exists; otherwise first by id)
-        mapping = (
-            db.query(Mapping)
-            .join(TraditionalTerm)
-            .options(joinedload(Mapping.icd11_code), joinedload(Mapping.traditional_term))
-            .filter(
-                TraditionalTerm.system == key,
-                Mapping.status == "verified",
-                or_(TraditionalTerm.code == code, TraditionalTerm.term == code)
-            )
-            .order_by(Mapping.is_primary.desc(), Mapping.id.asc())
-            .first()
-        )
+        fallback_q = db.query(Mapping).join(TraditionalTerm).options(joinedload(Mapping.icd11_code), joinedload(Mapping.traditional_term)).filter(TraditionalTerm.system == key, Mapping.status == "verified", or_(TraditionalTerm.code == code, TraditionalTerm.term == code))
+        if release and rel:
+            fallback_q = fallback_q.join(Mapping.icd11_code).join(ConceptMapElement, ConceptMapElement.icd_name == ICD11Code.icd_name).filter(ConceptMapElement.release_id == rel.id)
+        mapping = fallback_q.order_by(Mapping.is_primary.desc(), Mapping.id.asc()).first()
         if mapping:
             fallback_used = True
     if not mapping:
@@ -421,5 +477,8 @@ def conceptmap_translate(
     }
     if fallback_used:
         params["parameter"].append({"name": "note", "valueString": "Fallback used: non-primary verified mapping"})
-    append_audit_log("fhir.conceptmap.translate", principal, {"system": key, "code": code, "result": True})
+    append_audit_log("fhir.conceptmap.translate", principal, {"system": key, "code": code, "result": True, "release": release})
     return params
+
+# Alias without '$' for environments or clients that mis-handle the $ in path (helper for smoke/tests)
+router.get("/ConceptMap/translate")(conceptmap_translate)
