@@ -58,24 +58,96 @@ def elements(version: str, icd_name: Optional[str] = None, system: Optional[str]
 
 @router.get("/releases/{version}/diff")
 def diff_release(version: str, from_version: Optional[str] = None, db: Session = Depends(get_db)):
-    """Stub diff endpoint: returns empty change set for now.
-    Judges can see structure; future will compute real differences.
+    """Compute a structural diff of ConceptMapElements between two releases.
+
+    If `from_version` omitted, uses the chronologically previous release (by created_at) as baseline.
+    Diff semantics:
+      Key = (system, term, icd_name) – this trio defines a mapping association.
+      Added: present in target, not in baseline.
+      Removed: present in baseline, not in target.
+      Changed: present in both but differing in at least one of: icd_code, equivalence, is_primary, active.
     """
     target = db.execute(select(models.ConceptMapRelease).where(models.ConceptMapRelease.version == version)).scalar_one_or_none()
     if not target:
         raise HTTPException(404, "Target release not found")
+
+    # Resolve baseline
+    baseline = None
     if from_version:
         baseline = db.execute(select(models.ConceptMapRelease).where(models.ConceptMapRelease.version == from_version)).scalar_one_or_none()
         if not baseline:
             raise HTTPException(404, "Baseline release not found")
-    return {
-        "from": from_version or None,
+    else:
+        # find previous release (created before target)
+        baseline = db.execute(
+            select(models.ConceptMapRelease)
+            .where(models.ConceptMapRelease.created_at < target.created_at)
+            .order_by(models.ConceptMapRelease.created_at.desc())
+        ).scalars().first()
+
+    if not baseline:
+        # nothing to diff against
+        return {
+            "from": None,
+            "to": version,
+            "added": [],
+            "removed": [],
+            "changed": [],
+            "summary": {"added": 0, "removed": 0, "changed": 0}
+        }
+
+    # Load elements for both releases
+    base_rows = db.execute(select(models.ConceptMapElement).where(models.ConceptMapElement.release_id == baseline.id)).scalars().all()
+    tgt_rows = db.execute(select(models.ConceptMapElement).where(models.ConceptMapElement.release_id == target.id)).scalars().all()
+
+    def row_to_obj(e):
+        return {
+            "icd_name": e.icd_name,
+            "icd_code": e.icd_code,
+            "system": e.system,
+            "term": e.term,
+            "equivalence": e.equivalence,
+            "is_primary": e.is_primary,
+            "active": e.active
+        }
+
+    base_index = {(e.system, e.term, e.icd_name): row_to_obj(e) for e in base_rows}
+    tgt_index = {(e.system, e.term, e.icd_name): row_to_obj(e) for e in tgt_rows}
+
+    added = []
+    removed = []
+    changed = []
+
+    for k, obj in tgt_index.items():
+        if k not in base_index:
+            added.append(obj)
+        else:
+            b = base_index[k]
+            # compare change sensitive fields
+            if any([
+                (b.get('icd_code') or '') != (obj.get('icd_code') or ''),
+                b.get('equivalence') != obj.get('equivalence'),
+                bool(b.get('is_primary')) != bool(obj.get('is_primary')),
+                bool(b.get('active')) != bool(obj.get('active'))
+            ]):
+                changed.append({
+                    "before": b,
+                    "after": obj
+                })
+
+    for k, obj in base_index.items():
+        if k not in tgt_index:
+            removed.append(obj)
+
+    result = {
+        "from": baseline.version,
         "to": version,
-        "added": [],
-        "removed": [],
-        "changed": [],
-        "summary": {"added": 0, "removed": 0, "changed": 0}
+        "added": added,
+        "removed": removed,
+        "changed": changed,
+        "summary": {"added": len(added), "removed": len(removed), "changed": len(changed)}
     }
+    return result
 
 @router.post("/releases/{version}/refresh")
 def refresh_release(version: str, db: Session = Depends(get_db)):

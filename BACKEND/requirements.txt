@@ -45,3 +45,4 @@ numpy
 certifi
 pytest
 httpx
+requests

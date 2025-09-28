@@ -137,7 +137,44 @@ async function initializePage() {
     try {
         // --- MODIFICATION IS HERE ---
         // We now call our caching function instead of the raw API fetch.
-        let suggestions = await getSuggestionsWithCache();
+        let suggestions;
+        let bypassCache = false;
+        try {
+            const inv = Number(localStorage.getItem('suggestionsInvalidate')||'0');
+            const lastLoad = Number(localStorage.getItem('suggestionsCacheLoadedAt')||'0');
+            if(inv && inv > lastLoad){ bypassCache = true; }
+        } catch {}
+        if(bypassCache){
+            try { await clearSuggestionsCache?.(); } catch {}
+            suggestions = await fetchAPI('/admin/all-suggestions');
+        } else {
+            suggestions = await getSuggestionsWithCache();
+        }
+        try { localStorage.setItem('suggestionsCacheLoadedAt', String(Date.now())); } catch {}
+        // Normalize AI justification so blanks / failures render as 'N/A' in UI
+        try {
+            if (Array.isArray(suggestions)) {
+                const systems = ['ayurveda','siddha','unani'];
+                for (const sug of suggestions) {
+                    for (const sys of systems) {
+                        const key = sys + '_suggestions';
+                        if (!sug[key] || typeof sug[key] !== 'string' || sug[key] === '[]') continue;
+                        try {
+                            const arr = JSON.parse(sug[key]);
+                            let changed = false;
+                            for (const obj of arr) {
+                                const j = (obj.ai_justification||'').trim();
+                                if (!j || j === 'AI analysis failed' || j === 'AI enrichment failed' ) {
+                                    obj.ai_justification = 'N/A';
+                                    changed = true;
+                                }
+                            }
+                            if (changed) sug[key] = JSON.stringify(arr);
+                        } catch {}
+                    }
+                }
+            }
+        } catch (e) { console.warn('Justification normalization failed', e); }
         // If empty and a reset was just triggered, show hint and poll a few times
         const resetAt = Number(localStorage.getItem('curationResetAt') || '0');
         const recentlyReset = resetAt && (Date.now() - resetAt) < 5 * 60 * 1000; // 5 minutes
@@ -188,6 +225,24 @@ async function initializePage() {
         try { localStorage.removeItem('curationResetAt'); } catch {}
     }
 }
+
+// React to cross-tab invalidation while page is open
+window.addEventListener('storage', async e => {
+    if(e.key==='suggestionsInvalidate'){
+        try {
+            dom.mainLoader?.classList.remove('hidden');
+            // Force refresh bypassing cache
+            const fresh = await fetchAPI('/admin/all-suggestions');
+            state.allSuggestionsCache = fresh;
+            state.filteredSuggestions = fresh;
+            state.pagination.new.total = fresh.length;
+            renderNewSuggestions();
+            showToast?.('Suggestions refreshed','info');
+            try { localStorage.setItem('suggestionsCacheLoadedAt', String(Date.now())); } catch {}
+        } catch(err){ console.warn('Live suggestions refresh failed', err); }
+        finally { dom.mainLoader?.classList.add('hidden'); }
+    }
+});
 
 // --- RENDERING FUNCTIONS ---
 
@@ -300,7 +355,7 @@ function createCurationCell(safeIcdName, icdName, system, row) {
 
 function renderSuggestion(suggestion, icdName, system, type) {
     if (!suggestion) return '';
-    const { term = 'N/A', code = 'N/A', devanagari, tamil, arabic, confidence = 0, source_description = 'N/A', source_short_definition = null, source_long_definition = null, justification = 'N/A', source_row = '?' } = suggestion;
+    const { term = 'N/A', code = 'N/A', devanagari, tamil, arabic, confidence = 0, source_description = 'N/A', source_short_definition = null, source_long_definition = null, justification = 'N/A', source_row = '?', origin = null, ingestion_filename = null } = suggestion;
     const suggestionId = getSuggestionId(suggestion);
     const decisionObj = state.curationDecisions[icdName]?.[system] || {};
     
@@ -342,10 +397,13 @@ function renderSuggestion(suggestion, icdName, system, type) {
     const rejectionReasonHtml = (isRejected) ? `<p class="text-xs text-red-700 mt-1 font-semibold">Reason: ${(rejectedInfo.reason || 'N/A').replace('incorrect', 'Incorrect Mapping').replace('orphan', 'Orphaned')}</p>` : '';
     const containerClass = isAlias ? 'alias-approved' : (isRejected ? 'alias-rejected' : '');
 
+    // Badge for ingested provenance
+    const provenanceBadge = origin === 'ingestion' ? `<span class="ml-2 inline-flex items-center px-2 py-0.5 rounded bg-blue-100 text-blue-700 text-[10px] font-semibold" title="Ingested from file${ingestion_filename?`: ${ingestion_filename}`:''}">INGESTED</span>` : '';
+    const sourceLineMeta = `<span class="font-mono lowercase text-gray-400">(line ${source_row}${ingestion_filename?` • ${ingestion_filename}`:''})</span>`;
     return `<div class="p-1 ${containerClass} rounded-md">
         <div class="flex justify-between items-start mb-1">
             <div>
-                <p class="font-semibold text-sm">${highlightedTerm}</p>
+                <p class="font-semibold text-sm flex items-center">${highlightedTerm}${provenanceBadge}</p>
                 <p class="text-gray-500 text-sm">${highlightedVernacular}</p>
             </div>
             <span class="px-2 py-0.5 rounded-full text-xs font-medium ${confColor}">${confidence}%</span>
@@ -353,7 +411,7 @@ function renderSuggestion(suggestion, icdName, system, type) {
         <p class="font-mono text-xs text-gray-500 mb-2">${code}</p>
         <div class="space-y-2 text-[11px]">
             <div class="border-t pt-2">
-                <h4 class="font-semibold text-gray-500 uppercase tracking-wider text-[10px]">Source Short Def. <span class="font-mono lowercase text-gray-400">(line ${source_row})</span></h4>
+                <h4 class="font-semibold text-gray-500 uppercase tracking-wider text-[10px]">Source Short Def. ${sourceLineMeta}</h4>
                 <p class="text-gray-600 break-words">${highlightedShort || ''}</p>
             </div>
             <div>
@@ -1035,3 +1093,27 @@ function changePage(newPage) {
         dom.contentArea.scrollIntoView({ behavior: 'smooth' });
     }
 }
+
+// Hook: listen for promote actions via global fetch wrapper by monkey-patching fetchAPI for specific endpoint
+// Safer: provide explicit helper used by ingestion pages (if any) but here we intercept promote calls if invoked in this page context.
+const _origFetchAPI = window.fetchAPI;
+window.fetchAPI = async function(endpoint, method='GET', body=null){
+    const res = await _origFetchAPI(endpoint, method, body);
+    try {
+        if(endpoint.match(/ingest\/rows\/\d+\/promote$/) && res && typeof res==='object'){
+            if(res.placement){
+                showToast(`Suggestion promoted as ${res.placement==='primary'?'Primary':'Alias'}`, res.placement==='primary'?'success':'info');
+            }
+            // Granular cache invalidation: remove only the ICD group promoted
+            if(res.icd_name){
+                await invalidateSuggestion?.(res.icd_name);
+            } else if(res.suggested_icd_name){
+                await invalidateSuggestion?.(res.suggested_icd_name);
+            } else if(res.row_id){
+                // Fallback: if backend didn't return name, clear full cache (legacy behavior)
+                await clearSuggestionsCache?.();
+            }
+        }
+    }catch(e){ console.warn('Promotion toast hook failed', e); }
+    return res;
+};

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8" />
+  <title>Master Admin Playground | NAMASTE-ICD</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="image.png" type="image/png" />
+  <style>
+    /* Enlarged typography for readability */
+  /* Reduced ~20% from prior enlargement */
+  :root { --fs-xs:10.8px; --fs-sm:12px; --fs-base:13.2px; }
+    body { font-size: var(--fs-base); }
+    .section-card{background:#ffffff;border:1px solid #e2e8f0;border-radius:.9rem;padding:1.25rem 1.5rem;box-shadow:0 1px 2px rgba(0,0,0,0.06);} 
+    .grid-auto{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.25rem;} 
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;} 
+  .table-mini th{font-size:10.4px;text-transform:uppercase;letter-spacing:.05em;font-weight:600;color:#475569;} 
+  .table-mini td{font-size:11.2px;} 
+  .badge{font-size:9.6px;padding:3px 7px;border-radius:5px;font-weight:500;display:inline-flex;align-items:center;gap:6px;} 
+    .badge-green{background:#ecfdf5;color:#047857;} 
+    .badge-amber{background:#fffbeb;color:#92400e;} 
+    .badge-slate{background:#f1f5f9;color:#334155;} 
+  .btn{position:relative;display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid #cbd5e1;border-radius:7px;font-size:12px;font-weight:500;background:#ffffff;color:#1e293b;line-height:1.1;transition:.18s;} 
+    .btn:hover{background:#f1f5f9;} 
+    .btn-primary{background:#2563eb;color:#ffffff;border-color:#1d4ed8;} 
+    .btn-primary:hover{background:#1d4ed8;} 
+    .btn-danger{background:#dc2626;color:#fff;border-color:#b91c1c;} 
+    .btn-danger:hover{background:#b91c1c;} 
+    .code-block{background:#0f172a;color:#e2e8f0;padding:1rem;border-radius:.65rem;font-size:13px;overflow:auto;} 
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;} 
+    @media (max-width:1100px){ .split{grid-template-columns:1fr;} }
+    .ingest-help-toggle[aria-expanded="true"] { background:#2563eb; color:#fff; }
+  .ingest-card h3, .ingest-card h4 { font-size:15.2px; }
+  .ingest-card p, .ingest-card li { font-size:12px; }
+  /* Inline micro component styles for improved row action UX */
+  .action-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:500;line-height:1.1;border:1px solid transparent;cursor:pointer;transition:background .18s,border-color .18s,box-shadow .18s;color:#1e293b;background:#f8fafc;}
+  .action-btn:focus{outline:2px solid #2563eb;outline-offset:1px;}
+  .action-btn-promote{background:#2563eb;color:#fff;border-color:#1d4ed8;}
+  .action-btn-promote:hover{background:#1d4ed8;}
+  .action-btn-reject{background:#fff;color:#b91c1c;border-color:#fecaca;}
+  .action-btn-reject:hover{background:#fee2e2;}
+  .action-btn[disabled]{opacity:.55;cursor:not-allowed;}
+  .status-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:3px 7px;border-radius:999px;background:#ecfdf5;color:#047857;}
+  .status-badge.rejected{background:#fef2f2;color:#b91c1c;}
+  .mini-spinner{display:inline-block;width:14px;height:14px;border:2px solid #cbd5e1;border-top-color:transparent;border-radius:50%;animation:spin .65s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  /* Toast notifications */
+  #toast-host{position:fixed;top:14px;right:14px;display:flex;flex-direction:column;gap:8px;z-index:60;}
+  .toast{background:#fff;border:1px solid #e2e8f0;box-shadow:0 4px 12px rgba(0,0,0,.08);padding:10px 14px;border-radius:8px;font-size:12px;display:flex;align-items:center;gap:8px;min-width:200px;animation:toastIn .25s ease;}
+  .toast.success{border-color:#bbf7d0;background:#f0fdf4;}
+  .toast.error{border-color:#fecaca;background:#fef2f2;}
+  .toast.warn{border-color:#fde68a;background:#fffbeb;}
+  @keyframes toastIn{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
+  </style>
+</head>
+<body class="h-full flex flex-col min-h-screen">
+  <div id="admin-nav"></div>
+
+  <main class="max-w-7xl mx-auto w-full px-5 py-6 space-y-8">
+    <header class="flex items-center justify-between flex-wrap gap-4">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight text-slate-800">Master Admin Playground</h1>
+        <p class="text-[12px] text-slate-500">Operational control center – releases, mappings, provenance & ingest scaffolding.</p>
+      </div>
+      <div class="flex flex-wrap gap-2 items-center">
+        <button id="refresh-overview" class="btn btn-primary" data-loading="Refreshing">Refresh Overview</button>
+        <button id="rebuild-release" class="btn" title="Rebuild active release from verified mappings" data-loading="Rebuilding">Rebuild Snapshot</button>
+        <button id="download-conceptmap" class="btn" data-loading="Exporting">Export ConceptMap JSON</button>
+      </div>
+    </header>
+
+    <!-- Overview Metrics -->
+    <section class="section-card">
+      <h2 class="font-semibold text-sm mb-4 text-slate-700">Snapshot Overview</h2>
+      <div id="snapshot-metrics" class="grid-auto"></div>
+      <p class="mt-3 text-[11px] text-slate-500">Values reflect latest refresh. Rebuild to include newly verified mappings.</p>
+    </section>
+
+    <div class="split">
+      <!-- Ingestion Upload / Instructions (replaces Releases) -->
+      <section class="section-card ingest-card">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-semibold text-lg text-slate-700">Ingestion (Option B)</h2>
+          <div class="flex gap-2 items-center">
+            <button id="pg-toggle-ingest-help" type="button" class="btn ingest-help-toggle" aria-expanded="false" aria-controls="pg-ingest-help">Instructions</button>
+          </div>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <input id="pg-ingest-file" type="file" class="border rounded px-2 py-2 w-full text-sm" />
+            <div class="flex gap-2 flex-wrap mt-3">
+              <button id="pg-ingest-upload" class="btn btn-primary" data-loading="Uploading">Upload File</button>
+              <button id="pg-download-template" class="btn" title="Download CSV template">Template CSV</button>
+              <button id="pg-refresh-overview" class="btn" data-loading="Refreshing">Refresh Metrics</button>
+            </div>
+          </div>
+          <div class="h-64 border rounded overflow-auto text-sm bg-slate-50 p-2" id="pg-ingest-log"><pre class="m-0">// Upload a file to create a batch</pre></div>
+          <div id="ingestion-instructions" class="mt-4" style="display:none;">
+            <div id="pg-ingest-help" class="space-y-4 leading-relaxed" data-open="false">
+              <h3 class="font-semibold">Ingestion Preparation Instructions</h3>
+              <p>Minimum required columns: <code class="mono">system</code>, <code class="mono">term</code>. Optional: <code class="mono">code</code>, <code class="mono">suggested_icd_name</code>, <code class="mono">short_definition</code>, <code class="mono">long_definition</code>, <code class="mono">vernacular_term</code>.</p>
+              <ul class="list-disc pl-5 space-y-1">
+                <li><strong>system</strong> must be one of ayurveda|siddha|unani.</li>
+                <li>Leave <em>suggested_icd_name</em> blank to trigger AI inference (if enabled).</li>
+                <li>Large files: split into batches (≤ 5k rows) for UI responsiveness.</li>
+                <li>Encoding: UTF-8 only; remove stray BOMs or Excel artifacts.</li>
+              </ul>
+              <p class="text-slate-600">After upload, rows appear in <strong>Batches & Rows</strong>. Promote rows to convert them into curated mappings.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Batches & Rows (replaces ConceptMap Elements) -->
+      <section class="section-card">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-semibold text-lg text-slate-700">Batches & Rows</h2>
+          <div class="flex gap-2 items-center text-sm">
+            <button id="pg-load-batches" class="btn" data-loading="Loading">Load Batches</button>
+          </div>
+        </div>
+        <div class="grid gap-4" style="grid-template-rows: 200px 300px;">
+          <div class="border rounded overflow-auto" id="pg-batch-list" aria-label="Ingestion Batches"></div>
+          <div class="border rounded overflow-auto" id="pg-batch-rows" aria-label="Batch Rows"></div>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2 text-sm">
+          <button id="pg-bulk-promote" class="btn btn-primary" data-loading="Promoting" disabled>Bulk Promote</button>
+          <button id="pg-bulk-reject" class="btn btn-danger" data-loading="Rejecting" disabled>Bulk Reject</button>
+          <button id="pg-clear-selection" class="btn" disabled>Clear Selection</button>
+        </div>
+      </section>
+    </div>
+
+  <!-- Provenance Panel (unchanged) -->
+    <section class="section-card">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-semibold text-sm text-slate-700">Provenance (Latest Release Slice)</h2>
+        <div class="flex gap-2 items-center">
+          <input id="prov-icd" type="text" placeholder="ICD name..." class="border rounded px-2 py-1 text-xs" />
+          <button id="load-provenance" class="btn" data-loading="Loading">Fetch</button>
+        </div>
+      </div>
+      <div id="provenance-output" class="code-block text-[11px] whitespace-pre-wrap">// Select an ICD and click Fetch to view provenance.
+      </div>
+    </section>
+
+  <!-- FHIR Bundle Composer (stub unchanged) -->
+    <section class="section-card">
+      <h2 class="font-semibold text-sm text-slate-700 mb-3">FHIR Bundle Composer (Stub)</h2>
+      <div class="grid md:grid-cols-4 gap-4 text-xs">
+        <label class="flex items-center gap-2"><input type="checkbox" id="bundle-include-conceptmap" checked /> <span>Include ConceptMap</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" id="bundle-include-codesystems" checked /> <span>Include CodeSystems</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" id="bundle-include-valuesets" checked /> <span>Include ValueSets</span></label>
+        <label class="flex items-center gap-2"><input type="checkbox" id="bundle-include-provenance" /> <span>Include Provenance</span></label>
+      </div>
+      <div class="mt-3 flex gap-2 flex-wrap">
+        <button id="compose-bundle" class="btn btn-primary" data-loading="Composing">Compose Bundle</button>
+        <button id="send-bundle" class="btn" disabled title="Not wired yet">Send Bundle (Stub)</button>
+        <button id="download-bundle" class="btn" disabled>Download JSON</button>
+      </div>
+      <div id="bundle-output" class="code-block mt-4 text-[11px] whitespace-pre-wrap">// Compose to preview Bundle JSON here.</div>
+    </section>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="admin_nav.js"></script>
+  <script src="master_admin_playground.js"></script>
+  <div id="toast-host" aria-live="polite" aria-atomic="true"></div>
+</body>
+</html>

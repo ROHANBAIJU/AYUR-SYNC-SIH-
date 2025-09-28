@@ -81,85 +81,16 @@ class VerifyPayload(BaseModel):
     reason: str | None = None
 
 @router.post("/verify")
-def verify_mapping(payload: VerifyPayload, db: Session = Depends(get_db), user: Any = Depends(get_current_user)):
-    """Mark a mapping as verified and log audit.
+def verify_mapping(*_, **__):  # type: ignore
+    """Deprecated legacy endpoint: verification workflow removed.
 
-    Lookup precedence: code if provided else term.
+    Use ingestion upload + promote. Promotion now produces a 'verified' mapping directly.
     """
-    system = payload.system.lower()
-    icd_obj = db.query(ICD11Code).filter(ICD11Code.icd_name == payload.icd_name).first()
-    if not icd_obj:
-        raise HTTPException(404, "ICD name not found")
-    q = db.query(Mapping).join(TraditionalTerm).filter(
-        Mapping.icd11_code_id == icd_obj.id,
-        TraditionalTerm.system == system
-    )
-    if payload.code:
-        q = q.filter(TraditionalTerm.code == payload.code)
-    elif payload.term:
-        q = q.filter(TraditionalTerm.term == payload.term)
-    else:
-        raise HTTPException(400, "Provide code or term")
-    mapping = q.first()
-    if not mapping:
-        raise HTTPException(404, "Mapping term not found for system")
-    mapping.status = 'verified'
-    db.add(MappingAudit(mapping_id=mapping.id, action='verify', actor=getattr(user, 'username', 'admin'), reason=payload.reason))
-    try:
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(500, f"Failed to verify mapping: {e}")
-    return {"status": "success", "icd_name": payload.icd_name, "system": system, "code": payload.code, "term": payload.term}
+    raise HTTPException(status_code=410, detail="/api/admin/verify removed – use ingestion promotion (now auto-verified).")
 
 @router.post("/force-verify")
-def force_verify(payload: VerifyPayload, db: Session = Depends(get_db), user: Any = Depends(get_current_user)):
-    """Force-create (or upgrade) a mapping directly to verified.
-
-    Use this when the AI verify flow hasn't produced a DB row yet. If the ICD or term
-    does not exist they are created. Primary selection: first verified mapping per
-    ICD/system becomes primary, others become aliases.
-    """
-    system = payload.system.lower()
-    if not payload.term and not payload.code:
-        raise HTTPException(400, "Provide at least term or code")
-
-    icd = db.query(ICD11Code).filter(ICD11Code.icd_name == payload.icd_name).first()
-    if not icd:
-        icd = ICD11Code(icd_name=payload.icd_name, description="Created via force-verify")
-        db.add(icd); db.flush()
-
-    term_q = db.query(TraditionalTerm).filter(TraditionalTerm.system == system)
-    if payload.code:
-        term_q = term_q.filter(TraditionalTerm.code == payload.code)
-    else:
-        term_q = term_q.filter(TraditionalTerm.term == payload.term)
-    term_obj = term_q.first()
-    if not term_obj:
-        term_obj = TraditionalTerm(system=system, term=payload.term or payload.code, code=payload.code, source_description=payload.reason)
-        db.add(term_obj); db.flush()
-
-    mapping = db.query(Mapping).filter(Mapping.icd11_code_id == icd.id, Mapping.traditional_term_id == term_obj.id).first()
-    if not mapping:
-        mapping = Mapping(icd11_code_id=icd.id, traditional_term_id=term_obj.id)
-        db.add(mapping)
-
-    # Decide primary
-    existing_primary = db.query(Mapping).join(TraditionalTerm).filter(
-        Mapping.icd11_code_id == icd.id,
-        Mapping.status == 'verified',
-        Mapping.is_primary == True,
-        TraditionalTerm.system == system
-    ).first()
-    mapping.is_primary = existing_primary is None
-    mapping.status = 'verified'
-    db.flush()  # ensure mapping has id
-    db.add(MappingAudit(mapping_id=mapping.id, action='verify', actor=getattr(user,'username','admin'), reason=payload.reason or 'force'))
-    try:
-        db.commit()
-    except Exception as e:
-        db.rollback(); raise HTTPException(500, f"Failed to force verify: {e}")
-    return {"status":"success","icd_name":payload.icd_name,"system":system,"code":term_obj.code,"term":term_obj.term,"is_primary":mapping.is_primary}
+def force_verify(*_, **__):  # type: ignore
+    raise HTTPException(status_code=410, detail="/api/admin/force-verify deprecated – promotion path now auto-verifies.")
 
 @router.get("/debug/icd-mappings")
 def debug_icd_mappings(icd_name: str, db: Session = Depends(get_db)):
@@ -585,20 +516,6 @@ def get_gemini_verification(icd_name: str, mapping_data: Dict) -> Dict:
     except Exception as e:
         return {"justification": f"AI analysis failed: {e}", "confidence": 0}
 
-"""
-def run_reset_process():
-    files_to_clear = [f for f in os.listdir(DATA_PATH) if f.endswith('.csv')]
-    for f in files_to_clear:
-        try: os.remove(os.path.join(DATA_PATH, f))
-        except OSError as e: print(f"Error removing file {f}: {e}")
-    initialize_system()
-    try:
-        print("Starting AI mapping discovery...")
-        discover_ai_mappings()
-        print("AI mapping discovery finished.")
-    except Exception as e:
-        print(f"Failed to regenerate suggestions. Error: {e}")
-"""
 # FILE: app/api/endpoints/admin.py
 
 # In app/api/endpoints/admin.py
@@ -610,41 +527,6 @@ from app.db.models import Mapping, TraditionalTerm, ICD11Code
 # ... other imports ...
 
 # (Find and replace the old run_reset_process function with this)
-"""
-def run_reset_process():
-    
-    #DB-DRIVEN RESET: Wipes the relevant database tables and then runs the
-    #discover_ai_mappings script to repopulate them from scratch.
-    
-    db = SessionLocal()
-    try:
-        print("--- Initiating Database Reset ---")
-        
-        # 1. Delete existing data from tables in the correct order
-        print("Clearing Mappings table...")
-        db.query(Mapping).delete(synchronize_session=False)
-        
-        print("Clearing Traditional Terms table...")
-        db.query(TraditionalTerm).delete(synchronize_session=False)
-        
-        print("Clearing ICD-11 Codes table...")
-        db.query(ICD11Code).delete(synchronize_session=False)
-        
-        db.commit()
-        print("Database tables cleared successfully.")
-
-        # 2. Run the ingestion script to repopulate the database
-        print("Starting AI mapping discovery to repopulate database...")
-        discover_ai_mappings()  # This now writes directly to the DB
-        print("Database repopulation complete.")
-
-    except Exception as e:
-        print(f"An error occurred during the reset process: {e}")
-        db.rollback()
-    finally:
-        db.close()
-        
-"""
 # FILE: app/api/endpoints/admin.py
 
 # Replace the entire old run_reset_process function with this safer version.
@@ -669,100 +551,7 @@ def debug_statuses(db: Session = Depends(get_db)):
     print(f"-> Found statuses: {statuses}")
     
     return {"first_10_statuses_in_mappings_table": statuses}
-##(OGGGGG)
-"""
-def run_reset_process():
-    
-    #DB-DRIVEN RESET (SAFE VERSION): Wipes only the mappings and traditional terms,
-    #preserving the master ICD-11 code list. It then runs the discover_ai_mappings
-    #script to repopulate the necessary tables from scratch.
-    
-    db = SessionLocal()
-    try:
-        print("\n--- Initiating Curation Reset (Safe Mode) ---")
-        
-        # 1. Delete all existing mappings. This resets all curation progress.
-        print("Clearing Mappings table...")
-        mappings_deleted = db.query(Mapping).delete(synchronize_session=False)
-        print(f"-> {mappings_deleted} old mappings deleted.")
-        
-        # 2. Delete all existing traditional terms, as they will be re-discovered.
-        print("Clearing Traditional Terms table...")
-        terms_deleted = db.query(TraditionalTerm).delete(synchronize_session=False)
-        print(f"-> {terms_deleted} old traditional terms deleted.")
-        
-        # IMPORTANT: We are INTENTIONALLY NOT deleting from the ICD11Code table
-        # to preserve any manually added codes or verified descriptions.
-        
-        db.commit()
-        print("✅ Old curation data cleared successfully.")
-
-        # 3. Run the ingestion script to repopulate the database with fresh suggestions.
-        print("\nStarting AI mapping discovery to repopulate database...")
-        discover_ai_mappings()  # This re-creates terms and 'suggested' mappings.
-        print("✅ Database repopulation complete.")
-
-    except Exception as e:
-        print(f"❌ An error occurred during the reset process: {e}")
-        db.rollback()
-    finally:
-        db.close()
-
-"""
-# Add these imports at the top of the file if they aren't already there
-import os
-from scripts.discover_ai_mappings import discover_ai_mappings
-from scripts.load_suggestions_from_csv import load_suggestions, _resolve_csv_path  # <-- Use robust resolver
-
-# ... other code ...
-
-# (Find and replace the existing run_reset_process function with this)
-def run_reset_process():
-    """
-    DB-DRIVEN RESET (ENHANCED): Wipes mappings and terms, then repopulates them.
-    Tries to seed from a pre-generated CSV using the robust resolver; if none found,
-    falls back to running the original discovery script.
-    """
-    db = SessionLocal()
-    try:
-        print("\n--- Initiating Curation Reset (Safe Mode) ---")
-        
-        # 1. Delete all existing mappings.
-        print("Clearing Mappings table...")
-        mappings_deleted = db.query(Mapping).delete(synchronize_session=False)
-        print(f"-> {mappings_deleted} old mappings deleted.")
-        
-        # 2. Delete all existing traditional terms.
-        print("Clearing Traditional Terms table...")
-        terms_deleted = db.query(TraditionalTerm).delete(synchronize_session=False)
-        print(f"-> {terms_deleted} old traditional terms deleted.")
-        
-        db.commit()
-        print("✅ Old curation data cleared successfully.")
-
-        # 3. Prefer fast-path CSV loader if any known CSV exists.
-        csv_path = _resolve_csv_path()
-        if csv_path:
-            print(f"\n✅ Found suggestions CSV at: {csv_path}. Loading suggestions directly...")
-            load_suggestions()
-        else:
-            print("\nℹ️ No suggestions CSV found. Running AI mapping discovery script instead...")
-            discover_ai_mappings()
-            
-        print("✅ Database repopulation complete.")
-
-    except Exception as e:
-        print(f"❌ An error occurred during the reset process: {e}")
-        db.rollback()
-    finally:
-        db.close()
-
-
-
-        
-# --- Core API Endpoints ---
-# Add these two new endpoints to your admin.py file
-"""
+## Removed legacy commented run_reset_process variants
 @router.get("/all-icd-codes-for-search")
 def get_all_icd_codes_for_search(user: Any = Depends(get_current_user)):
     
@@ -792,16 +581,10 @@ def get_all_icd_codes_for_search(user: Any = Depends(get_current_user)):
             
     # Convert the set to a sorted list and return
     return sorted(list(all_icd_names))
-"""
-
-# In app/api/endpoints/admin.py
 
 @router.get("/all-icd-codes-for-search")
 def get_all_icd_codes_for_search(db: Session = Depends(get_db)):
-    """
-    DB-DRIVEN: Provides a comprehensive, unique, and sorted list of all ICD names
-    directly from the icd11_codes table for use in search dropdowns.
-    """
+    """DB-DRIVEN: Return sorted list of all ICD names (icd11_codes.icd_name)."""
     # This simple query gets all ICD names from the database
     all_codes_query = db.query(ICD11Code.icd_name).order_by(ICD11Code.icd_name).all()
     
@@ -811,10 +594,7 @@ def get_all_icd_codes_for_search(db: Session = Depends(get_db)):
 
 @router.get("/verified-icd-names")
 def get_verified_icd_names(db: Session = Depends(get_db)):
-    """
-    Returns a simple list of ICD-11 names which currently have at least one
-    verified mapping. Useful for indicating what can be translated/lookuped.
-    """
+    """List ICD names having at least one verified mapping."""
     rows = (
         db.query(ICD11Code.icd_name)
         .join(Mapping, ICD11Code.id == Mapping.icd11_code_id)
@@ -829,23 +609,6 @@ def get_verified_icd_names(db: Session = Depends(get_db)):
 
 
 """
-@router.post("/remap-rejected-term")
-def remap_rejected_term(payload: RemapPayload, user: Any = Depends(get_current_user)):
-    
-    #Intelligently remaps a rejected term, performs a new AI analysis on the new mapping,
-    # and then saves the enriched data.
-    
-    term_data = payload.rejected_term_data
-    dest_icd = payload.destination_icd_name
-    system = term_data.get("system")
-
-    # 1. Remove the term from the correction queue
-    correction_queue = read_csv_data(REJECTED_MAPPINGS_FILE)
-    updated_queue = [
-        item for item in correction_queue 
-        if not (item.get("term") == term_data.get("term") and item.get("code") == term_data.get("code"))
-    ]
-    write_csv_data(REJECTED_MAPPINGS_FILE, updated_queue, REJECTED_HEADERS)
 
     # 2. Clean up the term data to be re-inserted
     term_for_mapping = {
@@ -935,8 +698,6 @@ def remap_rejected_term(payload: RemapPayload, user: Any = Depends(get_current_u
 
 # In app/api/endpoints/admin.py
 
-
-
 # In app/api/endpoints/admin.py
 
 # In app/api/endpoints/admin.py
@@ -1020,10 +781,16 @@ def remap_rejected_term(payload: RemapPayload, db: Session = Depends(get_db)):
 # In app/api/endpoints/admin.py
 
 # In app/api/endpoints/admin.py
-"""
+
+# In app/api/endpoints/admin.py
+
+# In app/api/endpoints/admin.py
+
+# In app/api/endpoints/admin.py
+
 @router.post("/remap-rejected-term")
 def remap_rejected_term(payload: RemapPayload, db: Session = Depends(get_db)):
-    
+
     #DB-DRIVEN (DEFINITIVE REWRITE): A clean, robust version that correctly handles
     #all 4 specified remapping scenarios by updating mappings in place.
     
@@ -1111,13 +878,46 @@ def remap_rejected_term(payload: RemapPayload, db: Session = Depends(get_db)):
     
     db.commit()
     return {"status": "success", "message": f"Term '{term_data.get('term')}' successfully remapped."}
-"""
 
 
+## NOTE: Legacy /reset-curation endpoint removed (run_reset_process deprecated).
 @router.post("/reset-curation")
-def reset_curation(background_tasks: BackgroundTasks, user: Any = Depends(get_current_user)):
-    background_tasks.add_task(run_reset_process)
-    return { "status": "success", "message": "Curation reset initiated. The data will refresh automatically." }
+def reset_curation(db: Session = Depends(get_db), user: Any = Depends(get_current_user)):
+    """Lightweight curation reset.
+
+    Deletes all mappings, traditional terms, and ingestion staging (batches + rows)
+    while preserving the ICD11Code table. Safer than deep reset (which truncates ICDs).
+    Frontend should clear caches on success. Returns counts deleted.
+    """
+    try:
+        # Counts before
+        mapping_count = db.query(Mapping).count()
+        term_count = db.query(TraditionalTerm).count()
+        # Best-effort ingestion staging deletion (tables may not exist in older schema)
+        ib_count = ir_count = 0
+        try:
+            from app.db.models import IngestionBatch, IngestionRow
+            ib_count = db.query(IngestionBatch).count()
+            ir_count = db.query(IngestionRow).count()
+            db.query(IngestionRow).delete(synchronize_session=False)
+            db.query(IngestionBatch).delete(synchronize_session=False)
+        except Exception:
+            pass
+        db.query(Mapping).delete(synchronize_session=False)
+        db.query(TraditionalTerm).delete(synchronize_session=False)
+        db.commit()
+        return {
+            "status": "success",
+            "deleted": {
+                "mappings": mapping_count,
+                "traditional_terms": term_count,
+                "ingestion_batches": ib_count,
+                "ingestion_rows": ir_count
+            }
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(500, f"Reset failed: {e}")
     
 @router.get("/stats")
 def get_stats(db: Session = Depends(get_db)):
@@ -1127,6 +927,9 @@ def get_stats(db: Session = Depends(get_db)):
     - master_map: number of ICD codes that currently have at least one 'staged' mapping
     - rejected: total number of rejected mappings (correction + orphan)
     """
+    # Suppress heavy aggregation during deep reset to avoid deadlocks
+    if DEEP_RESET_STATUS.get("state") == "running":
+        return {"review":0, "master_map":0, "master_map_verified":0, "rejected":0}
     review_count = db.query(func.count(func.distinct(ICD11Code.id))) \
         .join(Mapping, ICD11Code.id == Mapping.icd11_code_id) \
         .filter(Mapping.status == 'suggested') \
@@ -1159,6 +962,8 @@ def get_completeness_stats(db: Session = Depends(get_db)):
     DB-DRIVEN: Computes how many suggested ICDs have suggestions from
     3 systems, 2 systems, or 1 system.
     """
+    if DEEP_RESET_STATUS.get("state") == "running":
+        return {"three_systems":0, "two_systems":0, "one_system":0}
     try:
         # Distinct (ICD, system) pairs for suggested mappings
         pairs = (
@@ -1192,49 +997,140 @@ def get_all_suggestions(db: Session = Depends(get_db)):
     groups them by ICD-11 code, and casts the JSON suggestions to strings
     to match the format expected by the frontend.
     """
-    term_json = func.json_build_object(
-        'term', TraditionalTerm.term,
-        'code', TraditionalTerm.code,
-        'justification', Mapping.ai_justification,
-        'confidence', Mapping.ai_confidence,
-        'source_description', TraditionalTerm.source_description,
-        'source_short_definition', TraditionalTerm.source_short_definition,
-        'source_long_definition', TraditionalTerm.source_long_definition,
-        'source_row', TraditionalTerm.source_row,
-        'devanagari', TraditionalTerm.devanagari,
-        'tamil', TraditionalTerm.tamil,
-        'arabic', TraditionalTerm.arabic
-    ).label('term_object')
+    if DEEP_RESET_STATUS.get("state") == "running":
+        return []
+    # Detect dialect: json_build_object & json_agg used below are PostgreSQL specific.
+    dialect = getattr(db.bind.dialect, 'name', 'unknown') if db.bind else 'unknown'
+    if dialect != 'sqlite':
+        # PostgreSQL (or any dialect that supports json_build_object/json_agg the same way)
+        # Include provenance fields (origin + ingestion_filename) so frontend can badge ingested suggestions
+        term_json = func.json_build_object(
+            'term', TraditionalTerm.term,
+            'code', TraditionalTerm.code,
+            'justification', Mapping.ai_justification,
+            'confidence', Mapping.ai_confidence,
+            'source_description', TraditionalTerm.source_description,
+            'source_short_definition', TraditionalTerm.source_short_definition,
+            'source_long_definition', TraditionalTerm.source_long_definition,
+            'source_row', TraditionalTerm.source_row,
+            'devanagari', TraditionalTerm.devanagari,
+            'tamil', TraditionalTerm.tamil,
+            'arabic', TraditionalTerm.arabic,
+            'origin', Mapping.origin,
+            'ingestion_filename', Mapping.ingestion_filename
+        ).label('term_object')
 
-    suggestions_query = (
+        suggestions_query = (
+            db.query(
+                ICD11Code.icd_name.label("suggested_icd_name"),
+                func.coalesce(
+                    cast(func.json_agg(term_json).filter(TraditionalTerm.system == 'ayurveda'), String),
+                    '[]'
+                ).label("ayurveda_suggestions"),
+                func.coalesce(
+                    cast(func.json_agg(term_json).filter(TraditionalTerm.system == 'siddha'), String),
+                    '[]'
+                ).label("siddha_suggestions"),
+                func.coalesce(
+                    cast(func.json_agg(term_json).filter(TraditionalTerm.system == 'unani'), String),
+                    '[]'
+                ).label("unani_suggestions"),
+            )
+            .join(Mapping, ICD11Code.id == Mapping.icd11_code_id)
+            .join(TraditionalTerm, Mapping.traditional_term_id == TraditionalTerm.id)
+            .filter(Mapping.status == 'suggested')
+            .group_by(ICD11Code.icd_name)
+            .all()
+        )
+        return [row._asdict() for row in suggestions_query]
+    # SQLite fallback path: emulate aggregation in Python.
+    import json as _json
+    rows = (
         db.query(
-            ICD11Code.icd_name.label("suggested_icd_name"),
-            
-            # --- THE FIX IS HERE: We cast the JSON array to a String ---
-            func.coalesce(
-                cast(func.json_agg(term_json).filter(TraditionalTerm.system == 'ayurveda'), String),
-                '[]'
-            ).label("ayurveda_suggestions"),
-            
-            func.coalesce(
-                cast(func.json_agg(term_json).filter(TraditionalTerm.system == 'siddha'), String),
-                '[]'
-            ).label("siddha_suggestions"),
-            
-            func.coalesce(
-                cast(func.json_agg(term_json).filter(TraditionalTerm.system == 'unani'), String),
-                '[]'
-            ).label("unani_suggestions")
-            # --- END OF FIX ---
+            ICD11Code.icd_name.label('icd_name'),
+            TraditionalTerm.system.label('system'),
+            TraditionalTerm.term,
+            TraditionalTerm.code,
+            Mapping.ai_justification,
+            Mapping.ai_confidence,
+            TraditionalTerm.source_description,
+            TraditionalTerm.source_short_definition,
+            TraditionalTerm.source_long_definition,
+            TraditionalTerm.source_row,
+            TraditionalTerm.devanagari,
+            TraditionalTerm.tamil,
+            TraditionalTerm.arabic,
+            Mapping.origin,
+            Mapping.ingestion_filename,
         )
         .join(Mapping, ICD11Code.id == Mapping.icd11_code_id)
         .join(TraditionalTerm, Mapping.traditional_term_id == TraditionalTerm.id)
         .filter(Mapping.status == 'suggested')
-        .group_by(ICD11Code.icd_name)
         .all()
     )
+    grouped: dict[str, dict[str, list[dict]]] = {}
+    for r in rows:
+        g = grouped.setdefault(r.icd_name, {'ayurveda': [], 'siddha': [], 'unani': []})
+        payload = {
+            'term': r.term,
+            'code': r.code,
+            'justification': r.ai_justification,
+            'confidence': r.ai_confidence,
+            'source_description': r.source_description,
+            'source_short_definition': r.source_short_definition,
+            'source_long_definition': r.source_long_definition,
+            'source_row': r.source_row,
+            'devanagari': r.devanagari,
+            'tamil': r.tamil,
+            'arabic': r.arabic,
+            'origin': r.origin,
+            'ingestion_filename': r.ingestion_filename,
+        }
+        if r.system in g:
+            g[r.system].append(payload)
+    out = []
+    for icd_name, systems in grouped.items():
+        out.append({
+            'suggested_icd_name': icd_name,
+            'ayurveda_suggestions': _json.dumps(systems['ayurveda'], ensure_ascii=False) if systems['ayurveda'] else '[]',
+            'siddha_suggestions': _json.dumps(systems['siddha'], ensure_ascii=False) if systems['siddha'] else '[]',
+            'unani_suggestions': _json.dumps(systems['unani'], ensure_ascii=False) if systems['unani'] else '[]',
+        })
+    return out
 
-    return [row._asdict() for row in suggestions_query]
+@router.get("/suggestions/metrics")
+def get_suggestions_metrics(db: Session = Depends(get_db)):
+    """Lightweight counts for New Suggestions badge.
+
+    Returns total distinct ICD names with suggested mappings and per-system counts.
+    Works with both Postgres and SQLite.
+    """
+    # Distinct ICD names
+    icd_rows = (
+        db.query(ICD11Code.icd_name)
+        .join(Mapping, ICD11Code.id == Mapping.icd11_code_id)
+        .filter(Mapping.status == 'suggested')
+        .distinct()
+        .all()
+    )
+    total_icds = len(icd_rows)
+    # Per system counts (distinct ICDs having at least one suggested mapping in that system)
+    system_counts: dict[str,int] = {"ayurveda":0, "siddha":0, "unani":0}
+    sys_query = (
+        db.query(ICD11Code.icd_name, TraditionalTerm.system)
+        .join(Mapping, ICD11Code.id == Mapping.icd11_code_id)
+        .join(TraditionalTerm, Mapping.traditional_term_id == TraditionalTerm.id)
+        .filter(Mapping.status == 'suggested')
+        .distinct()
+        .all()
+    )
+    per: dict[str,set] = {"ayurveda":set(), "siddha":set(), "unani":set()}
+    for icd_name, system in sys_query:
+        if system in per:
+            per[system].add(icd_name)
+    for k,v in per.items():
+        system_counts[k] = len(v)
+    return {"total_icds": total_icds, "per_system": system_counts, "generated_at": datetime.utcnow().isoformat()+"Z"}
 
 
 # FILE: admin.py
@@ -1616,9 +1512,11 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 @router.get("/master-map-data")
 def get_master_map_data(db: Session = Depends(get_db)):
-    """
-    DB-DRIVEN (FINAL CORRECTED VERSION): Correctly aggregates primary and alias
-    terms for the master map using robust JSON functions.
+    """Return only curated mappings (staged + verified) for the Master Map.
+
+    Newly promoted ingestion mappings now start as 'suggested' and are intentionally
+    excluded here until curators advance them. This preserves a clean separation
+    between REVIEW (suggested) and MASTER MAP (staged/verified) views.
     """
     term_json = func.jsonb_build_object(
         'term', TraditionalTerm.term, 'code', TraditionalTerm.code,
@@ -1661,7 +1559,8 @@ def get_master_map_data(db: Session = Depends(get_db)):
         )
         .join(Mapping, ICD11Code.id == Mapping.icd11_code_id)
         .join(TraditionalTerm, Mapping.traditional_term_id == TraditionalTerm.id)
-        .filter(Mapping.status.in_(['staged', 'verified']))
+    # Exclude 'suggested' so fresh promotions do not appear prematurely
+    .filter(Mapping.status.in_(['staged', 'verified']))
         .group_by(ICD11Code.icd_name)
         .order_by(ICD11Code.icd_name)
         .all()
@@ -1910,21 +1809,12 @@ def update_master_mapping(payload: MasterUpdatePayload, db: Session = Depends(ge
             icd11_code_id=icd_code_obj.id, 
             traditional_term_id=term_obj.id
         ).first()
-
         if not mapping_obj:
             mapping_obj = Mapping(
                 icd11_code_id=icd_code_obj.id,
                 traditional_term_id=term_obj.id
             )
             db.add(mapping_obj)
-        
-        # Ensure mapping status and primary flag are set correctly
-        mapping_obj.status = 'staged'
-        mapping_obj.is_primary = term_data.get('is_primary', False)
-        
-        # If this mapping was in our original list, remove it so we know it's been processed
-        if mapping_obj.id in existing_mappings_by_id:
-            del existing_mappings_by_id[mapping_obj.id]
 
     # 4. Any mappings left in 'existing_mappings_by_id' were deleted by the user in the editor
     for mapping_id_to_delete in existing_mappings_by_id:
@@ -2142,6 +2032,7 @@ def get_icd_master_list(user: Any = Depends(get_current_user)):
         if item.get("suggested_icd_name"):
             all_icd_names.add(item["suggested_icd_name"])
 
+    # 2. Read from the curated Master Map
     master_map_data = read_csv_data(CURATION_IN_PROGRESS_FILE)
     for item in master_map_data:
         if item.get("suggested_icd_name"):
@@ -2186,39 +2077,7 @@ def get_icd_master_list(user: Any = Depends(get_current_user)):
 
 """
 # In app/api/endpoints/admin.py
-"""
-@router.get("/icd-master-list")
-def get_icd_master_list(db: Session = Depends(get_db)):
-    
-    #DB-DRIVEN (EFFICIENT): Fetches all ICD-11 codes and dynamically determines their
-    #status ('Mapped' or 'Orphaned') using an efficient database query.
-
-    # Create a subquery to find all ICD code IDs that have at least one 'staged' mapping.
-    # These are considered 'Mapped'.
-    staged_icd_ids_subquery = (
-        db.query(Mapping.icd11_code_id)
-        .filter(Mapping.status == 'staged')
-        .distinct()
-        .subquery()
-    )
-
-    # The main query fetches all ICD codes. It uses a CASE statement to check
-    # if the code's ID is in our subquery of mapped IDs.
-    icd_list_query = db.query(
-        ICD11Code.icd_name,
-        ICD11Code.description,
-        case(
-            (ICD11Code.id.in_(staged_icd_ids_subquery), "Mapped"),
-            else_="Orphaned"
-        ).label("status")
-    ).order_by(ICD11Code.icd_name).all()
-
-    # The query result is a list of Row objects that FastAPI can directly serialize
-    return icd_list_query
-
-
-
-"""
+## Removed earlier DB-DRIVEN (EFFICIENT) variant of /icd-master-list to prevent duplicate route registration.
 
 # In app/api/endpoints/admin.py
 
@@ -2407,6 +2266,7 @@ def fetch_ai_description(payload: AIFetchPayload, user: Any = Depends(get_curren
         except Exception as e:
             last_err = e
             model = None
+            continue
     if not model:
         raise HTTPException(status_code=503, detail=f"All Gemini model fallbacks failed: {last_err}")
     prompt = f"""
@@ -2614,12 +2474,37 @@ def _deep_reset_job():
         _dr_log("[2/6] Truncating tables")
         truncate_sql = text(
             "TRUNCATE TABLE mapping_audit, concept_map_elements, concept_map_releases, "
-            "diagnosis_events, mappings, traditional_terms, icd11_codes RESTART IDENTITY CASCADE"
+            "diagnosis_events, ingestion_rows, ingestion_batches, mappings, traditional_terms, icd11_codes RESTART IDENTITY CASCADE"
         )
-        db.execute(truncate_sql)
-        db.commit()
+        deadlock_fallback_used = False
+        try:
+            try:
+                db.execute(text("SET lock_timeout TO '2000ms'"))
+            except Exception:
+                pass
+            db.execute(truncate_sql)
+            db.commit()
+        except Exception as e:
+            deadlock_fallback_used = True
+            db.rollback()
+            _dr_log(f"Truncate failed ({e}); attempting row-by-row DELETE fallback")
+            tables_delete_order = [
+                'mapping_audit', 'concept_map_elements', 'concept_map_releases',
+                'diagnosis_events', 'mappings', 'traditional_terms',
+                'ingestion_rows', 'ingestion_batches', 'icd11_codes'
+            ]
+            for t in tables_delete_order:
+                try:
+                    db.execute(text(f"DELETE FROM {t}"))
+                except Exception as de:
+                    _dr_log(f"DELETE {t} failed: {de}")
+            try:
+                db.commit()
+            except Exception as ce:
+                _dr_log(f"Commit after DELETE fallback failed: {ce}")
+        if deadlock_fallback_used:
+            _dr_log("Fallback delete strategy completed")
         _set_progress(2)
-
         # 2. Remove legacy CSV artifacts (best effort)
         _dr_log("[3/6] Removing legacy CSV artifacts")
         for legacy in [AI_SUGGESTIONS_FILE, CURATION_IN_PROGRESS_FILE, REJECTED_MAPPINGS_FILE,
@@ -2628,12 +2513,10 @@ def _deep_reset_job():
                 try: os.remove(legacy)
                 except OSError: pass
         _set_progress(3)
-
         # 3. Run discovery script to repopulate (ICDs, terms, mappings)
         _dr_log("[4/6] Running discovery script to repopulate database")
         discover_ai_mappings()
         _set_progress(4)
-
         # 4. Sanity checks
         _dr_log("[5/6] Performing sanity checks")
         icd_count = db.query(ICD11Code).count()
@@ -2643,7 +2526,6 @@ def _deep_reset_job():
             raise RuntimeError("Population validation failed (zero icd or mapping records)")
         _dr_log(f"Sanity OK: icd={icd_count}, terms={term_count}, mappings={mapping_count}")
         _set_progress(5)
-
         # 5. Completed
         _dr_log("[6/6] Deep reset completed successfully")
         _set_progress(6)

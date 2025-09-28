@@ -121,6 +121,43 @@ async function fetchSharedData() {
     }
 }
 
+// Lightweight toast system
+function showToast(message, type='info', timeout=4000){
+    let container = document.getElementById('toast-container');
+    if(!container){
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'fixed top-4 right-4 z-50 flex flex-col space-y-2';
+        document.body.appendChild(container);
+    }
+    const colors = {
+        info: 'bg-gray-800 text-white',
+        success: 'bg-green-600 text-white',
+        warn: 'bg-amber-500 text-white',
+        error: 'bg-red-600 text-white'
+    };
+    const div = document.createElement('div');
+    div.className = `shadow-lg px-4 py-2 rounded text-sm font-medium flex items-center ${colors[type]||colors.info} animate-fade-in`;
+    div.textContent = message;
+    container.appendChild(div);
+    setTimeout(()=>{div.classList.add('opacity-0'); setTimeout(()=>div.remove(),300);}, timeout);
+}
+window.showToast = showToast;
+
+// Cache bust: remove one suggestion entry from IndexedDB + in-memory caches
+async function invalidateSuggestion(icdName){
+    try{
+        const DB_NAME='NamasteICD_DB';
+        const SUGGESTIONS_STORE_NAME='suggestions_cache';
+        const db = await idb.openDB(DB_NAME,2);
+        await db.delete(SUGGESTIONS_STORE_NAME, icdName);
+        // Remove from in-memory caches
+        state.allSuggestionsCache = state.allSuggestionsCache.filter(r=>r.suggested_icd_name!==icdName);
+        state.filteredSuggestions = state.filteredSuggestions.filter(r=>r.suggested_icd_name!==icdName);
+    }catch(e){ console.warn('invalidateSuggestion failed', e); }
+}
+window.invalidateSuggestion = invalidateSuggestion;
+
 // --- COMMON FUNCTIONS ---
 
 function handleLogout() {
@@ -190,10 +227,13 @@ async function clearSuggestionsCache() {
         const db = await idb.openDB(DB_NAME, 2);
         await db.clear(SUGGESTIONS_STORE_NAME);
         console.log("... Suggestions cache cleared.");
+        try { localStorage.setItem('suggestionsInvalidate', String(Date.now())); } catch {}
     } catch (err) {
         console.error("Failed to clear IndexedDB cache:", err);
     }
 }
+// Expose a helper to invalidate after promotions without full clear (just bump timestamp)
+window.bumpSuggestionsInvalidate = function(){ try { localStorage.setItem('suggestionsInvalidate', String(Date.now())); } catch {} };
 
 function updateStats() {
     if (dom.statReview && state.stats) dom.statReview.textContent = state.stats.review ?? 0;
@@ -253,6 +293,9 @@ function openDeepResetModal(triggerBtn) {
 async function handleDeepReset(workingBtn, modal, triggerBtn) {
     toggleButtonLoading(workingBtn, true, 'Starting...');
     try {
+        // Proactively clear suggestions cache & mark reset start so New Suggestions page reloads fresh
+        try { await clearSuggestionsCache(); } catch {}
+        try { localStorage.setItem('curationResetAt', String(Date.now())); } catch {}
         const resp = await fetchAPI('/admin/deep-reset', 'POST');
         if (resp.status !== 'accepted') throw new Error('Unexpected response starting deep reset');
         alert('Deep reset started. Progress will appear at the bottom. You can keep browsing.');
@@ -271,7 +314,7 @@ function startDeepResetPolling(button) {
     (async function poll(){
         try {
             const data = await fetchAPI('/admin/deep-reset-status');
-            updateDeepResetStatus(statusBar, data);
+            await updateDeepResetStatus(statusBar, data);
             if (data.state === 'completed') {
                 if (button) { toggleButtonLoading(button, false, 'Overall Reset'); button.disabled = false; }
                 // Set completion toast flag and show toast
@@ -344,7 +387,7 @@ function ensureDeepResetStatusBar() {
     return bar;
 }
 
-function updateDeepResetStatus(bar, status) {
+async function updateDeepResetStatus(bar, status) {
     const progEl = document.getElementById('deep-reset-progress');
     const pct = Math.min(100, (status.progress || 0) * 100);
     if (progEl) progEl.style.width = `${pct}%`;
@@ -362,6 +405,8 @@ function updateDeepResetStatus(bar, status) {
     applyPhaseColor(phase.key);
     if (status.state === 'completed') {
         stepsEl.innerHTML += '<div class="text-green-700 font-semibold mt-1">DONE ✅</div>';
+        // Final cache bust to ensure any lingering cached suggestions are flushed
+        try { await clearSuggestionsCache(); } catch {}
     } else if (status.state === 'error') {
         stepsEl.innerHTML += `<div class=\"text-red-600 font-semibold mt-1\">ERROR: ${escapeHtml(status.error || 'Unknown')} <button id=\"deep-reset-retry\" class=\"ml-2 px-2 py-0.5 bg-red-600 text-white rounded text-[10px]\">Retry</button></div>`;
         const retryBtn = document.getElementById('deep-reset-retry');

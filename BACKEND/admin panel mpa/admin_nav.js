@@ -88,9 +88,11 @@
       {href:'rejections.html', label:'Rejected Mappings'},
       {href:'icd11.html', label:'ICD-11 Disease List'}
     ];
-    const inner = links.map(l =>
-      `<a href="${l.href}" class="tab-button whitespace-nowrap px-4 py-2 text-sm font-medium ${l.href===current?'tab-active text-gray-900':'text-gray-500 hover:text-gray-700'}">${l.label}</a>`
-    ).join('');
+    const inner = links.map(l => {
+      const base = `<span>${l.label}</span>`;
+      const withBadge = l.label==='New Suggestions' ? `<span class='relative inline-flex items-center'>${l.label}<span id='nav-suggestions-badge' class='ml-2 hidden text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700'>0</span></span>` : base;
+      return `<a href="${l.href}" class="tab-button whitespace-nowrap px-4 py-2 text-sm font-medium ${l.href===current?'tab-active text-gray-900':'text-gray-500 hover:text-gray-700'}">${withBadge}</a>`;
+    }).join('');
     // Include dark mode toggle on the right
     el.innerHTML = `
       <div class="max-w-7xl mx-auto px-4 md:px-6 mt-2 tab-surface rounded-lg shadow-sm border">
@@ -108,6 +110,26 @@
     const toggleBtn = document.getElementById('global-dark-toggle');
     if(toggleBtn) toggleBtn.addEventListener('click', toggleTheme);
     applyTheme();
+    // After nav built, fetch suggestions metrics to update badge
+    try {
+      const token = localStorage.getItem('accessToken');
+      if(token){
+        fetch(((window.API_BASE_URL)||'http://127.0.0.1:8000/api')+'/admin/suggestions/metrics', { headers:{ 'Authorization':'Bearer '+token }})
+          .then(r=> r.ok? r.json(): null)
+          .then(data=>{ if(!data) return; const badge=document.getElementById('nav-suggestions-badge'); if(badge){ badge.textContent = data.total_icds; badge.classList.remove('hidden'); }}).catch(()=>{});
+      }
+    } catch(_){ }
+    // Listen for invalidate events
+    window.addEventListener('storage', e=>{ if(e.key==='suggestionsInvalidate'){ refreshNavSuggestionsBadge(); }});
+  }
+
+  function refreshNavSuggestionsBadge(){
+    const badge=document.getElementById('nav-suggestions-badge'); if(!badge) return;
+    const token = localStorage.getItem('accessToken'); if(!token) return;
+    fetch(((window.API_BASE_URL)||'http://127.0.0.1:8000/api')+'/admin/suggestions/metrics', { headers:{ 'Authorization':'Bearer '+token }})
+      .then(r=> r.ok? r.json(): null)
+      .then(data=>{ if(!data) return; badge.textContent=data.total_icds; badge.classList.remove('hidden'); })
+      .catch(()=>{});
   }
 
   document.addEventListener('DOMContentLoaded', ()=>{ ensureStyle(); buildNav(); });

@@ -33,6 +33,10 @@ def main():
             conn.execute(text(
                 "ALTER TABLE icd11_codes ADD COLUMN IF NOT EXISTS tm2_code VARCHAR(50)"
             ))
+            # Background inference status column (ingestion_rows)
+            conn.execute(text(
+                "ALTER TABLE ingestion_rows ADD COLUMN IF NOT EXISTS inference_status VARCHAR(20)"
+            ))
             conn.execute(text(
                 "ALTER TABLE icd11_codes ADD COLUMN IF NOT EXISTS tm2_title TEXT"
             ))
@@ -46,10 +50,18 @@ def main():
             conn.execute(text(
                 "CREATE INDEX IF NOT EXISTS idx_diagnosis_events_geo ON diagnosis_events (latitude, longitude)"
             ))
+            # Provenance columns for mappings (added Sept 2024)
+            conn.execute(text(
+                "ALTER TABLE mappings ADD COLUMN IF NOT EXISTS origin VARCHAR(30)"
+            ))
+            conn.execute(text(
+                "ALTER TABLE mappings ADD COLUMN IF NOT EXISTS ingestion_filename VARCHAR(255)"
+            ))
             conn.commit()
             print("Ensured new columns on traditional_terms (source_short_definition, source_long_definition).")
             print("Ensured TM2 columns on icd11_codes (tm2_code, tm2_title, tm2_definition).")
             print("Ensured indexes on diagnosis_events (created_at, latitude/longitude).")
+            print("Ensured provenance columns on mappings (origin, ingestion_filename).")
         except Exception as e:
             print(f"Warning: Could not apply column migrations: {e}")
 

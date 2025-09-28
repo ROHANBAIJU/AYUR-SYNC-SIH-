@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     ENABLE_WHO_SYNC: bool = False  # background WHO sync scheduler
     WHO_SYNC_INTERVAL_MINUTES: int = 180  # every 3 hours by default
 
+    # Development flag sometimes present in environment on CI/dev hosts
+    DEV_MODE: bool | None = None
+
 
     class Config:
         case_sensitive = True

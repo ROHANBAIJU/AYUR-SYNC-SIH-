@@ -32,6 +32,11 @@ def create_tables():
     # This runs the command: python -m app.create_tables
     subprocess.run(["python", "-m", "app.create_tables"], check=False)
     print("[SETUP] create_tables finished.")
+    # Apply idempotent ingestion definitions migration
+    try:
+        subprocess.run(["python", "scripts/migrate_add_ingestion_definitions.py"], check=False)
+    except Exception as e:
+        print(f"[SETUP] WARNING: ingestion definitions migration failed: {e}")
 
 def run_ai_discovery():
     """Optionally runs the AI discovery script."""

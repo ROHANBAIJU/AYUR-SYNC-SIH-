@@ -10,7 +10,7 @@
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
+    crossorigin="anonymous"
   />
   <script
     src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -21,6 +21,104 @@
   <link rel="icon" href="image.png" type="image/png" />
   <style>
     .card { background:#fff; border:1px solid #e5e7eb; border-radius:0.5rem; }
+    /* Ingestion instructions enhancements */
+    #pg-ingest-help { transition:max-height .35s ease; overflow:hidden; }
+    .toggle-chevron { transition: transform .3s ease; }
+    .toggle-chevron[data-open="true"] { transform: rotate(180deg); }
+    #pg-ingest-mini-summary { z-index:60; }
+    body.dark-mode .card.ingest-card { background:#1e293b; border-color:#334155; }
+    body.dark-mode .ingest-card h3, body.dark-mode .ingest-card h4 { color:#f1f5f9; }
+    body.dark-mode .ingest-card p, body.dark-mode .ingest-card li { color:#cbd5e1; }
+    body.dark-mode #pg-ingest-mini-summary { background:#334155; color:#e2e8f0; border-color:#475569; }
+  /* Readability upgrades for embedded playground */
+  /* Reduced ~20% from previous values */
+  #master-admin-playground { --pg-base:12px; --pg-small:11.2px; --pg-xs:10.4px; line-height:1.4; font-size:var(--pg-base); }
+  #master-admin-playground h2 { font-size:1.28rem; line-height:1.2; }
+  #master-admin-playground h3 { font-size:0.96rem; }
+  /* Generic scaling: treat all tiny utility classes uniformly via attribute selectors */
+  #master-admin-playground .text-xs { font-size: var(--pg-xs); }
+  #master-admin-playground [class*="text-[9px]"] { font-size: var(--pg-xs) !important; }
+  #master-admin-playground [class*="text-[10px]"] { font-size: 10.6px !important; }
+  #master-admin-playground [class*="text-[11px]"] { font-size: 11.2px !important; }
+  #master-admin-playground p, #master-admin-playground li, #master-admin-playground input, #master-admin-playground select, #master-admin-playground button, #master-admin-playground label { font-size: var(--pg-small); }
+  #master-admin-playground table { font-size: 0.72rem; }
+  #master-admin-playground th { font-size: 0.58rem; letter-spacing:.05em; text-transform:uppercase; }
+  #master-admin-playground td { padding-top:5px; padding-bottom:5px; }
+  #master-admin-playground #pg-ingest-log pre, #master-admin-playground #pg-batch-rows pre { font-size:10.4px; }
+  #master-admin-playground .ingest-card code { font-size:10.4px; }
+  /* Improve input heights */
+  #master-admin-playground input, #master-admin-playground select, #master-admin-playground button { line-height:1.2; }
+  /* Make clickable areas slightly larger */
+  #master-admin-playground button { line-height:1.1; }
+  /* Dark mode compatibility overrides */
+  body.dark-mode #master-admin-playground table thead { background:#1e293b; }
+  /* Unified code panel styling (Provenance + Bundle Composer) */
+  .code-panel { background:#0f172a !important; color:#e2e8f0 !important; border:1px solid #1e293b; border-radius:0.5rem; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11px; line-height:1.35; padding:12px; }
+  .code-panel pre { margin:0; white-space:pre; overflow-x:auto; }
+  .code-panel::-webkit-scrollbar{ width:10px; }
+  .code-panel::-webkit-scrollbar-track{ background:#1e293b; }
+  .code-panel::-webkit-scrollbar-thumb{ background:#334155; border-radius:6px; }
+  .code-panel::-webkit-scrollbar-thumb:hover{ background:#475569; }
+  /* Lookup suggestion dropdown */
+  #lookup-suggest-box{ font-family: ui-sans-serif,system-ui,sans-serif; }
+  #lookup-suggest-box button{ font-size:11px; }
+  #api-search-wrap{ position:relative; }
+  #lookup-suggest-box{ position:absolute; left:0; top:100%; margin-top:4px; width:100%; background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; box-shadow:0 6px 18px -4px rgba(0,0,0,0.12),0 2px 4px rgba(0,0,0,0.06); overflow:auto; max-height:300px; padding:4px 0; backdrop-filter:blur(6px); }
+  #lookup-suggest-box:before{ content:""; position:absolute; top:-6px; left:20px; width:12px; height:12px; background:#fff; border:1px solid #e2e8f0; border-right:0; border-bottom:0; transform:rotate(45deg); box-shadow:-2px -2px 4px rgba(0,0,0,0.04); }
+  #lookup-suggest-box button{ display:flex; align-items:center; gap:6px; padding:6px 10px; line-height:1.2; border-radius:6px; transition:background .15s, color .15s; }
+  #lookup-suggest-box button .badge-kind{ font-size:9px; font-weight:600; letter-spacing:.5px; padding:2px 6px; border-radius:5px; }
+  #lookup-suggest-box button[data-kind="icd"] .badge-kind{ background:#4338ca; color:#fff; }
+  #lookup-suggest-box button[data-kind="traditional"] .badge-kind{ background:#475569; color:#fff; }
+  #lookup-suggest-box button[data-kind="snapshot"] .badge-kind{ background:#64748b; color:#fff; }
+  #lookup-suggest-box button[data-active="true"], #lookup-suggest-box button:hover{ background:#eef2ff; }
+  #lookup-suggest-box .primary-star{ color:#f59e0b; font-size:12px; line-height:1; }
+  #lookup-suggest-box .trail{ font-size:10px; color:#64748b; white-space:nowrap; }
+  #lookup-suggest-box .term-frag{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #lookup-suggest-box .snapshot-note{ font-style:italic; opacity:.7; }
+  /* Mapped diseases accordion */
+  /* Fixed-height outer wrapper (scrolls as a whole) */
+  #api-mapped-list{ height:430px; max-height:800px; display:flex; flex-direction:column; overflow:auto; position:relative; padding-right:4px; }
+  #api-mapped-list::-webkit-scrollbar{ width:8px; }
+  #api-mapped-list::-webkit-scrollbar-track{ background:transparent; }
+  #api-mapped-list::-webkit-scrollbar-thumb{ background:#cbd5e1; border-radius:20px; }
+  #api-mapped-list:hover::-webkit-scrollbar-thumb{ background:#94a3b8; }
+  /* Accordion itself just stacks items; no internal scroll */
+  .mapped-accordion{ display:flex; flex-direction:column; gap:6px; }
+  .mapped-item{ border:1px solid #e2e8f0; background:#ffffff; border-radius:10px; overflow:hidden; }
+  .mapped-header{ width:100%; display:flex; align-items:center; gap:8px; padding:8px 12px; background:#f8fafc; cursor:pointer; text-align:left; font-size:12px; font-weight:500; color:#1e293b; position:relative; }
+  .mapped-header:hover{ background:#f1f5f9; }
+  .mapped-header .chevron{ transition:transform .25s; font-size:10px; color:#475569; }
+  .mapped-header[aria-expanded="true"] .chevron{ transform:rotate(90deg); }
+  .mapped-header .icd-text{ flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mapped-header .sys-pill{ font-size:10px; line-height:1; padding:3px 6px; border-radius:999px; background:#e2e8f0; color:#334155; font-weight:600; display:inline-flex; align-items:center; gap:2px; }
+  .mapped-header .sys-pill.ayurveda{ background:#d1fae5; color:#065f46; }
+  .mapped-header .sys-pill.siddha{ background:#e0e7ff; color:#3730a3; }
+  .mapped-header .sys-pill.unani{ background:#fee2e2; color:#991b1b; }
+  .mapped-body{ background:#ffffff; border-top:1px solid #e2e8f0; overflow:hidden; max-height:0; padding:0 14px; transition:max-height .35s cubic-bezier(.4,0,.2,1), padding .25s ease, opacity .3s ease; opacity:0; }
+  /* When open: give it its own internal scroll if content taller than cap */
+  .mapped-body.open{ padding:10px 14px 12px; max-height:260px; opacity:1; overflow:auto; }
+  .mapped-body.open::-webkit-scrollbar{ width:6px; }
+  .mapped-body.open::-webkit-scrollbar-thumb{ background:#d1d5db; border-radius:10px; }
+  .mapped-body.open:hover::-webkit-scrollbar-thumb{ background:#9ca3af; }
+  /* smoother header focus ring */
+  .mapped-header:focus-visible{ outline:2px solid #6366f1; outline-offset:2px; }
+  /* animate chevron more gently */
+  .mapped-header .chevron{ transition:transform .25s ease; }
+  .sys-block{ margin-bottom:10px; }
+  .sys-block:last-child{ margin-bottom:0; }
+  .sys-title{ font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; color:#475569; display:flex; align-items:center; gap:6px; }
+  .sys-title .count-badge{ background:#eef2ff; color:#4338ca; font-size:10px; padding:2px 5px; border-radius:6px; font-weight:600; }
+  .primary-term{ font-size:12px; font-weight:500; color:#111827; margin-bottom:4px; }
+  .primary-term .primary-badge{ background:#fef3c7; color:#92400e; font-size:10px; padding:2px 5px; border-radius:6px; margin-left:6px; font-weight:600; }
+  .alias-chips{ display:flex; flex-wrap:wrap; gap:5px; }
+  .chip{ background:#f1f5f9; border:1px solid #e2e8f0; padding:3px 7px; border-radius:7px; font-size:11px; line-height:1.1; color:#1e293b; display:inline-flex; align-items:center; gap:4px; }
+  .chip .code{ font-size:10px; color:#64748b; }
+  .chip:hover{ background:#e2e8f0; }
+  .alias-badge{ background:#e0f2fe; color:#0369a1; font-size:9px; font-weight:600; padding:2px 4px; border-radius:4px; letter-spacing:.4px; }
+  .empty-alias{ font-size:11px; color:#94a3b8; font-style:italic; }
+  .mapped-filter-bar{ display:flex; gap:6px; align-items:center; margin-bottom:6px; }
+  .mapped-filter-bar input{ flex:1; font-size:11px; padding:6px 8px; border:1px solid #e2e8f0; border-radius:8px; }
+  .mapped-filter-bar input:focus{ outline:2px solid #6366f1; outline-offset:1px; }
   </style>
 </head>
 <body class="h-full">
@@ -113,29 +211,317 @@ GET /api/fhir/CodeSystem/$lookup?system=ayurveda&amp;code=AKK-12
             <div id="paths-table" class="text-sm flex-1 overflow-auto min-h-0 custom-scroll"></div>
         </div>
       </section>
+
+
+  <!-- Master Admin Playground (embedded, always visible) -->
+  <section class="card p-5" id="master-admin-playground">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-800">Master Admin Playground</h2>
+            <p class="text-xs text-slate-500">Snapshot lifecycle, ConceptMap elements, provenance & FHIR bundle composer (stub).</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button id="pg-refresh-overview" class="px-3 py-1.5 text-xs rounded bg-indigo-600 hover:bg-indigo-700 text-white" data-loading="Refreshing">Refresh Overview</button>
+            <button id="pg-rebuild-release" class="px-3 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-700 text-white" data-loading="Rebuilding">Rebuild Snapshot</button>
+            <button id="pg-export-conceptmap" class="px-3 py-1.5 text-xs rounded bg-slate-200 hover:bg-slate-300" data-loading="Exporting">Export ConceptMap</button>
+          </div>
+        </div>
+        <div id="pg-overview-metrics" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6"></div>
+        <!-- Swapped: Ingestion panel now appears FIRST instead of Releases/Elements -->
+        <div class="grid md:grid-cols-2 gap-6 mb-6" id="pg-ingestion-area">
+          <div class="border rounded p-3 bg-white">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-semibold text-sm">Ingestion (Option B)</h3>
+              <div class="flex gap-2 items-center text-[11px]">
+                <input id="pg-ingest-file" type="file" class="text-[11px]" />
+                <button id="pg-ingest-upload" class="text-xs px-2 py-1 border rounded hover:bg-gray-50" data-loading="Uploading">Upload</button>
+                <button id="pg-download-template" type="button" class="text-xs px-2 py-1 border rounded hover:bg-gray-50" title="Download sample CSV">Template</button>
+                <button id="pg-ingest-help-jump" type="button" class="w-6 h-6 flex items-center justify-center rounded-full border text-xs font-semibold text-indigo-600 hover:bg-indigo-50" title="Show ingestion instructions">?</button>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-600 mb-2">Upload CSV with columns: system,code,term,(optional) suggested_icd_name,short_definition,long_definition,vernacular_term</p>
+            <div class="h-60 border rounded overflow-auto text-[11px]" id="pg-ingest-log"><pre class="p-2 m-0">// Upload a file to create a batch</pre></div>
+          </div>
+          <div class="border rounded p-3 bg-white">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-semibold text-sm">Batches & Rows</h3>
+              <div class="flex gap-2 items-center text-[11px]">
+                <button id="pg-load-batches" class="text-xs px-2 py-1 border rounded hover:bg-gray-50" data-loading="Loading">Refresh</button>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3 h-72">
+              <div class="border rounded overflow-auto relative">
+                <div class="sticky top-0 bg-slate-100 text-[10px] px-2 py-1 font-semibold">Batches</div>
+                <ul id="pg-batch-list" class="text-[11px] divide-y"></ul>
+                <div id="pg-batch-empty" class="text-[10px] text-slate-500 p-2 hidden">No batches.</div>
+              </div>
+              <div class="border rounded overflow-auto relative">
+                <div class="sticky top-0 bg-slate-100 text-[10px] px-2 py-1 font-semibold flex flex-col gap-1">
+                  <div class="flex items-center justify-between"><span>Rows <span id="pg-batch-rows-meta" class="font-normal text-slate-500"></span></span>
+                    <div class="flex gap-1">
+                      <button id="pg-bulk-promote" class="px-2 py-0.5 border rounded text-[10px]" title="Promote selected">Promote</button>
+                      <button id="pg-bulk-reject" class="px-2 py-0.5 border rounded text-[10px]" title="Reject selected">Reject</button>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-5 gap-1 text-[9px]">
+                    <input id="pg-row-filter-q" placeholder="search term" class="border rounded px-1 py-0.5 col-span-2" />
+                    <select id="pg-row-filter-status" class="border rounded px-1 py-0.5">
+                      <option value="">status</option>
+                      <option value="pending">pending</option>
+                      <option value="promoted">promoted</option>
+                      <option value="rejected">rejected</option>
+                    </select>
+                    <select id="pg-row-filter-system" class="border rounded px-1 py-0.5">
+                      <option value="">sys</option>
+                      <option value="ayurveda">ayurveda</option>
+                      <option value="siddha">siddha</option>
+                      <option value="unani">unani</option>
+                    </select>
+                    <input id="pg-row-filter-minconf" type="number" min="0" max="100" placeholder="conf" class="border rounded px-1 py-0.5" />
+                  </div>
+                </div>
+                <table class="w-full text-[10px]"><thead class="bg-slate-50"><tr><th class="px-1 py-1"><input type="checkbox" id="pg-select-all-rows" /></th><th class="text-left px-2 py-1">System</th><th class="text-left px-2 py-1">Term</th><th class="text-left px-2 py-1">ICD</th><th class="px-2 py-1">Conf</th><th class="px-2 py-1">Actions</th></tr></thead><tbody id="pg-batch-rows"></tbody></table>
+                <div id="pg-batch-rows-empty" class="text-[10px] text-slate-500 p-2 hidden">Select a batch.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Ingestion Preparation Instructions (moved here directly under ingestion panels) -->
+        <div class="border rounded p-3 bg-white ingest-card" id="ingestion-instructions">
+          <div class="flex items-center justify-between mb-2 select-none">
+            <h3 class="font-semibold text-sm flex items-center gap-2">
+              <button id="pg-toggle-ingest-help" type="button" class="w-6 h-6 flex items-center justify-center rounded-full border bg-white hover:bg-gray-50" aria-expanded="false" aria-controls="pg-ingest-help">
+                <svg id="pg-toggle-chevron" class="toggle-chevron w-3 h-3" viewBox="0 0 20 20" fill="currentColor" data-open="false"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>
+              </button>
+              Ingestion Preparation Instructions
+            </h3>
+          </div>
+          <div id="pg-ingest-help" class="space-y-4 text-[11px] leading-relaxed" style="max-height:0; display:none;" data-open="false">
+            <p class="text-slate-600">Prepare a <strong>CSV / TSV / XLS / XLSX</strong> file with NAMASTE term suggestions. Only <code>system</code> and <code>term</code> are required; other fields speed review. Missing ICD names auto‑enrich with a placeholder.</p>
+            <div class="grid lg:grid-cols-3 gap-3">
+              <div class="border rounded p-2 bg-slate-50">
+                <h4 class="font-semibold mb-1 text-slate-700">Minimal</h4>
+                <ul class="list-disc pl-4 space-y-0.5">
+                  <li><code>system</code> (ayurveda|siddha|unani)</li>
+                  <li><code>term</code> (disease / concept)</li>
+                </ul>
+              </div>
+              <div class="border rounded p-2 bg-slate-50">
+                <h4 class="font-semibold mb-1 text-slate-700">Helpful</h4>
+                <ul class="list-disc pl-4 space-y-0.5">
+                  <li><code>code</code></li>
+                  <li><code>suggested_icd_name</code> / <code>icd_name</code></li>
+                  <li><code>icd_code</code></li>
+                  <li><code>short_definition</code></li>
+                  <li><code>long_definition</code></li>
+                  <li><code>vernacular_term</code></li>
+                </ul>
+              </div>
+              <div class="border rounded p-2 bg-slate-50">
+                <h4 class="font-semibold mb-1 text-slate-700">Header Aliases</h4>
+                <p><span class="font-medium">System:</span> system, namaste_system, traditional_system</p>
+                <p><span class="font-medium">Term:</span> term, namaste_term, namaste_disease_name, source_term</p>
+                <p><span class="font-medium">ICD Name:</span> suggested_icd_name, icd_name</p>
+                <p><span class="font-medium">ICD Code:</span> icd_code, who_icd_code</p>
+                <p><span class="font-medium">Short Definition:</span> short_definition</p>
+                <p><span class="font-medium">Long Definition:</span> long_definition</p>
+                <p><span class="font-medium">Vernacular:</span> vernacular_term</p>
+              </div>
+            </div>
+            <div class="grid lg:grid-cols-2 gap-3">
+              <div class="border rounded p-2">
+                <h4 class="font-semibold mb-1 text-slate-700">Enrichment Stub</h4>
+                <p>If <code>suggested_icd_name</code> missing: we create a placeholder from the term. Definitions and vernacular are preserved verbatim. Count surfaces as <code>enriched_rows</code>.</p>
+              </div>
+              <div class="border rounded p-2">
+                <h4 class="font-semibold mb-1 text-slate-700">Lifecycle</h4>
+                <ol class="list-decimal pl-4 space-y-0.5">
+                  <li>Upload → batch</li>
+                  <li>Promote → Mapping (suggested)</li>
+                  <li>Verify → verified (exposed to clinicians)</li>
+                </ol>
+                <p class="mt-1 text-slate-500">First promoted per ICD+system auto‑primary.</p>
+              </div>
+            </div>
+            <div class="border rounded p-2 bg-white">
+              <h4 class="font-semibold mb-1 text-slate-700">Example CSV</h4>
+<pre class="bg-slate-900 text-slate-100 p-2 rounded text-[10px] overflow-auto">system,code,term,suggested_icd_name,short_definition,long_definition,vernacular_term
+ayurveda,AY-12,Kapha Disorder,,,"Functional imbalance of Kapha dosha","Shleshma vriddhi",Kapha roga
+siddha,SD-44,Vatha Issue,Headache,,"Derangement of Vatham leading to pain","Vatha vali",Vatha rogam
+unani,UN-02,Balagham Condition,Chronic cough,,"Excess balgham with chronic productive cough","Balghami sue mizaj",Balgham marz</pre>
+              <p class="mt-1 text-slate-500">Row 1 enriched automatically.</p>
+            </div>
+            <div class="flex flex-wrap gap-2 text-[10px]">
+              <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200">Auto-enrich missing ICD</span>
+              <span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 border border-indigo-200">Auto-primary first promote</span>
+              <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">Inline icd_code retained</span>
+            </div>
+          </div>
+          <script>
+            (function(){
+              const toggleBtn = document.getElementById('pg-toggle-ingest-help');
+              const chevron = document.getElementById('pg-toggle-chevron');
+              const panel = document.getElementById('pg-ingest-help');
+              const mini = document.createElement('div');
+              mini.id='pg-ingest-mini-summary';
+              mini.className='fixed bottom-4 right-4 bg-white border rounded shadow-lg px-3 py-2 text-[11px] flex items-center gap-2 cursor-pointer hover:shadow-md';
+              // Removed floating mini summary element per request.
+              // mini.innerHTML='<span class="font-semibold">Ingestion</span><span class="text-slate-600">system + term required</span><span class="text-indigo-600 text-xs font-semibold">Open</span>';
+              // document.body.appendChild(mini);
+              function openPanel(scroll){
+                panel.style.display='block';
+                const h = panel.scrollHeight;
+                panel.style.maxHeight='0px';
+                requestAnimationFrame(()=>{ panel.style.maxHeight=h+'px'; });
+                panel.setAttribute('data-open','true');
+                chevron.setAttribute('data-open','true');
+                toggleBtn.setAttribute('aria-expanded','true');
+                // mini.style.display='none';
+                if(scroll){
+                  document.getElementById('ingestion-instructions').scrollIntoView({behavior:'smooth', block:'start'});
+                }
+              }
+              function closePanel(){
+                const h = panel.scrollHeight;
+                panel.style.maxHeight=h+'px';
+                requestAnimationFrame(()=>{ panel.style.maxHeight='0px'; });
+                panel.setAttribute('data-open','false');
+                chevron.setAttribute('data-open','false');
+                toggleBtn.setAttribute('aria-expanded','false');
+                setTimeout(()=>{ if(panel.getAttribute('data-open')==='false') panel.style.display='none'; }, 400);
+                // mini.style.display='flex';
+              }
+              function toggle(){
+                if(panel.getAttribute('data-open')==='true'){ closePanel(); } else { openPanel(false); }
+              }
+              if(toggleBtn && panel){ toggleBtn.addEventListener('click', toggle); }
+              // mini.addEventListener('click', ()=> openPanel(true));
+              const jump=document.getElementById('pg-ingest-help-jump');
+              if(jump){ jump.addEventListener('click', ()=> openPanel(true)); }
+            })();
+          </script>
+        </div>
+        <!-- End Ingestion Instructions -->
+        <div class="grid md:grid-cols-2 gap-6 mb-6">
+          <div class="border rounded p-3 bg-white flex flex-col h-[520px]">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-semibold text-sm">Provenance (slice)</h3>
+              <div class="flex gap-2 items-center">
+                <input id="pg-prov-icd" type="text" placeholder="ICD name" class="border rounded px-2 py-1 text-xs" />
+                <button id="pg-load-provenance" class="text-xs px-2 py-1 border rounded hover:bg-gray-50" data-loading="Loading">Fetch</button>
+              </div>
+            </div>
+            <div id="pg-provenance-output" class="code-panel flex-1 min-h-0 overflow-auto mt-3"><pre>// Enter an ICD name and fetch.</pre></div>
+          </div>
+          <div class="border rounded p-3 bg-white flex flex-col h-[520px]">
+            <h3 class="font-semibold text-sm mb-2">FHIR Bundle Composer (Stub)</h3>
+            <div class="grid grid-cols-2 gap-2 text-[11px] mb-2">
+              <label class="flex items-center gap-2"><input type="checkbox" id="pg-bundle-cm" checked /> ConceptMap</label>
+              <label class="flex items-center gap-2"><input type="checkbox" id="pg-bundle-cs" checked /> CodeSystems</label>
+              <label class="flex items-center gap-2"><input type="checkbox" id="pg-bundle-vs" checked /> ValueSets</label>
+              <label class="flex items-center gap-2"><input type="checkbox" id="pg-bundle-prov" /> Provenance</label>
+            </div>
+            <div class="flex flex-wrap gap-2 mb-2">
+              <button id="pg-compose-bundle" class="text-xs px-2 py-1 rounded bg-indigo-600 text-white" data-loading="Composing">Compose</button>
+              <button id="pg-download-bundle" class="text-xs px-2 py-1 rounded bg-slate-600 text-white" disabled>Download JSON</button>
+              <button id="pg-send-bundle" class="text-xs px-2 py-1 rounded bg-slate-200" disabled title="Not wired">Send (Stub)</button>
+            </div>
+            <div id="pg-bundle-output" class="code-panel flex-1 min-h-0 overflow-auto"><pre>// Compose to view bundle preview</pre></div>
+          </div>
+        </div>
+        <div class="grid md:grid-cols-2 gap-6 mb-6">
+          <div class="border rounded p-3 bg-white">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-semibold text-sm">Release Diff</h3>
+              <div class="flex gap-2 items-center text-[11px]">
+                <input id="pg-diff-from" class="border rounded px-1 py-0.5 w-28" placeholder="from ver" />
+                <input id="pg-diff-to" class="border rounded px-1 py-0.5 w-28" placeholder="to ver" />
+                <button id="pg-run-diff" class="text-xs px-2 py-1 border rounded hover:bg-gray-50" data-loading="Diffing">Run</button>
+              </div>
+            </div>
+            <div class="text-[11px] text-slate-600 mb-2">If 'from' empty the server picks the previous release automatically.</div>
+            <div class="grid grid-cols-3 gap-2 mb-2 text-center">
+              <div class="p-2 bg-slate-50 rounded border"><div class="text-[10px] uppercase tracking-wide">Added</div><div id="pg-diff-added-count" class="font-semibold text-sm">0</div></div>
+              <div class="p-2 bg-slate-50 rounded border"><div class="text-[10px] uppercase tracking-wide">Removed</div><div id="pg-diff-removed-count" class="font-semibold text-sm">0</div></div>
+              <div class="p-2 bg-slate-50 rounded border"><div class="text-[10px] uppercase tracking-wide">Changed</div><div id="pg-diff-changed-count" class="font-semibold text-sm">0</div></div>
+            </div>
+            <div class="h-60 border rounded overflow-auto text-[10px]" id="pg-diff-output"><pre class="p-2 m-0">// Run diff to view changes</pre></div>
+          </div>
+          <!-- ConceptMap Elements moved here next to Release Diff -->
+          <div class="border rounded p-3 bg-white">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-semibold text-sm">ConceptMap Elements <span id="pg-elements-count" class="font-normal text-slate-500"></span></h3>
+              <div class="flex gap-2 items-center">
+                <input id="pg-filter-icd" type="text" placeholder="ICD filter" class="border rounded px-2 py-1 text-xs" />
+                <button id="pg-load-elements" class="text-xs px-2 py-1 border rounded hover:bg-gray-50" data-loading="Loading">Load</button>
+              </div>
+            </div>
+            <div class="border rounded h-60 overflow-auto">
+              <table class="w-full text-xs">
+                <thead class="bg-slate-100 sticky top-0">
+                  <tr class="text-left">
+                    <th class="py-1 px-2 w-40">ICD</th>
+                    <th class="py-1 px-2 w-20">Code</th>
+                    <th class="py-1 px-2 w-20">System</th>
+                    <th class="py-1 px-2">Term</th>
+                    <th class="py-1 px-2 w-12">P</th>
+                  </tr>
+                </thead>
+                <tbody id="pg-elements-rows"></tbody>
+              </table>
+              <div id="pg-elements-empty" class="text-[11px] text-slate-500 py-2 px-2 hidden">No elements.</div>
+            </div>
+          </div>
+        </div>
+        <!-- Releases & ConceptMap Elements moved DOWN here after swap -->
+        <div class="grid md:grid-cols-1 gap-6 mb-6">
+          <div class="border rounded p-3 bg-white">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="font-semibold text-sm">Releases</h3>
+              <button id="pg-load-releases" class="text-xs px-2 py-1 border rounded hover:bg-gray-50" data-loading="Loading">Load</button>
+            </div>
+            <div class="border rounded h-60 overflow-auto">
+              <table class="w-full text-xs">
+                <thead class="bg-slate-100 sticky top-0">
+                  <tr class="text-left">
+                    <th class="py-1 px-2">Version</th>
+                    <th class="py-1 px-2">Elements</th>
+                    <th class="py-1 px-2">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="pg-release-rows"></tbody>
+              </table>
+              <div id="pg-release-empty" class="text-[11px] text-slate-500 py-2 px-2 hidden">No releases.</div>
+            </div>
+          </div>
+        </div>
+        
+      </section>
       <!-- After Integration Test Area -->
       <section class="card p-4">
         <h3 class="font-semibold mb-3">After Integration Test Area</h3>
         <p class="text-sm text-gray-700 mb-3">Use scenario-style checks to mimic real flows as the integrated frontend would. These run common lookups/translations and show rendered responses.</p>
-        <div class="flex flex-wrap gap-2 mb-3">
-          <button id="scenario-lookup-dengue" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm">Run: Lookup Dengue</button>
-          <button id="scenario-translate-sample" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm">Run: Translate sample NAMASTE code</button>
-        </div>
+        <!-- Scenario quick-run buttons removed per request -->
         <!-- Lookup + Translate helpers and Mapped list relocated here -->
         <div class="mt-2 grid grid-cols-1 lg:grid-cols-3 gap-4">
           <!-- Left: Search + Translate -->
           <div class="lg:col-span-2">
             <div class="mb-2">
               <label class="block text-sm font-medium text-gray-700 mb-1">Lookup</label>
-              <div class="flex gap-2">
-                <input id="api-search" class="flex-1 border rounded p-2" placeholder="Search ICD11 or TM terms/codes (e.g., Dengue, AKK-12)" />
-                <button id="api-search-btn" class="bg-indigo-600 text-white rounded px-3">Search</button>
+              <div id="api-search-wrap" class="flex gap-2">
+                <input id="api-search" class="flex-1 border rounded p-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="Search ICD11 or TM terms/codes (e.g., Dengue, AKK-12)" autocomplete="off" />
+                <button id="api-search-btn" class="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 transition text-white rounded px-3">Search</button>
               </div>
             </div>
-            <div id="api-lookup-results" class="text-xs text-gray-700 bg-gray-50 border rounded p-2 max-h-40 overflow-auto"></div>
             <div class="mt-3">
-              <p class="text-sm font-medium text-gray-800">Translate output</p>
-              <pre id="api-translate-output" class="mt-1 bg-gray-50 border rounded p-2 overflow-auto max-h-64 text-xs"></pre>
+              <div class="flex items-center justify-between">
+                <p class="text-sm font-medium text-gray-800 m-0">Translate output</p>
+                <div class="flex gap-2">
+                  <button id="api-translate-clear" class="text-xs px-2 py-1 border rounded hover:bg-gray-50" title="Clear translation output">Clear</button>
+                </div>
+              </div>
+              <!-- Dark code panel styling to match Provenance / Bundle outputs -->
+              <div class="code-panel mt-2 h-64 overflow-auto" id="api-translate-output-wrapper"><pre id="api-translate-output">// Translation output will appear here</pre></div>
             </div>
           </div>
 
@@ -151,7 +537,7 @@ GET /api/fhir/CodeSystem/$lookup?system=ayurveda&amp;code=AKK-12
                 <option value="unani">Unani</option>
               </select>
             </div>
-            <div id="api-mapped-list" class="bg-white border rounded p-2 max-h-80 overflow-auto text-sm"></div>
+            <div id="api-mapped-list" class="bg-white border rounded p-2 text-sm"></div>
           </div>
         </div>
         <pre id="integration-output" class="mt-2 bg-gray-50 border rounded p-2 overflow-auto max-h-64 text-xs"></pre>
@@ -213,5 +599,6 @@ GET /api/fhir/CodeSystem/$lookup?system=ayurveda&amp;code=AKK-12
   <script src="admin_nav.js"></script>
   <script src="shared.js"></script>
   <script src="analytics.js"></script>
+  <script src="playground_embed.js"></script>
 </body>
 </html>

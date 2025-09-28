@@ -102,7 +102,7 @@ function updateIcdTable() {
         <tr class="text-sm">
             <td class="table-cell font-semibold">${item.icd_name}</td>
             <td class="table-cell text-gray-800">${item.icd_code || ''}</td>
-            <td class="table-cell text-gray-600">${item.description}</td>
+            <td class="table-cell text-gray-600">${item.description || ''}</td>
             <td class="table-cell text-center"><span class="px-2 py-1 text-xs font-medium rounded-full ${item.status === 'Orphaned' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}">${item.status}</span></td>
         </tr>
     `).join('');

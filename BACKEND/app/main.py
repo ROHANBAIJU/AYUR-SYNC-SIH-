@@ -50,6 +50,9 @@ print(f"[CORS] Final allowed origins: {origins}")
 # Provide a regex via env var ALLOW_ORIGIN_REGEX, e.g.:
 #   ^https://[a-z0-9-]+--ayur-sync-admin-panel\.netlify\.app$
 allow_origin_regex = os.getenv("ALLOW_ORIGIN_REGEX")
+# If no explicit regex provided, allow any localhost/127.* port to simplify dev (e.g., Live Server random ports)
+if not allow_origin_regex:
+    allow_origin_regex = r"^http://(127\\.0\\.0\\.1|localhost):\\d+$"
 
 app.add_middleware(
     CORSMiddleware,

@@ -48,6 +48,9 @@ class Mapping(Base):
     ai_justification = Column(Text)
     ai_confidence = Column(Integer)
     curated_at = Column(TIMESTAMP(timezone=True))
+    # New provenance fields
+    origin = Column(String(30))  # ingestion|ai_discovery|manual|remap
+    ingestion_filename = Column(String(255))  # filename of source batch if origin=ingestion
     
     icd11_code = relationship("ICD11Code", back_populates="mappings")
     traditional_term = relationship("TraditionalTerm", back_populates="mappings")
@@ -138,4 +141,37 @@ class ExternalCodeLink(Base):
     source_code = Column(String(100), nullable=False, index=True)
     external_code = Column(String(100), nullable=False)
     display = Column(String(255))
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+# --- Option B: Ingestion staging (lightweight) ---
+class IngestionBatch(Base):
+    """Represents an uploaded raw suggestions file pending processing/curation."""
+    __tablename__ = 'ingestion_batches'
+    id = Column(Integer, primary_key=True)
+    filename = Column(String(255), nullable=False)
+    status = Column(String(30), nullable=False, server_default='uploaded')  # uploaded|parsed|error|applied
+    total_rows = Column(Integer, nullable=False, server_default='0')
+    processed_rows = Column(Integer, nullable=False, server_default='0')
+    error = Column(Text)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+class IngestionRow(Base):
+    """Row-level staging extracted from an uploaded CSV/XLS prior to AI enrichment or curator approval."""
+    __tablename__ = 'ingestion_rows'
+    id = Column(Integer, primary_key=True)
+    batch_id = Column(Integer, ForeignKey('ingestion_batches.id', ondelete='CASCADE'), index=True, nullable=False)
+    system = Column(String(50), nullable=False)
+    source_code = Column(String(100))
+    source_term = Column(String(255), nullable=False)
+    raw_payload = Column(Text)  # JSON-serialized original row
+    suggested_icd_name = Column(String(255))
+    ai_confidence = Column(Integer)
+    ai_justification = Column(Text)
+    # New structured supplemental fields taken directly from ingestion file
+    short_definition = Column(Text)
+    long_definition = Column(Text)
+    vernacular_term = Column(Text)
+    status = Column(String(30), nullable=False, server_default='pending')  # pending|promoted|rejected
+    # Background inference lifecycle: null (not scheduled), 'queued', 'running', 'done', 'error'
+    inference_status = Column(String(20))
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())

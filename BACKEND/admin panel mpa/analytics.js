@@ -24,13 +24,15 @@
   const tsRefreshBtn = qs('ts-refresh');
 
   // Integration helpers
-  const integOutput = qs('integration-output');
-  const scenarioLookupBtn = qs('scenario-lookup-dengue');
-  const scenarioTranslateBtn = qs('scenario-translate-sample');
+  const integOutput = qs('integration-output'); // scenario quick buttons removed
   const apiSearchInp = qs('api-search');
   const apiSearchBtn = qs('api-search-btn');
-  const apiLookupResults = qs('api-lookup-results');
+  // Removed standalone api-lookup-results container; reuse suggestion dropdown (#lookup-suggest-box)
+  const apiLookupResults = null;
+  // Dynamic suggestion dropdown container (created lazily)
+  let suggestBox = null; let suggestActiveIndex = -1; let suggestItems = []; let suggestLastValue = ''; let suggestDebounceTimer = null;
   const apiTranslateOutput = qs('api-translate-output');
+  const apiTranslateClearBtn = qs('api-translate-clear');
   const apiMappedList = qs('api-mapped-list');
   const mappedFilterSel = qs('mapped-filter');
   const logoutBtn = qs('logout-button');
@@ -150,16 +152,33 @@
   function renderDetails(data){ const { total=0, topDiagnoses=[], doctors=[] } = data||{}; const topList = topDiagnoses.map(t=>`<li class='flex justify-between'><span>${t.name}</span><span class='text-gray-600'>${t.count}</span></li>`).join(''); const docList = doctors.map(d=>{ const evs=(d.events||[]).slice(0,10).map(e=>`<li class='border-b py-1'><div class='text-sm font-medium'>${e.icd_name}</div><div class='text-xs text-gray-600'>${e.system}${e.code?' • '+e.code:''}${e.term_name?' • '+e.term_name:''}</div><div class='text-[11px] text-gray-500'>${e.city||''}${e.state?', '+e.state:''} • ${e.ts||''}</div></li>`).join(''); return `<div class='mb-3'><div class='font-semibold'>Doctor: ${d.doctor_id}</div><ul class='mt-1'>${evs}</ul></div>`; }).join(''); mapDetails.innerHTML = `<div class='text-sm'><div class='mb-2'><b>${total}</b> events in this area</div><div class='mb-2'>Top diagnoses:</div><ul class='mb-3 space-y-1'>${topList}</ul><div class='mb-1 font-semibold'>Doctors</div><div>${docList || '<div class="text-gray-500">No doctor info available.</div>'}</div></div>`; }
 
   // Scenarios
-  scenarioLookupBtn?.addEventListener('click', async ()=>{ try{ const d=await fetchPublic('/api/public/lookup?query=Dengue'); integOutput.textContent=JSON.stringify(d,null,2);}catch(e){ integOutput.textContent=String(e);} });
-  scenarioTranslateBtn?.addEventListener('click', async ()=>{ try{ const d=await fetchPublic('/api/public/translate?system=ayurveda&code=AKK-12&target=icd11'); integOutput.textContent=JSON.stringify(d,null,2);}catch(e){ integOutput.textContent=String(e);} });
+  // Removed scenario quick-run event listeners
 
   // Lookup helpers
   async function renderLookup(q, opts={}){
     const { fallbackTranslate=false } = opts;
-    apiLookupResults.innerHTML='<div class="text-gray-500">Searching…</div>';
+    // We no longer display lookup results in any dropdown – clear existing suggestions
+    clearSuggest();
     try{
       const data = await fetchPublic(`/api/public/lookup?query=${encodeURIComponent(q)}`);
-      let items=[]; (data||[]).forEach(g=>{ const icdName=g.icd_name||g.icdName||'Unknown'; items.push(`<div class="py-1"><button class="text-indigo-700 hover:underline" data-icd-name="${icdName}">${icdName}</button></div>`); ['ayurveda','siddha','unani'].forEach(sys=>{ const section=g[sys]||{}; const primary= section.primary? [section.primary]:[]; const aliases= Array.isArray(section.aliases)? section.aliases:[]; [...primary,...aliases].forEach(t=>{ if(!t) return; const code=t.code||''; const label=`${sys.toUpperCase()} • ${t.term||''}${code?' • '+code:''}`; items.push(`<div class="pl-3 text-[12px]"><button class="text-gray-700 hover:underline" data-sys="${sys}" data-code="${code}">${label}</button></div>`); }); }); });
+      let items=[]; (data||[]).forEach(g=>{
+        const icdName=g.icd_name||g.icdName||'Unknown';
+        // New shape support: g.system_mappings = [{system, primary_term, aliases:[]}]
+        if(Array.isArray(g.system_mappings)){
+          g.system_mappings.forEach(sm=>{
+            const sys = sm.system;
+            if(sm.primary_term){
+              const pt = sm.primary_term; const code=pt.code||''; const label=`${sys.toUpperCase()} • ${pt.term||''}${code?' • '+code:''}`;
+              items.push(`<div class="py-0.5"><button class="text-gray-800 hover:underline text-[12px]" data-sys="${sys}" data-code="${code}">${label}</button></div>`);
+            }
+            (sm.aliases||[]).forEach(al=>{ if(!al) return; const code=al.code||''; const label=`${sys.toUpperCase()} • ${al.term||''}${code?' • '+code:''}`; items.push(`<div class="pl-4 py-0.5"><button class="text-gray-600 hover:underline text-[11px]" data-sys="${sys}" data-code="${code}">${label}</button></div>`); });
+          });
+        } else {
+          // Legacy shape fallback
+            ['ayurveda','siddha','unani'].forEach(sys=>{ const section=g[sys]||{}; const primary= section.primary? [section.primary]:[]; const aliases= Array.isArray(section.aliases)? section.aliases:[]; [...primary,...aliases].forEach(t=>{ if(!t) return; const code=t.code||''; const label=`${sys.toUpperCase()} • ${t.term||''}${code?' • '+code:''}`; items.push(`<div class="py-0.5"><button class="text-gray-700 hover:underline text-[12px]" data-sys="${sys}" data-code="${code}">${label}</button></div>`); }); });
+        }
+        // We intentionally removed the top-level ICD anchor row per request.
+      });
 
       // If lookup endpoint returned nothing, fallback to mapping-search (same as Guided Test Step 2)
       if(items.length===0){
@@ -184,32 +203,218 @@
       }
 
       if(items.length===0){
-        apiLookupResults.innerHTML = '<div class="text-gray-500">No results</div>';
         if(fallbackTranslate){
           apiTranslateOutput.textContent = 'Lookup empty – attempting direct translation…';
           await runTranslateByIcd(q);
         }
       } else {
-        apiLookupResults.innerHTML = items.join('');
+        // Intentionally do nothing (user requested removal of results container). Could optionally log.
       }
-    }catch(e){ apiLookupResults.innerHTML=`<div class="text-red-600 text-xs">${String(e)}</div>`; if(fallbackTranslate){ apiTranslateOutput.textContent='Lookup failed – attempting direct translation…'; try{ await runTranslateByIcd(q);}catch(_){ /* ignore */ } } }
+    }catch(e){
+      // Silent UI: surface error only in translate output if fallback enabled
+      if(fallbackTranslate){
+        apiTranslateOutput.textContent='Lookup failed – attempting direct translation…';
+        try{ await runTranslateByIcd(q);}catch(_){ /* ignore */ }
+      }
+    }
   }
   async function runTranslateByIcd(name){ apiTranslateOutput.textContent='Translating…'; try{ const d=await fetchPublic(`/api/public/translate?icd_name=${encodeURIComponent(name)}`); apiTranslateOutput.textContent=JSON.stringify(d,null,2);}catch(e){ apiTranslateOutput.textContent=String(e);} }
   async function runTranslateByTerm(system, code){ apiTranslateOutput.textContent='Translating…'; try{ const d=await fetchPublic(`/api/public/translate?system=${encodeURIComponent(system)}&code=${encodeURIComponent(code)}&target=icd11`); apiTranslateOutput.textContent=JSON.stringify(d,null,2);}catch(e){ apiTranslateOutput.textContent=String(e);} }
   apiSearchBtn?.addEventListener('click', ()=>{ const q=apiSearchInp.value.trim(); if(q) renderLookup(q); });
   apiSearchInp?.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); apiSearchBtn.click(); } });
+  // Clear translation output
+  apiTranslateClearBtn?.addEventListener('click', ()=>{ if(apiTranslateOutput){ apiTranslateOutput.textContent='// Translation output will appear here'; } });
+  // Typeahead suggestion logic using /lookup/suggest
+  function ensureSuggestBox(){ if(suggestBox) return; const wrap = document.getElementById('api-search-wrap') || apiSearchInp.parentElement; suggestBox = document.createElement('div'); suggestBox.id='lookup-suggest-box'; wrap.appendChild(suggestBox); }
+  function clearSuggest(){ if(suggestBox){ suggestBox.innerHTML=''; suggestBox.style.display='none'; } suggestItems=[]; suggestActiveIndex=-1; }
+  function highlightSuggest(){ if(!suggestBox) return; [...suggestBox.querySelectorAll('button[data-sg-idx]')].forEach(btn=>{ const idx=Number(btn.dataset.sgIdx); btn.dataset.active = (idx===suggestActiveIndex)? 'true':'false'; }); }
+  function renderSuggest(data){
+    ensureSuggestBox();
+    if(!data.length){
+      suggestBox.innerHTML = `<div class="px-3 py-3 text-[11px] text-slate-600"><span class="font-medium">Term not found</span><br/><span class="text-slate-500">Maybe not verified yet – please enter a verified disease / mapped term.</span></div>`;
+      suggestBox.style.display='block';
+      suggestItems=[]; suggestActiveIndex=-1;
+      return;
+    }
+    const rows = data.map((s,idx)=>{
+      const kindBadge = s.kind==='icd'? 'ICD' : (s.kind==='snapshot'?'SNAP':'TM');
+      const sys = s.system? s.system.toUpperCase():'';
+      const primaryStar = s.is_primary? '<span class="primary-star" title="Primary">★</span>':'';
+      const isSnap = s.kind==='snapshot';
+      let main, trail='';
+      if(s.kind==='icd'){
+        main = `<span class="term-frag font-medium">${s.icd_name}</span>`;
+      } else {
+        const termPart = `${s.term||''}${s.code? ' • '+s.code:''}`;
+        main = `<span class="term-frag">${sys? sys+' • ':''}${termPart}</span>`;
+        trail = s.icd_name? `<span class="trail">→ ${s.icd_name}</span>`:'';
+      }
+      return `<div><button type="button" data-sg-idx="${idx}" data-kind="${s.kind}" data-icd="${s.icd_name||''}" data-system="${s.system||''}" data-code="${s.code||''}" class="w-full text-left flex items-center gap-2 ${isSnap?'snapshot-note':''}"><span class="badge-kind">${kindBadge}</span>${main}${trail}${primaryStar}</button></div>`;
+    }).join('');
+    suggestBox.innerHTML = rows; suggestBox.style.display='block'; suggestItems=data; highlightSuggest(); }
+  async function fetchSuggest(q){ try{ const res = await fetchPublic(`/api/public/lookup/suggest?q=${encodeURIComponent(q)}`); if(Array.isArray(res)) renderSuggest(res); }catch{ /* ignore */ } }
+  function scheduleSuggest(){ const val = apiSearchInp.value.trim(); if(val.length<2){ clearSuggest(); return; } if(val===suggestLastValue) return; suggestLastValue=val; clearTimeout(suggestDebounceTimer); suggestDebounceTimer = setTimeout(()=>fetchSuggest(val), 160); }
+  apiSearchInp?.addEventListener('input', scheduleSuggest);
+  apiSearchInp?.addEventListener('keydown', e=>{ if(!suggestBox || suggestBox.style.display==='none') return; if(['ArrowDown','ArrowUp','Enter','Escape','Tab'].includes(e.key)){ if(e.key==='ArrowDown'){ e.preventDefault(); suggestActiveIndex = (suggestActiveIndex+1) % suggestItems.length; highlightSuggest(); } else if(e.key==='ArrowUp'){ e.preventDefault(); suggestActiveIndex = (suggestActiveIndex-1+suggestItems.length) % suggestItems.length; highlightSuggest(); } else if(e.key==='Escape'){ clearSuggest(); } else if(e.key==='Enter' || e.key==='Tab'){ if(suggestActiveIndex>=0 && suggestItems[suggestActiveIndex]){ e.preventDefault(); applySuggestion(suggestItems[suggestActiveIndex]); } } } });
+  document.addEventListener('click', e=>{ if(!suggestBox) return; if(e.target===apiSearchInp || suggestBox.contains(e.target)) return; clearSuggest(); });
+  function applySuggestion(s){ clearSuggest(); if(!s) return; // If ICD anchor chosen => run lookup + auto translate
+    if(s.kind==='icd'){ apiSearchInp.value = s.icd_name; renderLookup(s.icd_name,{fallbackTranslate:true}); return; }
+    // Traditional or snapshot term: set input to term/code and perform lookup then translation towards ICD
+    const q = s.code || s.term || s.icd_name; apiSearchInp.value = q; renderLookup(q,{fallbackTranslate:false}); if(s.system && (s.code || s.term)){ runTranslateByTerm(s.system, s.code || s.term); } else if(s.icd_name){ runTranslateByIcd(s.icd_name); }
+  }
+  // Click handler for suggestions
+  document.addEventListener('click', e=>{ const btn = e.target.closest && e.target.closest('button[data-sg-idx]'); if(!btn) return; const idx = Number(btn.dataset.sgIdx); if(!isNaN(idx) && suggestItems[idx]) applySuggestion(suggestItems[idx]); });
   apiLookupResults?.addEventListener('click', e=>{ const t=e.target; if(!t?.dataset) return; if(t.dataset.icdName) runTranslateByIcd(t.dataset.icdName); else if(t.dataset.sys && t.dataset.code!==undefined) runTranslateByTerm(t.dataset.sys, t.dataset.code); });
 
   // Verified mapped diseases tree
-  async function loadMappedList(){ if(!apiMappedList) return; apiMappedList.innerHTML='<div class="text-gray-500 text-xs">Loading…</div>'; try{ const data= await fetchJSON('/master-map-data'); const nodes=[]; (data||[]).forEach(row=>{ const status=(row.row_status||'').toString(); if(!status.toLowerCase().startsWith('verified')) return; const icd=row.suggested_icd_name; const groups={ ayurveda:[], siddha:[], unani:[] }; ['ayurveda','siddha','unani'].forEach(sys=>{ try{ const raw=row[`${sys}_mapping`]; if(!raw) return; const obj= typeof raw==='string'? JSON.parse(raw): raw; const primary= obj?.primary? [obj.primary]:[]; const aliases= Array.isArray(obj?.aliases)? obj.aliases:[]; const list=[...primary,...aliases].filter(Boolean).map(t=>({ term:t.term||'', code:t.code||'', system:sys })); groups[sys]=list; }catch{} }); nodes.push({ icd, groups }); });
-    function sysLabel(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
-    function render(filter){ const html = nodes.map((node,idx)=>{ const wanted=['ayurveda','siddha','unani'].filter(sys=>{ if(filter==='all') return node.groups[sys]?.length; if(filter==='icd') return false; return sys===filter && node.groups[sys]?.length; }); if(filter!=='all' && filter!=='icd' && !wanted.length) return ''; const chevron='<span class="inline-block text-[10px] align-middle">▶</span>'; const childId=`children-i${idx}`; const icdHeader=`<div class="flex items-center gap-2">${filter==='icd'?'':`<button class="toggle text-xs text-gray-600" data-target="${childId}" aria-expanded="false">${chevron}</button>`}<button class="icd-link text-indigo-700 hover:underline" data-icd="${node.icd}">ICD‑11 • ${node.icd}</button></div>`; let groupsHTML=''; if(filter!=='icd'){ wanted.forEach(sys=>{ const items=(node.groups[sys]||[]).map(t=>{ const label=`${t.term}${t.code?' • '+t.code:''}`; const q=t.code||t.term; return `<div class="pl-3 py-0.5"><button class="text-gray-800 hover:underline text-sm" data-q="${q}" data-system="${sys}">${sys.toUpperCase()} • ${label}</button></div>`; }).join(''); if(items) groupsHTML += `<div class="mb-1"><div class="text-[11px] text-gray-600 font-semibold">${sysLabel(sys)}</div>${items}</div>`; }); }
-      const childrenBlock = filter==='icd' ? '' : `<div class="ml-5 mt-1 hidden" id="${childId}">${groupsHTML || '<div class=\"text-[11px] text-gray-500\">No items</div>'}</div>`; return `<div class="py-1 border-b border-gray-100">${icdHeader}${childrenBlock}</div>`; }).filter(Boolean).join(''); apiMappedList.innerHTML = html || '<div class="text-gray-500 text-xs">No verified mappings.</div>'; }
-    render(mappedFilterSel?.value||'all');
-    apiMappedList.addEventListener('click', e=>{ const t=e.target; if(!t) return; if(t.matches('button.toggle')){ const id=t.getAttribute('data-target'); const el=id?document.getElementById(id):null; if(el){ const hidden=el.classList.contains('hidden'); el.classList.toggle('hidden'); t.setAttribute('aria-expanded', String(hidden)); t.innerHTML = hidden?'<span class="inline-block text-[10px] align-middle">▼</span>':'<span class="inline-block text-[10px] align-middle">▶</span>'; } return; } if(t.matches('button.icd-link')){ const icd=t.getAttribute('data-icd')||''; if(apiSearchInp) apiSearchInp.value=icd; if(icd) renderLookup(icd,{ fallbackTranslate:true }); return; } if(t.dataset && (t.dataset.q || t.dataset.system)){ const q=t.dataset.q||''; if(apiSearchInp) apiSearchInp.value=q; // Term/system lookup (no direct translate fallback) — mapping-search fallback handled inside renderLookup now
-      if(q) renderLookup(q,{ fallbackTranslate:false }); return; } });
-    mappedFilterSel?.addEventListener('change', ()=>render(mappedFilterSel.value));
-  } catch(e){ apiMappedList.innerHTML=`<div class=\"text-red-600 text-xs\">${String(e)}</div>`; }
+  async function loadMappedList(){
+    if(!apiMappedList) return;
+    apiMappedList.innerHTML = '<div class="text-gray-500 text-xs">Loading…</div>';
+    try {
+      const data = await fetchJSON('/master-map-data');
+      const nodes=[];
+      (data||[]).forEach(row=>{
+        const status=(row.row_status||'').toString();
+        if(!status.toLowerCase().startsWith('verified')) return;
+        const icd=row.suggested_icd_name;
+        const sysData={};
+        ['ayurveda','siddha','unani'].forEach(sys=>{
+          try {
+            const raw=row[`${sys}_mapping`];
+            if(!raw) return;
+            const obj= typeof raw==='string'? JSON.parse(raw): raw;
+            const primary = obj?.primary || null;
+            const aliases = Array.isArray(obj?.aliases)? obj.aliases:[];
+            if(primary || aliases.length) sysData[sys]={ primary, aliases };
+          } catch {}
+        });
+        nodes.push({ icd, systems: sysData });
+      });
+
+      // Insert filter bar
+      const filterBarId='mapped-filter-text';
+      const container=document.createElement('div');
+      container.className='mapped-accordion';
+      const filterBar = document.createElement('div');
+      filterBar.className='mapped-filter-bar';
+      filterBar.innerHTML = `<input id="${filterBarId}" type="text" placeholder="Filter ICD name..." />`;
+      apiMappedList.innerHTML='';
+      apiMappedList.appendChild(filterBar);
+      apiMappedList.appendChild(container);
+
+      function buildItem(node, idx){
+        const systems = Object.keys(node.systems);
+        // system pills summarizing counts
+        const pills = systems.map(s=>{
+          const block=node.systems[s];
+          const total = (block.aliases||[]).length + (block.primary?1:0);
+            return `<span class="sys-pill ${s}">${s.charAt(0).toUpperCase()+s.slice(1)}<span style="margin-left:4px; font-weight:600;">${total}</span></span>`;
+        }).join('');
+        const item=document.createElement('div'); item.className='mapped-item';
+        const header=document.createElement('button'); header.type='button'; header.className='mapped-header'; header.setAttribute('aria-expanded','false'); header.dataset.idx=String(idx);
+        header.innerHTML=`<span class="chevron">▶</span><span class="icd-text" data-icd-click="${encodeURIComponent(node.icd)}">ICD‑11 • ${node.icd}</span><span class="flex gap-1">${pills}</span>`;
+        const body=document.createElement('div'); body.className='mapped-body';
+        systems.forEach(s=>{
+          const block=node.systems[s];
+          const sb=document.createElement('div'); sb.className='sys-block';
+          const aliasCount = (block.aliases||[]).length;
+          sb.innerHTML=`<div class="sys-title">${s.toUpperCase()}<span class="count-badge">${aliasCount + (block.primary?1:0)}</span></div>`;
+          if(block.primary){
+            const p=block.primary; const code = p.code? `<span class="code">${p.code}</span>`:'';
+            sb.innerHTML += `<div class="primary-term">${p.term||''}${code} <span class="primary-badge">PRIMARY</span></div>`;
+          }
+            if(aliasCount){
+              const chips=block.aliases.map(a=>{
+                const code=a.code? `<span class=\"code\">${a.code}</span>`:'';
+                return `<span class="chip" data-sys="${s}" data-code="${a.code||''}" data-term="${a.term||''}"><span class="alias-badge">ALIAS</span> ${a.term||''}${code}</span>`;
+              }).join('');
+              sb.innerHTML += `<div class="alias-chips">${chips}</div>`;
+            } else if(!block.primary){
+              sb.innerHTML += `<div class="empty-alias">No terms</div>`;
+            }
+          body.appendChild(sb);
+        });
+        item.appendChild(header); item.appendChild(body); return item;
+      }
+
+      function render(filterValue){
+        container.innerHTML='';
+        const f = (filterValue||'').toLowerCase().trim();
+        const selectedSys=(mappedFilterSel?.value||'all');
+        nodes.filter(n=>!f || (n.icd||'').toLowerCase().includes(f)).forEach((n,idx)=>{
+          // system filter: remove systems not selected
+          if(selectedSys!=='all' && selectedSys!=='icd'){
+            if(!n.systems[selectedSys]) return; // skip if no that system
+          }
+          container.appendChild(buildItem(n, idx));
+        });
+        if(!container.children.length){
+          container.innerHTML='<div class="text-[11px] text-slate-500">No verified mappings.</div>';
+        }
+      }
+
+      render('');
+      const filterInput=document.getElementById(filterBarId);
+      filterInput?.addEventListener('input', ()=>render(filterInput.value));
+      mappedFilterSel?.addEventListener('change', ()=>render(filterInput?.value||''));
+
+      // Delegated events
+  apiMappedList.addEventListener('click', async e=>{
+        const header = e.target.closest && e.target.closest('.mapped-header');
+        if(header){
+          const expanded = header.getAttribute('aria-expanded')==='true';
+          const body = header.nextElementSibling;
+          header.setAttribute('aria-expanded', String(!expanded));
+          if(body){
+            if(!expanded){
+              // Close any other open panels first (single-open behavior)
+              const openHeaders = apiMappedList.querySelectorAll('.mapped-header[aria-expanded="true"]');
+              openHeaders.forEach(h=>{
+                if(h===header) return;
+                h.setAttribute('aria-expanded','false');
+                const ob = h.nextElementSibling;
+                if(ob && ob.classList.contains('open')){
+                  ob.addEventListener('transitionend', function h2(ev){ if(ev.propertyName==='max-height'){ ob.classList.remove('open'); ob.removeEventListener('transitionend', h2); } }, { once:true });
+                  ob.classList.remove('open');
+                }
+              });
+              // Now expand this one
+              body.classList.add('open');
+            } else {
+              // collapsing current
+              body.addEventListener('transitionend', function h(ev){ if(ev.propertyName==='max-height'){ body.classList.remove('open'); body.removeEventListener('transitionend', h); } }, { once:true });
+              body.classList.remove('open');
+            }
+          }
+          // If the click target was the ICD text itself, trigger lookup immediately
+          const icdSpan = e.target.closest && e.target.closest('[data-icd-click]');
+          if(icdSpan){
+            const rawIcd = decodeURIComponent(icdSpan.getAttribute('data-icd-click')||'');
+            if(apiSearchInp){ apiSearchInp.value = rawIcd; }
+            // Run lookup against the ICD anchoring term (fallbackTranslate true)
+            await renderLookup(rawIcd, { fallbackTranslate:true });
+            // If still no visible results (e.g. zero verified mappings yet) ensure translate attempt
+            // No results container now; always attempt translate fallback only if output empty
+            if(!apiTranslateOutput.textContent.trim()) runTranslateByIcd(rawIcd);
+          }
+          return;
+        }
+        const chip = e.target.closest && e.target.closest('.chip');
+        if(chip){
+          const sys = chip.getAttribute('data-sys');
+            const code = chip.getAttribute('data-code');
+            const term = chip.getAttribute('data-term');
+          if(sys && (code||term)){
+            const q = code || term;
+            if(apiSearchInp) apiSearchInp.value=q;
+            renderLookup(q,{fallbackTranslate:false});
+            runTranslateByTerm(sys, code||term);
+          }
+        }
+      });
+    } catch(e){
+      apiMappedList.innerHTML = `<div class="text-red-600 text-xs">${String(e)}</div>`;
+    }
   }
 
   // Raw request runner
@@ -233,4 +438,59 @@
   setInterval(refreshAll, 15000);
   initMap();
   loadMappedList();
+  // --- Provenance & FHIR Bundle composer formatting ---
+  (function(){
+    const provBtn = document.getElementById('pg-load-provenance');
+    const provInput = document.getElementById('pg-prov-icd');
+    const provOut = document.querySelector('#pg-provenance-output pre');
+    const bundleBtn = document.getElementById('pg-compose-bundle');
+    const bundleOut = document.querySelector('#pg-bundle-output pre');
+    const dlBtn = document.getElementById('pg-download-bundle');
+    // Custom formatter to add blank lines between top-level keys and keep compact inner leaf objects
+    function formatFHIR(obj){
+      // Always attempt to pretty print JSON with vertical spacing.
+      try {
+        const rawObj = (typeof obj === 'string') ? JSON.parse(obj) : obj;
+        if(typeof rawObj !== 'object' || rawObj === null) return String(obj);
+        let pretty = JSON.stringify(rawObj, null, 2);
+        // Insert an extra blank line between top-level members for readability
+        // Matches newline followed by two spaces and a quote (a top-level key in the root object)
+        pretty = pretty.replace(/\n(?=  ")/g, '\n\n');
+        return pretty;
+      } catch { return String(obj); }
+    }
+    function ensureFormatted(data){
+      if(typeof data === 'string'){
+        const trimmed = data.trim();
+        if(trimmed.startsWith('{') || trimmed.startsWith('[')) return formatFHIR(trimmed);
+        return data; // not JSON
+      }
+      return formatFHIR(data);
+    }
+    function setBtnLoading(btn, loading){ if(!btn) return; const txt=btn.getAttribute('data-loading')||'Working'; if(loading){ btn.dataset.prevText=btn.textContent; btn.textContent = txt; btn.disabled=true; } else { btn.textContent = btn.dataset.prevText||btn.textContent; btn.disabled=false; } }
+    async function safeFetch(url){ const res = await fetch(url,{headers:headers()}); const text = await res.text(); try{ return JSON.parse(text); }catch{ return text; } }
+    provBtn?.addEventListener('click', async ()=>{
+      const icd = (provInput?.value||'').trim(); if(!icd){ provOut.textContent='// Enter ICD name first'; return; }
+      setBtnLoading(provBtn,true); provOut.textContent='// Fetching provenance...';
+      try {
+        const data = await safeFetch(`${api}/api/admin/provenance?icd_name=${encodeURIComponent(icd)}`);
+        provOut.textContent = ensureFormatted(data);
+      } catch(e){ provOut.textContent='// Error: '+e; }
+      setBtnLoading(provBtn,false);
+    });
+    bundleBtn?.addEventListener('click', async ()=>{
+      setBtnLoading(bundleBtn,true); bundleOut.textContent='// Composing...';
+      try {
+        const cm = document.getElementById('pg-bundle-cm')?.checked; const cs=document.getElementById('pg-bundle-cs')?.checked; const vs=document.getElementById('pg-bundle-vs')?.checked; const prov=document.getElementById('pg-bundle-prov')?.checked;
+        const parts=[]; if(cm) parts.push('conceptmap'); if(cs) parts.push('codesystems'); if(vs) parts.push('valuesets'); if(prov) parts.push('provenance');
+        const query = parts.length? `?parts=${parts.join(',')}`:'';
+        const data = await safeFetch(`${api}/api/admin/fhir-bundle${query}`);
+        bundleOut.textContent = ensureFormatted(data);
+        if(typeof data==='object') { dlBtn && (dlBtn.disabled=false); dlBtn.dataset.bundleJson = JSON.stringify(data,null,2); }
+      } catch(e){ bundleOut.textContent='// Error: '+e; }
+      setBtnLoading(bundleBtn,false);
+    });
+    dlBtn?.addEventListener('click', ()=>{
+      if(!dlBtn.dataset.bundleJson) return; const blob=new Blob([dlBtn.dataset.bundleJson],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='fhir_bundle.json'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500); });
+  })();
 })();
