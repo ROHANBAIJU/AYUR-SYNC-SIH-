@@ -1,0 +1,20 @@
+[
+  {
+    "model": "models/gemini-1.5-flash-8b",
+    "ok": false,
+    "elapsed_s": 0.8290255069732666,
+    "error": "404 models/gemini-1.5-flash-8b is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/gemini-1.5-flash-8b-latest",
+    "ok": false,
+    "elapsed_s": 0.5892488956451416,
+    "error": "404 models/gemini-1.5-flash-8b-latest is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/gemini-1.5-flash",
+    "ok": false,
+    "elapsed_s": 0.584662914276123,
+    "error": "404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  }
+]

@@ -476,24 +476,68 @@ def analytics_map_details(
     return {"doctors": list(by_doctor.values()), "topDiagnoses": top_diags, "total": len(rows)}
 
 def get_gemini_verification(icd_name: str, mapping_data: Dict) -> Dict:
-    # Updated model selection: previous 'gemini-1.5-pro-latest' caused 404 publisher model errors
-    # Working lightweight model discovered at runtime: 'models/gemini-1.5-flash-8b'
-    # We attempt primary, then fallback chain.
-    primary_models = ['models/gemini-1.5-flash-8b', 'models/gemini-1.5-flash-8b-latest', 'models/gemini-1.5-flash']
+    # Prefer models that proved to work in local probing (fallbacks based on probe results)
+    primary_models = [
+        'models/gemma-3-1b-it',
+        'models/gemma-3-4b-it',
+        'models/gemma-3-12b-it',
+        'models/gemma-3-27b-it',
+        'models/gemma-3n-e4b-it',
+        'models/gemini-2.0-flash-exp',
+        'models/gemini-2.0-flash',
+        'models/gemini-2.0-flash-001'
+    ]
+
     model = None
     last_err = None
     for m in primary_models:
         try:
             model = genai.GenerativeModel(m)
-            # quick dry run to validate permission
-            _r = model.generate_content('Return token OK').text
+            # quick dry run to validate permission/support
+            _r = model.generate_content('Return token OK')
             break
         except Exception as e:
             last_err = e
             model = None
+            # continue to next fallback
             continue
+
+    # If none of the preferred fallbacks worked, try to discover an available model from the API
     if not model:
-        raise HTTPException(status_code=503, detail=f"All Gemini model fallbacks failed: {last_err}")
+        try:
+            listed = genai.list_models()
+            for mobj in listed:
+                # Try to extract a canonical name from the model object
+                name = None
+                for attr in ('name', 'model', 'id'):
+                    try:
+                        name = getattr(mobj, attr)
+                        if name:
+                            name = str(name)
+                            break
+                    except Exception:
+                        name = None
+                if not name:
+                    continue
+                # skip obvious non-generate models
+                low = name.lower()
+                if any(x in low for x in ('embedding', 'imagen', 'veo', 'image', 'imagen')):
+                    continue
+                try:
+                    candidate = genai.GenerativeModel(name)
+                    _r = candidate.generate_content('Return token OK')
+                    model = candidate
+                    break
+                except Exception as e:
+                    last_err = e
+                    model = None
+                    continue
+        except Exception as e:
+            last_err = e
+
+    # If still no model found, return a safe AI-failed response (do not raise) so callers can continue
+    if not model:
+        return {"justification": f"AI verification unavailable: {last_err}", "confidence": 0}
     term = mapping_data.get("primary", {}).get("term", "N/A")
     desc = mapping_data.get("primary", {}).get("source_description", "N/A")
     if term == "N/A" or desc == "N/A":
@@ -511,8 +555,13 @@ def get_gemini_verification(icd_name: str, mapping_data: Dict) -> Dict:
     """
     try:
         response = model.generate_content(prompt)
-        cleaned_response = response.text.strip().replace("```json", "").replace("```", "").strip()
-        return json.loads(cleaned_response)
+        text = getattr(response, 'text', None) or str(response)
+        cleaned_response = text.strip().replace("```json", "").replace("```", "").strip()
+        try:
+            return json.loads(cleaned_response)
+        except Exception:
+            # If the model didn't return strict JSON, return the raw text as justification
+            return {"justification": cleaned_response, "confidence": 0}
     except Exception as e:
         return {"justification": f"AI analysis failed: {e}", "confidence": 0}
 

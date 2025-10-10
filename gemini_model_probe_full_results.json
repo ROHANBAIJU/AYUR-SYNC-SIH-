@@ -1,0 +1,408 @@
+[
+  {
+    "model": "models/embedding-gecko-001",
+    "ok": false,
+    "elapsed_s": 0.6695394515991211,
+    "error": "404 models/embedding-gecko-001 is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/gemini-2.5-pro-preview-03-25",
+    "ok": false,
+    "elapsed_s": 0.15417027473449707,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.5-flash-preview-05-20",
+    "ok": false,
+    "elapsed_s": 0.41199588775634766,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.5-flash",
+    "ok": false,
+    "elapsed_s": 0.18306946754455566,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.5-flash-lite-preview-06-17",
+    "ok": false,
+    "elapsed_s": 0.1563570499420166,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.5-pro-preview-05-06",
+    "ok": false,
+    "elapsed_s": 0.43470120429992676,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.5-pro-preview-06-05",
+    "ok": false,
+    "elapsed_s": 0.14620471000671387,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.5-pro",
+    "ok": false,
+    "elapsed_s": 0.4259462356567383,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.0-flash-exp",
+    "ok": true,
+    "elapsed_s": 0.700533390045166,
+    "error": null,
+    "raw": "OK\n"
+  },
+  {
+    "model": "models/gemini-2.0-flash",
+    "ok": false,
+    "elapsed_s": 0.16278576850891113,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.0-flash-001",
+    "ok": false,
+    "elapsed_s": 0.15811872482299805,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.0-flash-exp-image-generation",
+    "ok": true,
+    "elapsed_s": 0.9447495937347412,
+    "error": null,
+    "raw": "OK\n"
+  },
+  {
+    "model": "models/gemini-2.0-flash-lite-001",
+    "ok": false,
+    "elapsed_s": 0.158951997756958,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.0-flash-lite",
+    "ok": false,
+    "elapsed_s": 0.39307212829589844,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.0-flash-preview-image-generation",
+    "ok": false,
+    "elapsed_s": 0.2026371955871582,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.0-flash-lite-preview-02-05",
+    "ok": false,
+    "elapsed_s": 0.37991881370544434,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.0-flash-lite-preview",
+    "ok": false,
+    "elapsed_s": 0.209672212600708,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.0-pro-exp",
+    "ok": false,
+    "elapsed_s": 0.35147738456726074,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.0-pro-exp-02-05",
+    "ok": false,
+    "elapsed_s": 0.22510671615600586,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-exp-1206",
+    "ok": false,
+    "elapsed_s": 0.16221261024475098,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.0-flash-thinking-exp-01-21",
+    "ok": true,
+    "elapsed_s": 1.0525603294372559,
+    "error": null,
+    "raw": "OK"
+  },
+  {
+    "model": "models/gemini-2.0-flash-thinking-exp",
+    "ok": true,
+    "elapsed_s": 0.6939442157745361,
+    "error": null,
+    "raw": "OK"
+  },
+  {
+    "model": "models/gemini-2.0-flash-thinking-exp-1219",
+    "ok": true,
+    "elapsed_s": 1.2681941986083984,
+    "error": null,
+    "raw": "OK"
+  },
+  {
+    "model": "models/gemini-2.5-flash-preview-tts",
+    "ok": false,
+    "elapsed_s": 0.14498686790466309,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.5-pro-preview-tts",
+    "ok": false,
+    "elapsed_s": 0.44861340522766113,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/learnlm-2.0-flash-experimental",
+    "ok": false,
+    "elapsed_s": 0.14090180397033691,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemma-3-1b-it",
+    "ok": true,
+    "elapsed_s": 0.5285015106201172,
+    "error": null,
+    "raw": "Okay, I understand. You're confirming that the request was successful. \n\nIs there anything else I can help you with?"
+  },
+  {
+    "model": "models/gemma-3-4b-it",
+    "ok": true,
+    "elapsed_s": 1.52284836769104,
+    "error": null,
+    "raw": "Okay, great! Glad to hear the token returned \"OK\". Is there anything else I can help you with?"
+  },
+  {
+    "model": "models/gemma-3-12b-it",
+    "ok": true,
+    "elapsed_s": 1.967376708984375,
+    "error": null,
+    "raw": "OK\n"
+  },
+  {
+    "model": "models/gemma-3-27b-it",
+    "ok": true,
+    "elapsed_s": 2.971306085586548,
+    "error": null,
+    "raw": "OK. \n\n(This acknowledges your request to \"Return token OK\".  I'm essentially acting as a service that would return a token, and confirming it's \"OK\".)\n\nIs there anything else I can help you with?  Do you want me to:\n\n* **Simulate returning a more complex token?** (e.g., a long string of characters)\n* **Explain what a token is in this context?**\n* **Do something else entirely?**\n"
+  },
+  {
+    "model": "models/gemma-3n-e4b-it",
+    "ok": true,
+    "elapsed_s": 3.331655979156494,
+    "error": null,
+    "raw": "Okay, here's your token:\n\n**YOUR_GENERATED_TOKEN_HERE** \n\n(This is a placeholder.  **Do not use this token in a real application!** This is just for demonstration.)\n\n**Important Security Note:**  In a real system, tokens should be:\n\n*   **Randomly Generated:**  Using a cryptographically secure random number generator.\n*   **Long and Complex:**  To make brute-force attacks difficult.\n*   **Protected:**  Stored securely (e.g., hashed and salted in a database) and transmitted securely (e.g., using HTTPS).\n*  **Expiration:**  Have an expiration time to limit the window of opportunity if a token is compromised.\n\nLet me know if you need help with generating more realistic tokens (though I can't actually *generate* a secure one for you due to security concerns).  Or if you'd like to discuss token management best practices.\n\n\n\n"
+  },
+  {
+    "model": "models/gemma-3n-e2b-it",
+    "ok": false,
+    "elapsed_s": 0.13498377799987793,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-flash-latest",
+    "ok": false,
+    "elapsed_s": 0.14342594146728516,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-flash-lite-latest",
+    "ok": false,
+    "elapsed_s": 0.4587116241455078,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-pro-latest",
+    "ok": false,
+    "elapsed_s": 0.15467548370361328,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.5-flash-lite",
+    "ok": false,
+    "elapsed_s": 0.416698694229126,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.5-flash-image-preview",
+    "ok": false,
+    "elapsed_s": 0.16519951820373535,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.5-flash-image",
+    "ok": false,
+    "elapsed_s": 0.4051547050476074,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.5-flash-preview-09-2025",
+    "ok": false,
+    "elapsed_s": 0.17767095565795898,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.5-flash-lite-preview-09-2025",
+    "ok": false,
+    "elapsed_s": 0.3927147388458252,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-robotics-er-1.5-preview",
+    "ok": false,
+    "elapsed_s": 0.1891329288482666,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/gemini-2.5-computer-use-preview-10-2025",
+    "ok": false,
+    "elapsed_s": 0.22021222114562988,
+    "error": "429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits."
+  },
+  {
+    "model": "models/embedding-001",
+    "ok": false,
+    "elapsed_s": 0.4031376838684082,
+    "error": "404 models/embedding-001 is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/text-embedding-004",
+    "ok": false,
+    "elapsed_s": 0.2945406436920166,
+    "error": "404 models/text-embedding-004 is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/gemini-embedding-exp-03-07",
+    "ok": false,
+    "elapsed_s": 0.3230733871459961,
+    "error": "404 models/gemini-embedding-exp-03-07 is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/gemini-embedding-exp",
+    "ok": false,
+    "elapsed_s": 0.2548375129699707,
+    "error": "404 models/gemini-embedding-exp is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/gemini-embedding-001",
+    "ok": false,
+    "elapsed_s": 0.3420827388763428,
+    "error": "404 models/gemini-embedding-001 is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/aqa",
+    "ok": false,
+    "elapsed_s": 0.22718358039855957,
+    "error": "404 models/aqa is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/imagen-3.0-generate-002",
+    "ok": false,
+    "elapsed_s": 0.33636999130249023,
+    "error": "404 models/imagen-3.0-generate-002 is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/imagen-4.0-generate-preview-06-06",
+    "ok": false,
+    "elapsed_s": 0.22025632858276367,
+    "error": "404 models/imagen-4.0-generate-preview-06-06 is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/imagen-4.0-ultra-generate-preview-06-06",
+    "ok": false,
+    "elapsed_s": 0.37444376945495605,
+    "error": "404 models/imagen-4.0-ultra-generate-preview-06-06 is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/imagen-4.0-generate-001",
+    "ok": false,
+    "elapsed_s": 0.19228172302246094,
+    "error": "404 models/imagen-4.0-generate-001 is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/imagen-4.0-ultra-generate-001",
+    "ok": false,
+    "elapsed_s": 0.3634817600250244,
+    "error": "404 models/imagen-4.0-ultra-generate-001 is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/imagen-4.0-fast-generate-001",
+    "ok": false,
+    "elapsed_s": 0.21036553382873535,
+    "error": "404 models/imagen-4.0-fast-generate-001 is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/veo-2.0-generate-001",
+    "ok": false,
+    "elapsed_s": 0.36666250228881836,
+    "error": "404 models/veo-2.0-generate-001 is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/veo-3.0-generate-preview",
+    "ok": false,
+    "elapsed_s": 0.20131683349609375,
+    "error": "404 models/veo-3.0-generate-preview is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/veo-3.0-fast-generate-preview",
+    "ok": false,
+    "elapsed_s": 0.3542909622192383,
+    "error": "404 models/veo-3.0-fast-generate-preview is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/veo-3.0-generate-001",
+    "ok": false,
+    "elapsed_s": 0.20010161399841309,
+    "error": "404 models/veo-3.0-generate-001 is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/veo-3.0-fast-generate-001",
+    "ok": false,
+    "elapsed_s": 0.35903382301330566,
+    "error": "404 models/veo-3.0-fast-generate-001 is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/gemini-2.5-flash-preview-native-audio-dialog",
+    "ok": false,
+    "elapsed_s": 0.2212228775024414,
+    "error": "404 models/gemini-2.5-flash-preview-native-audio-dialog is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/gemini-2.5-flash-exp-native-audio-thinking-dialog",
+    "ok": false,
+    "elapsed_s": 0.37586069107055664,
+    "error": "404 models/gemini-2.5-flash-exp-native-audio-thinking-dialog is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/gemini-2.0-flash-live-001",
+    "ok": false,
+    "elapsed_s": 0.19080519676208496,
+    "error": "404 models/gemini-2.0-flash-live-001 is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/gemini-live-2.5-flash-preview",
+    "ok": false,
+    "elapsed_s": 0.21407103538513184,
+    "error": "404 models/gemini-live-2.5-flash-preview is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/gemini-2.5-flash-live-preview",
+    "ok": false,
+    "elapsed_s": 0.16733479499816895,
+    "error": "404 models/gemini-2.5-flash-live-preview is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/gemini-2.5-flash-native-audio-latest",
+    "ok": false,
+    "elapsed_s": 0.2370319366455078,
+    "error": "404 models/gemini-2.5-flash-native-audio-latest is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  },
+  {
+    "model": "models/gemini-2.5-flash-native-audio-preview-09-2025",
+    "ok": false,
+    "elapsed_s": 0.15183711051940918,
+    "error": "404 models/gemini-2.5-flash-native-audio-preview-09-2025 is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods."
+  }
+]
