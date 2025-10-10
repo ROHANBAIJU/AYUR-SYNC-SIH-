@@ -544,7 +544,7 @@ def get_gemini_verification(icd_name: str, mapping_data: Dict) -> Dict:
         return {"justification": "Term and Source Description must be provided for AI verification.", "confidence": 0}
     prompt = f"""
     You are an expert in medical terminology. Evaluate how well the provided traditional medicine term maps to the given ICD-11 diagnosis based on its source description.
-    Provide a concise justification and a confidence score from 0 to 100.
+    Provide a concise justification and a confidence score from 0 to 100. Remember analyse the data properly.
     
     - ICD-11 Diagnosis: "{icd_name}"
     - Traditional Term: "{term}"
